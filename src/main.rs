@@ -20,6 +20,7 @@ use rand::seq::SliceRandom;
 use rand::SeedableRng;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::time::Duration;
 use testground::client::Client;
 use testground::RunParameters;
 
@@ -30,6 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let local_key = Keypair::generate_ed25519();
     let local_peer_id = PeerId::from(local_key.public());
+    client.record_message(format!("PeerId: {}", local_peer_id));
 
     // ////////////////////////////////////////////////////////////////////////
     // Start libp2p
@@ -69,19 +71,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .listen_on(multiaddr.clone())
         .expect("Swarm starts listening");
 
-    match swarm.select_next_some().await {
-        SwarmEvent::NewListenAddr {
-            listener_id: _,
-            address,
-        } => {
-            client.record_message(format!("Listening on {}", address));
-        }
-        _ => unreachable!(),
+    // Sets a barrier on the supplied state that fires when it reaches all participants.
+    macro_rules! barrier {
+        ($state: expr) => {
+            loop {
+                tokio::select! {
+                    _ = client.signal_and_wait($state, run_parameters.test_instance_count) => {
+                        break;
+                    }
+                    event = swarm.select_next_some() => {
+                        client.record_message(format!("{:?}", event))
+                    }
+                }
+            }
+            // The sleep time is set to prevent a race condition caused by variations in the timing
+            // of receiving messages from the synchronization service of testground.
+            tokio::time::sleep(Duration::from_millis(1000)).await;
+        };
     }
 
-    client
-        .signal_and_wait("Started listening", run_parameters.test_instance_count)
-        .await?;
+    barrier!("Started listening");
 
     // ////////////////////////////////////////////////////////////////////////
     // Connect to a peer randomly selected
@@ -103,6 +112,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     swarm.dial(peer_addr)?;
 
+    // Ensure that a connection has been established with the peer selected.
     loop {
         match swarm.select_next_some().await {
             SwarmEvent::ConnectionEstablished {
@@ -114,15 +124,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     client.record_message(format!("Connection established: {}", address));
                     break;
                 }
-                ConnectedPoint::Listener { .. } => {}
+                event => client.record_message(format!("{:?}", event)),
             },
-            _ => {}
+            event => client.record_message(format!("{:?}", event)),
         }
     }
 
-    client
-        .signal_and_wait("Connected to a peer", run_parameters.test_instance_count)
-        .await?;
+    barrier!("Connected to a peer");
 
     // ////////////////////////////////////////////////////////////////////////
     // Subscribe a topic
@@ -137,7 +145,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         match swarm.select_next_some().await {
             SwarmEvent::Behaviour(gossipsub_event) => match gossipsub_event {
-                GossipsubEvent::Subscribed { .. } => {
+                GossipsubEvent::Subscribed { peer_id, topic } => {
+                    client.record_message(format!(
+                        "Subscribed. peer_id:{}, topic: {}",
+                        peer_id, topic
+                    ));
                     subscribed += 1;
                     if subscribed == connected_peers {
                         break;
@@ -145,19 +157,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 _ => unreachable!(),
             },
-            _ => {}
+            event => client.record_message(format!("{:?}", event)),
         }
     }
 
-    client
-        .signal_and_wait("Subscribed a topic", run_parameters.test_instance_count)
-        .await?;
+    barrier!("Subscribed a topic");
 
     // ////////////////////////////////////////////////////////////////////////
     // Publish a single message
     // ////////////////////////////////////////////////////////////////////////
+    {
+        let gossipsub = swarm.behaviour();
+        client.record_message(format!(
+            "all_peers: {:?}, all_mesh_peers: {:?}",
+            gossipsub.all_peers().collect::<Vec<_>>(),
+            gossipsub.all_mesh_peers().collect::<Vec<_>>()
+        ));
+    }
+
     swarm.behaviour_mut().publish(topic, "message".as_bytes())?;
 
+    // Wait until all messages published by participants have been received.
     let mut messages_received = 0;
     loop {
         match swarm.select_next_some().await {
@@ -177,15 +197,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         break;
                     }
                 }
-                _ => unreachable!(),
+                event => client.record_message(format!("{:?}", event)),
             },
-            _ => {}
+            event => client.record_message(format!("{:?}", event)),
         }
     }
 
-    client
-        .signal_and_wait("Published a message", run_parameters.test_instance_count)
-        .await?;
+    barrier!("Published a message");
 
     client.record_success().await?;
     Ok(())

@@ -22,9 +22,9 @@ COPY . .
 
 # Note: In `docker:generic` builder, the root of the docker build context is one directory higher than this test plan.
 # See https://docs.testground.ai/builder-library/docker-generic#usage
-RUN cd ./plan/ && cargo build --release && cargo install --path .
+RUN cd ./plan/ && cargo build --release
 
 FROM debian:bullseye-slim
-COPY --from=builder /usr/local/cargo/bin/gossipsub-testground /usr/local/bin/gossipsub-testground
+COPY --from=builder /usr/src/test-plan/plan/target/release/gossipsub-testground /usr/local/bin/gossipsub-testground
 
 ENTRYPOINT ["gossipsub-testground"]
