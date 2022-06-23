@@ -27,4 +27,7 @@ RUN cd ./plan/ && cargo build --release
 FROM debian:bullseye-slim
 COPY --from=builder /usr/src/test-plan/plan/target/release/gossipsub-testground /usr/local/bin/gossipsub-testground
 
+# Configure Logging
+# ENV RUST_LOG=debug
+
 ENTRYPOINT ["gossipsub-testground"]
