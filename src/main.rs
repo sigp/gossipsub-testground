@@ -20,6 +20,7 @@ use rand::seq::SliceRandom;
 use rand::SeedableRng;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::collections::HashSet;
 use std::time::Duration;
 use testground::client::Client;
 use testground::RunParameters;
@@ -181,7 +182,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     swarm.behaviour_mut().publish(topic, "message".as_bytes())?;
 
     // Wait until all messages published by participants have been received.
-    let mut messages_received = 0;
+    let mut received_from = HashSet::new();
     loop {
         match swarm.select_next_some().await {
             SwarmEvent::Behaviour(gossipsub_event) => match gossipsub_event {
@@ -195,8 +196,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         propagation_source, message.source
                     ));
 
-                    messages_received += 1;
-                    if messages_received == run_parameters.test_instance_count - 1 {
+                    if !received_from.insert(message.source.expect("Source peer id")) {
+                        client
+                            .record_failure(format!("Received duplicated message: {:?}", message))
+                            .await?;
+                        return Ok(());
+                    }
+
+                    if received_from.len() == (run_parameters.test_instance_count - 1) as usize {
+                        client.record_message("Received all the published messages");
                         break;
                     }
                 }
@@ -205,7 +213,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             event => client.record_message(format!("{:?}", event)),
         }
     }
-    client.record_message("Received all the published messages");
 
     barrier!("Published a message");
 
