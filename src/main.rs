@@ -110,6 +110,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         others.pop().unwrap()
     };
 
+    client.record_message(format!("Dialing {}", peer_addr));
     swarm.dial(peer_addr)?;
 
     // Ensure that a connection has been established with the peer selected.
@@ -137,6 +138,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ////////////////////////////////////////////////////////////////////////
     // Subscribe each node to the same topic.
     let topic = Topic::new("smoke");
+    client.record_message(format!("Subscribing to topic: {}", topic));
     swarm.behaviour_mut().subscribe(&topic)?;
 
     // Wait for all connected peers to be subscribed.
@@ -147,7 +149,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             SwarmEvent::Behaviour(gossipsub_event) => match gossipsub_event {
                 GossipsubEvent::Subscribed { peer_id, topic } => {
                     client.record_message(format!(
-                        "Subscribed. peer_id:{}, topic: {}",
+                        "Peer {} subscribed to a topic: {}",
                         peer_id, topic
                     ));
                     subscribed += 1;
@@ -175,6 +177,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ));
     }
 
+    client.record_message("Publishing message");
     swarm.behaviour_mut().publish(topic, "message".as_bytes())?;
 
     // Wait until all messages published by participants have been received.
@@ -202,6 +205,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             event => client.record_message(format!("{:?}", event)),
         }
     }
+    client.record_message("Received all the published messages");
 
     barrier!("Published a message");
 
