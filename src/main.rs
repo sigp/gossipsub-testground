@@ -143,7 +143,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     swarm.behaviour_mut().subscribe(&topic)?;
 
     // Wait for all connected peers to be subscribed.
-    let connected_peers = swarm.connected_peers().collect::<Vec<_>>().len();
+    let all_peers = swarm.behaviour().all_peers().collect::<Vec<_>>().len();
     let mut subscribed = 0;
     loop {
         match swarm.select_next_some().await {
@@ -154,7 +154,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         peer_id, topic
                     ));
                     subscribed += 1;
-                    if subscribed == connected_peers {
+                    if subscribed == all_peers {
                         break;
                     }
                 }
@@ -240,6 +240,8 @@ fn build_transport(keypair: &Keypair) -> libp2p::core::transport::Boxed<(PeerId,
         .boxed()
 }
 
+// Publish info and collect it from the participants. The return value includes one published by
+// myself.
 async fn publish_and_collect<T: Serialize + DeserializeOwned>(
     client: &Client,
     run_parameters: &RunParameters,
