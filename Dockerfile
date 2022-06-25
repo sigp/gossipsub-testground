@@ -28,6 +28,6 @@ FROM debian:bullseye-slim
 COPY --from=builder /usr/src/test-plan/plan/target/release/gossipsub-testground /usr/local/bin/gossipsub-testground
 
 # Configure Logging
-# ENV RUST_LOG=debug
+# ENV RUST_LOG=libp2p_gossipsub=debug
 
 ENTRYPOINT ["gossipsub-testground"]
