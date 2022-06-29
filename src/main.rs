@@ -21,7 +21,6 @@ use rand::SeedableRng;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::HashSet;
-use std::time::Duration;
 use testground::client::Client;
 use testground::RunParameters;
 
@@ -37,6 +36,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let local_key = Keypair::generate_ed25519();
     let local_peer_id = PeerId::from(local_key.public());
     client.record_message(format!("PeerId: {}", local_peer_id));
+
+    // Variables to keep track of the received events.
+    let mut event_subscribed = 0;
+    let mut event_message = HashSet::new();
 
     // ////////////////////////////////////////////////////////////////////////
     // Start libp2p
@@ -85,13 +88,47 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         break;
                     }
                     event = swarm.select_next_some() => {
-                        client.record_message(format!("{:?}", event))
+                        // Record the Swarm events that happen while waiting for the barrier.
+                        match event {
+                            SwarmEvent::Behaviour(gossipsub_event) => match gossipsub_event {
+                                GossipsubEvent::Subscribed { peer_id, topic } => {
+                                    client.record_message(format!(
+                                        "Peer {} subscribed to a topic: {}",
+                                        peer_id, topic
+                                    ));
+                                    event_subscribed += 1;
+                                }
+                                GossipsubEvent::Message {
+                                    propagation_source,
+                                    message_id: _,
+                                    message,
+                                } => {
+                                    client.record_message(format!(
+                                        "Message: propagation_source: {}, source: {:?}",
+                                        propagation_source, message.source
+                                    ));
+
+                                    if !event_message.insert(message.source.expect("Source peer id")) {
+                                        client
+                                            .record_failure(format!(
+                                                "Received duplicated message: {:?}",
+                                                message
+                                            ))
+                                            .await?;
+                                        return Ok(());
+                                    }
+                                }
+                                ev => {
+                                    client.record_message(format!("{:?}", ev))
+                                }
+                            }
+                            ev => {
+                                client.record_message(format!("{:?}", ev))
+                            }
+                        }
                     }
                 }
             }
-            // The sleep time is set to prevent a race condition caused by variations in the timing
-            // of receiving messages from the synchronization service of testground.
-            tokio::time::sleep(Duration::from_millis(1000)).await;
         };
     }
 
@@ -148,23 +185,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Wait for all connected peers to be subscribed.
     let all_peers = swarm.behaviour().all_peers().collect::<Vec<_>>().len();
-    let mut subscribed = 0;
-    loop {
-        match swarm.select_next_some().await {
-            SwarmEvent::Behaviour(gossipsub_event) => match gossipsub_event {
-                GossipsubEvent::Subscribed { peer_id, topic } => {
-                    client.record_message(format!(
-                        "Peer {} subscribed to a topic: {}",
-                        peer_id, topic
-                    ));
-                    subscribed += 1;
-                    if subscribed == all_peers {
-                        break;
+    if event_subscribed < all_peers {
+        loop {
+            match swarm.select_next_some().await {
+                SwarmEvent::Behaviour(gossipsub_event) => match gossipsub_event {
+                    GossipsubEvent::Subscribed { peer_id, topic } => {
+                        client.record_message(format!(
+                            "Peer {} subscribed to a topic: {}",
+                            peer_id, topic
+                        ));
+                        event_subscribed += 1;
+                        if event_subscribed == all_peers {
+                            break;
+                        }
                     }
-                }
-                _ => unreachable!(),
-            },
-            event => client.record_message(format!("{:?}", event)),
+                    _ => unreachable!(),
+                },
+                event => client.record_message(format!("{:?}", event)),
+            }
         }
     }
 
@@ -186,37 +224,43 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     swarm.behaviour_mut().publish(topic, "message".as_bytes())?;
 
     // Wait until all messages published by participants have been received.
-    let mut received_from = HashSet::new();
-    loop {
-        match swarm.select_next_some().await {
-            SwarmEvent::Behaviour(gossipsub_event) => match gossipsub_event {
-                GossipsubEvent::Message {
-                    propagation_source,
-                    message_id: _,
-                    message,
-                } => {
-                    client.record_message(format!(
-                        "Message: propagation_source: {}, source: {:?}",
-                        propagation_source, message.source
-                    ));
+    if event_message.len() < (run_parameters.test_instance_count - 1) as usize {
+        loop {
+            match swarm.select_next_some().await {
+                SwarmEvent::Behaviour(gossipsub_event) => match gossipsub_event {
+                    GossipsubEvent::Message {
+                        propagation_source,
+                        message_id: _,
+                        message,
+                    } => {
+                        client.record_message(format!(
+                            "Message: propagation_source: {}, source: {:?}",
+                            propagation_source, message.source
+                        ));
 
-                    if !received_from.insert(message.source.expect("Source peer id")) {
-                        client
-                            .record_failure(format!("Received duplicated message: {:?}", message))
-                            .await?;
-                        return Ok(());
-                    }
+                        if !event_message.insert(message.source.expect("Source peer id")) {
+                            client
+                                .record_failure(format!(
+                                    "Received duplicated message: {:?}",
+                                    message
+                                ))
+                                .await?;
+                            return Ok(());
+                        }
 
-                    if received_from.len() == (run_parameters.test_instance_count - 1) as usize {
-                        client.record_message("Received all the published messages");
-                        break;
+                        if event_message.len() == (run_parameters.test_instance_count - 1) as usize
+                        {
+                            break;
+                        }
                     }
-                }
+                    event => client.record_message(format!("{:?}", event)),
+                },
                 event => client.record_message(format!("{:?}", event)),
-            },
-            event => client.record_message(format!("{:?}", event)),
+            }
         }
     }
+
+    client.record_message("Received all the published messages");
 
     barrier!("Published a message");
 
