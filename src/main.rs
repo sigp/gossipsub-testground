@@ -47,6 +47,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut swarm = {
         // Build a Gossipsub network behaviour.
         let gossipsub_config = GossipsubConfigBuilder::default()
+            .history_length(
+                run_parameters
+                    .test_instance_params
+                    .get("gossipsub_history_length")
+                    .ok_or("gossipsub_history_length is not specified")?
+                    .parse::<usize>()?,
+            )
             .build()
             .expect("Valid configuration");
         let gossipsub = Gossipsub::new_with_subscription_filter_and_transform(

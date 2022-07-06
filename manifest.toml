@@ -13,3 +13,6 @@ enabled = true
 [[testcases]]
 name = "smoke"
 instances = { min = 2, max = 100, default = 2 }
+
+  [testcases.params]
+  gossipsub_history_length = { type = "int", desc = "Number of heartbeats to keep in the `memcache`", default = 5 }
