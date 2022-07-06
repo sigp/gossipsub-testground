@@ -191,7 +191,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     swarm.behaviour_mut().subscribe(&topic)?;
 
     // Wait for all connected peers to be subscribed.
-    let all_peers = swarm.behaviour().all_peers().collect::<Vec<_>>().len();
+    let all_peers = swarm.behaviour().all_peers().count();
     if event_subscribed < all_peers {
         loop {
             match swarm.select_next_some().await {
