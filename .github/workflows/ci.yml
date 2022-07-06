@@ -1,0 +1,101 @@
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+name: CI
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Run cargo check
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+
+  lints:
+    name: Lints
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+
+      - name: Run cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+      - name: Run cargo clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: -- -D warnings
+
+  smoke:
+    name: Run `smoke`
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+        with:
+          path: gossipsub-testground
+
+      - name: Checkout testground
+        uses: actions/checkout@v2
+        with:
+          path: testground
+          repository: testground/testground
+
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '>=1.18.0'
+
+      - name: Install testground
+        run: make install
+        working-directory: testground
+
+      - name: Run testground daemon
+        run: testground daemon &
+
+      # In order to ensure that the containers are ready at running test plan later, run the healthcheck subcommand with the --fix flag.
+      - name: Run testground healthcheck
+        run: testground healthcheck --runner local:docker --fix
+
+      - name: Import test plans
+        run: testground plan import --from gossipsub-testground
+
+      - name: Run `smoke` test plan
+        run: |
+          testground run single \
+            --plan=gossipsub-testground \
+            --testcase=smoke \
+            --builder=docker:generic \
+            --runner=local:docker \
+            --instances=5 \
+            --wait
