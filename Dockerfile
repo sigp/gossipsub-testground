@@ -1,6 +1,6 @@
 # This Dockerfile is for the `docker:generic` builder.
 # See https://docs.testground.ai/builder-library/docker-generic for details about the builder.
-FROM rust:1.61-bullseye as builder
+FROM rust:1.62-bullseye as builder
 WORKDIR /usr/src/test-plan
 
 # `prost-build`, a dependency of `libp2p-gossipsub`, requires cmake.
@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y cmake
 # And https://github.com/rust-lang/cargo/issues/2644
 RUN mkdir -p ./plan/src/
 # This is a placeholder main function to build only the dependencies.
-RUN echo "fn main() {}" > ./plan/src/main.rs
+RUN echo "fn main() { println!(\"If you see this message, you may want to clean up the target directory or the Docker build cache.\") }" > ./plan/src/main.rs
 COPY ./plan/Cargo.lock ./plan/
 COPY ./plan/Cargo.toml ./plan/
 RUN cd ./plan/ && cargo build --release
