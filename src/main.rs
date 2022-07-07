@@ -32,7 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-// Set up an encrypted TCP Transport over the Mplex and Yamux protocols.
+// Set up an encrypted TCP transport over the Mplex and Yamux protocols.
 fn build_transport(keypair: &Keypair) -> libp2p::core::transport::Boxed<(PeerId, StreamMuxerBox)> {
     let transport =
         TokioDnsConfig::system(TokioTcpConfig::new().nodelay(true)).expect("DNS config");
