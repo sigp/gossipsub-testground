@@ -20,7 +20,13 @@ RUN cd ./plan/ && cargo build --release
 
 COPY . .
 
-# Note: In `docker:generic` builder, the root of the docker build context is one directory higher than this test plan.
+# This is in order to make sure `main.rs`s mtime timestamp is updated to avoid the dummy `main`
+# remaining in the release binary.
+# https://github.com/rust-lang/cargo/issues/9598
+RUN touch ./plan/src/main.rs
+
+# Note: In `docker:generic` builder, the root of the docker build context is one directory higher
+# than this test plan.
 # See https://docs.testground.ai/builder-library/docker-generic#usage
 RUN cd ./plan/ && cargo build --release
 
