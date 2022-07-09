@@ -13,7 +13,7 @@ git clone https://github.com/sigp/gossipsub-testground.git
 testground plan import --from ./gossipsub-testground/
 # Run smoke tests
 testground run single \
-  --plan=gossipsub-testground \
+  --plan=gossipsub-testground/smoke \
   --testcase=smoke \
   --builder=docker:generic \
   --runner=local:docker \

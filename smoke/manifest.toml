@@ -1,4 +1,4 @@
-name = "gossipsub-testground"
+name = "smoke"
 
 [defaults]
 builder = "docker:generic"
