@@ -1,0 +1,32 @@
+[metadata]
+name = "emulation"
+author = "Akihito Nakano"
+
+[global]
+plan = "gossipsub-testground/emulation"
+case = "emulation"
+total_instances = 15
+builder = "docker:generic"
+runner = "local:docker"
+disable_metrics = false
+
+[[groups]]
+id = "publishers"
+  [groups.instances]
+  count = 5
+  [groups.run]
+    [groups.run.test_params]
+
+[[groups]]
+id = "lurkers"
+  [groups.instances]
+  count = 5
+  [groups.run]
+    [groups.run.test_params]
+
+[[groups]]
+id = "attackers"
+  [groups.instances]
+  count = 5
+  [groups.run]
+    [groups.run.test_params]
