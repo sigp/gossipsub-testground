@@ -1,4 +1,4 @@
-use crate::utils::{barrier, BARRIER_DIALED, BARRIER_STARTED_LIBP2P, build_swarm};
+use crate::utils::{barrier, build_swarm, BARRIER_DIALED, BARRIER_DONE, BARRIER_STARTED_LIBP2P};
 use crate::InstanceInfo;
 use libp2p::identity::Keypair;
 use testground::client::Client;
@@ -35,6 +35,7 @@ pub(crate) async fn run(
 
     barrier(&client, &mut swarm, BARRIER_DIALED).await;
 
+    barrier(&client, &mut swarm, BARRIER_DONE).await;
     client.record_success().await?;
     Ok(())
 }

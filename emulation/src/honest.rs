@@ -1,8 +1,12 @@
-use crate::utils::{barrier, BARRIER_DIALED, BARRIER_STARTED_LIBP2P, build_swarm};
+use crate::utils::{barrier, build_swarm, BARRIER_DIALED, BARRIER_DONE, BARRIER_STARTED_LIBP2P};
 use crate::InstanceInfo;
+use libp2p::futures::StreamExt;
 use libp2p::identity::Keypair;
+use libp2p::swarm::SwarmEvent;
+use libp2p_gossipsub::{IdentTopic, Topic};
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
+use std::time::Duration;
 use testground::client::Client;
 
 pub(crate) async fn run(
@@ -19,6 +23,15 @@ pub(crate) async fn run(
     swarm
         .listen_on(instance_info.multiaddr.clone())
         .expect("Swarm starts listening");
+
+    loop {
+        match swarm.select_next_some().await {
+            SwarmEvent::NewListenAddr { .. } => break,
+            event => {
+                client.record_message(format!("{:?}", event));
+            }
+        }
+    }
 
     barrier(&client, &mut swarm, BARRIER_STARTED_LIBP2P).await;
 
@@ -50,6 +63,26 @@ pub(crate) async fn run(
 
     barrier(&client, &mut swarm, BARRIER_DIALED).await;
 
+    // ////////////////////////////////////////////////////////////////////////
+    // Subscribe to a topic and wait for `warmup` time to expire
+    // ////////////////////////////////////////////////////////////////////////
+    let topic: IdentTopic = Topic::new("emulate");
+    swarm.behaviour_mut().subscribe(&topic)?;
+
+    // TODO: Parameterize
+    let warmup = Duration::from_secs(5);
+    loop {
+        tokio::select! {
+            _ = tokio::time::sleep(warmup) => {
+                break;
+            }
+            event = swarm.select_next_some() => {
+                client.record_message(format!("{:?}", event));
+            }
+        }
+    }
+
+    barrier(&client, &mut swarm, BARRIER_DONE).await;
     client.record_success().await?;
     Ok(())
 }
