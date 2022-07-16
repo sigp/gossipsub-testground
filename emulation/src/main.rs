@@ -1,8 +1,11 @@
-use libp2p::futures::StreamExt;
+mod attacker;
+mod honest;
+mod utils;
+
+use crate::utils::publish_and_collect;
 use libp2p::identity::Keypair;
 use libp2p::multiaddr::Protocol;
 use libp2p::{Multiaddr, PeerId};
-use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use testground::client::Client;
 
@@ -51,9 +54,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         infos.remove(pos);
         infos
     };
-    println!("Participants: {:?}", participants); // Debug
 
-    client.record_success().await?;
+    match instance_info.role {
+        Role::Publisher | Role::Lurker => {
+            honest::run(client, instance_info, participants, local_key).await?
+        }
+        Role::Attacker => attacker::run(client, instance_info, participants, local_key).await?,
+    }
+
     Ok(())
 }
 
@@ -62,6 +70,22 @@ enum Role {
     Publisher,
     Lurker,
     Attacker,
+}
+
+impl Role {
+    pub(crate) fn is_honest(&self) -> bool {
+        match self {
+            Role::Publisher | Role::Lurker => true,
+            Role::Attacker => false,
+        }
+    }
+
+    pub(crate) fn is_publisher(&self) -> bool {
+        match self {
+            Role::Publisher => true,
+            _ => false,
+        }
+    }
 }
 
 impl From<&str> for Role {
@@ -84,32 +108,4 @@ struct InstanceInfo {
     peer_id: PeerId,
     multiaddr: Multiaddr,
     role: Role,
-}
-
-// Publish info and collect it from the participants. The return value includes one published by
-// myself.
-async fn publish_and_collect<T: Serialize + DeserializeOwned>(
-    client: &Client,
-    info: T,
-) -> Result<Vec<T>, Box<dyn std::error::Error>> {
-    const TOPIC: &str = "publish_and_collect";
-
-    client.publish(TOPIC, serde_json::to_string(&info)?).await?;
-
-    let mut stream = client.subscribe(TOPIC).await;
-
-    let mut vec: Vec<T> = vec![];
-
-    for _ in 0..client.run_parameters().test_instance_count {
-        match stream.next().await {
-            Some(Ok(other)) => {
-                let info: T = serde_json::from_str(&other)?;
-                vec.push(info);
-            }
-            Some(Err(e)) => return Err(Box::new(e)),
-            None => unreachable!(),
-        }
-    }
-
-    Ok(vec)
 }
