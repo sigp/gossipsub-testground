@@ -1,7 +1,7 @@
 use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::upgrade::{SelectUpgrade, Version};
 use libp2p::dns::TokioDnsConfig;
-use libp2p::futures::StreamExt;
+use libp2p::futures::{Stream, StreamExt};
 use libp2p::identity::Keypair;
 use libp2p::mplex::MplexConfig;
 use libp2p::noise::NoiseConfig;
@@ -14,6 +14,7 @@ use libp2p_gossipsub::{Gossipsub, GossipsubConfigBuilder, IdentityTransform, Mes
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::borrow::Cow;
+use std::fmt::Debug;
 use testground::client::Client;
 
 // States for `barrier()`
@@ -98,11 +99,13 @@ fn build_transport(keypair: &Keypair) -> libp2p::core::transport::Boxed<(PeerId,
 }
 
 // Sets a barrier on the supplied state that fires when it reaches all participants.
-pub(crate) async fn barrier(
+pub(crate) async fn barrier<T: StreamExt + Unpin + libp2p::futures::stream::FusedStream>(
     client: &Client,
-    swarm: &mut Swarm<Gossipsub>,
+    swarm: &mut T,
     state: impl Into<Cow<'static, str>> + Copy,
-) {
+) where
+    <T as Stream>::Item: Debug,
+{
     loop {
         tokio::select! {
             _ = client.signal_and_wait(state, client.run_parameters().test_instance_count) => {

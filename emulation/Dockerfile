@@ -34,6 +34,6 @@ FROM debian:bullseye-slim
 COPY --from=builder /usr/src/test-plan/plan/target/release/emulation /usr/local/bin/emulation
 
 # Configure Logging
-# ENV RUST_LOG=libp2p_gossipsub=debug
+ENV RUST_LOG=libp2p_gossipsub=debug
 
 ENTRYPOINT ["emulation"]
