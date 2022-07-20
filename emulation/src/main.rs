@@ -81,10 +81,7 @@ impl Role {
     }
 
     pub(crate) fn is_publisher(&self) -> bool {
-        match self {
-            Role::Publisher => true,
-            _ => false,
-        }
+        matches!(self, Role::Publisher)
     }
 }
 
