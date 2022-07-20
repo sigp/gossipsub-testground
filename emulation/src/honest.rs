@@ -1,9 +1,9 @@
 use crate::utils::{barrier, build_swarm, BARRIER_DIALED, BARRIER_DONE, BARRIER_STARTED_LIBP2P};
 use crate::InstanceInfo;
 use libp2p::futures::StreamExt;
+use libp2p::gossipsub::{IdentTopic, Topic};
 use libp2p::identity::Keypair;
 use libp2p::swarm::SwarmEvent;
-use libp2p_gossipsub::{IdentTopic, Topic};
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
 use std::time::Duration;

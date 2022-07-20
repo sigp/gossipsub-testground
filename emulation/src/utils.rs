@@ -2,6 +2,10 @@ use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::upgrade::{SelectUpgrade, Version};
 use libp2p::dns::TokioDnsConfig;
 use libp2p::futures::{Stream, StreamExt};
+use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
+use libp2p::gossipsub::{
+    Gossipsub, GossipsubConfigBuilder, IdentityTransform, MessageAuthenticity,
+};
 use libp2p::identity::Keypair;
 use libp2p::mplex::MplexConfig;
 use libp2p::noise::NoiseConfig;
@@ -9,8 +13,6 @@ use libp2p::swarm::SwarmBuilder;
 use libp2p::tcp::{GenTcpConfig, TokioTcpTransport};
 use libp2p::yamux::YamuxConfig;
 use libp2p::{PeerId, Swarm, Transport};
-use libp2p_gossipsub::subscription_filter::AllowAllSubscriptionFilter;
-use libp2p_gossipsub::{Gossipsub, GossipsubConfigBuilder, IdentityTransform, MessageAuthenticity};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::borrow::Cow;

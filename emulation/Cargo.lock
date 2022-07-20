@@ -413,7 +413,6 @@ version = "0.1.0"
 dependencies = [
  "libp2p 0.46.1",
  "libp2p 0.47.0",
- "libp2p-gossipsub 0.39.0",
  "rand 0.8.5",
  "serde",
  "serde_json",

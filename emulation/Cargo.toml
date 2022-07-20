@@ -7,7 +7,6 @@ edition = "2021"
 
 [dependencies]
 libp2p = { version = "0.46.1", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux", "serde"] }
-libp2p-gossipsub = "0.39.0"
 # This is a fork of `libp2p` in order to emulate malicious behaviour.
 # This `libp2p-testground` is used in `attacker` module instead of `libp2p`.
 # See https://github.com/ackintosh/rust-libp2p/pull/45
