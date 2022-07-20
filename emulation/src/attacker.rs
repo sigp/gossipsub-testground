@@ -4,6 +4,7 @@ use libp2p_testground::core::connection::ConnectionId;
 use libp2p_testground::core::muxing::StreamMuxerBox;
 use libp2p_testground::core::upgrade::{SelectUpgrade, Version};
 use libp2p_testground::dns::TokioDnsConfig;
+use libp2p_testground::futures::StreamExt;
 use libp2p_testground::gossipsub::handler::GossipsubHandler;
 use libp2p_testground::gossipsub::protocol::ProtocolConfig;
 use libp2p_testground::gossipsub::GossipsubConfig;
@@ -12,7 +13,7 @@ use libp2p_testground::mplex::MplexConfig;
 use libp2p_testground::noise::{NoiseConfig, X25519Spec};
 use libp2p_testground::swarm::{
     ConnectionHandler, IntoConnectionHandler, NetworkBehaviour, NetworkBehaviourAction,
-    PollParameters, SwarmBuilder,
+    PollParameters, SwarmBuilder, SwarmEvent,
 };
 use libp2p_testground::tcp::{GenTcpConfig, TokioTcpTransport};
 use libp2p_testground::yamux::YamuxConfig;
@@ -43,9 +44,11 @@ pub(crate) async fn run(
     // Start libp2p
     // ////////////////////////////////////////////////////////////////////////
     let mut swarm = build_swarm(keypair);
-    swarm
-        .listen_on(instance_info.multiaddr.clone())
-        .expect("Swarm starts listening");
+    swarm.listen_on(instance_info.multiaddr.clone())?;
+    match swarm.next().await.unwrap() {
+        SwarmEvent::NewListenAddr { address, .. } if address == instance_info.multiaddr => {}
+        e => panic!("Unexpected event {:?}", e),
+    }
 
     barrier(&client, &mut swarm, BARRIER_STARTED_LIBP2P).await;
 
