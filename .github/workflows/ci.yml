@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        plan: [smoke]
+        plan: [smoke, emulation]
     defaults:
       run:
         working-directory: ${{ matrix.plan }}
@@ -29,7 +29,7 @@ jobs:
     needs: cargo-fmt
     strategy:
       matrix:
-        plan: [smoke]
+        plan: [smoke, emulation]
     defaults:
       run:
         working-directory: ${{ matrix.plan }}
