@@ -1,0 +1,23 @@
+[package]
+name = "emulation"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+delay_map = "0.1.1"
+libp2p = { version = "0.46.1", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux", "serde"] }
+# This is a fork of `libp2p` in order to emulate malicious behaviour.
+# This `libp2p-testground` is used in `attacker` module instead of `libp2p`.
+# See https://github.com/ackintosh/rust-libp2p/pull/45
+libp2p-testground = { git = "https://github.com/ackintosh/rust-libp2p.git", branch = "gossipsub-testground", package = "libp2p", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux", "serde"] }
+rand = "0.8.5"
+serde = "1.0.139"
+serde_json = "1.0.82"
+# TODO: Update once the version next (v0.3.1) has been released.
+testground = { git = "https://github.com/testground/sdk-rust.git", rev = "d6af289b7ce0d58185b4918f424c7f2aacdd4200" }
+tokio = { version = "1.20.0", features = ["macros"] }
+tracing = "0.1.35"
+tracing-subscriber = { version = "0.3.14", features = ["env-filter"] }
+prost = "0.10"
