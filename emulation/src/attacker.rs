@@ -1,5 +1,6 @@
-use crate::utils::{barrier, BARRIER_DIALED, BARRIER_DONE, BARRIER_STARTED_LIBP2P};
+use crate::utils::{barrier, BARRIER_DIALED, BARRIER_DONE, BARRIER_STARTED_LIBP2P, PRUNE_BACKOFF};
 use crate::InstanceInfo;
+use delay_map::HashSetDelay;
 use libp2p_testground::core::connection::ConnectionId;
 use libp2p_testground::core::muxing::StreamMuxerBox;
 use libp2p_testground::core::upgrade::{SelectUpgrade, Version};
@@ -9,9 +10,11 @@ use libp2p_testground::gossipsub::error::PublishError;
 use libp2p_testground::gossipsub::handler::{GossipsubHandler, GossipsubHandlerIn, HandlerEvent};
 use libp2p_testground::gossipsub::protocol::ProtocolConfig;
 use libp2p_testground::gossipsub::types::{
-    GossipsubControlAction, GossipsubSubscription, GossipsubSubscriptionAction,
+    GossipsubControlAction, GossipsubSubscription, GossipsubSubscriptionAction, PeerInfo,
 };
-use libp2p_testground::gossipsub::{rpc_proto, GossipsubConfig, GossipsubEvent, GossipsubRpc};
+use libp2p_testground::gossipsub::{
+    rpc_proto, GossipsubConfig, GossipsubEvent, GossipsubRpc, TopicHash,
+};
 use libp2p_testground::identity::Keypair;
 use libp2p_testground::mplex::MplexConfig;
 use libp2p_testground::noise::{NoiseConfig, X25519Spec};
@@ -35,6 +38,9 @@ use tracing::{debug, error};
 // `libp2p_testground` is a fork of `libp2p`, some its module (e.g. `handler`) made public to
 // implement `MaliciousBehaviour`.
 // See https://github.com/ackintosh/rust-libp2p/pull/45 for changes made in `libp2p_testground`.
+
+// A delay before sending GRAFT after being pruned.
+const PRUNE_BACKOFF_DELAY: u64 = 5;
 
 pub(crate) async fn run(
     client: Client,
@@ -124,6 +130,8 @@ pub struct MaliciousBehaviour {
     config: GossipsubConfig,
     /// Events that need to be yielded to the outside when polling.
     events: VecDeque<GossipsubNetworkBehaviourAction>,
+    /// A collection of peers awaiting to be re-grafted.
+    regraft: HashSetDelay<(PeerId, TopicHash)>,
 }
 
 impl MaliciousBehaviour {
@@ -131,6 +139,7 @@ impl MaliciousBehaviour {
         MaliciousBehaviour {
             config: GossipsubConfig::default(),
             events: VecDeque::new(),
+            regraft: HashSetDelay::new(Duration::from_secs(PRUNE_BACKOFF + PRUNE_BACKOFF_DELAY)),
         }
     }
 
@@ -170,6 +179,25 @@ impl MaliciousBehaviour {
                 .into_protobuf(),
             ) {
                 error!("Failed sending grafts: {}", error);
+            }
+        }
+    }
+
+    /// Handles PRUNE control messages.
+    fn handle_prune(
+        &mut self,
+        peer_id: &PeerId,
+        prune_data: Vec<(TopicHash, Vec<PeerInfo>, Option<u64>)>,
+    ) {
+        for prune in prune_data {
+            if let Some(backoff) = prune.2 {
+                // If a backoff is specified by the peer obey it.
+                self.regraft.insert_at(
+                    (*peer_id, prune.0),
+                    Duration::from_secs(backoff + PRUNE_BACKOFF_DELAY),
+                );
+            } else {
+                self.regraft.insert((*peer_id, prune.0));
             }
         }
     }
@@ -356,6 +384,24 @@ impl NetworkBehaviour for MaliciousBehaviour {
                 if !rpc.subscriptions.is_empty() {
                     self.handle_received_subscriptions(&rpc.subscriptions, &propagation_source);
                 }
+
+                // Handle control messages
+                let mut prune_msgs = vec![];
+                for control_msg in rpc.control_msgs {
+                    match control_msg {
+                        GossipsubControlAction::IHave { .. }
+                        | GossipsubControlAction::IWant { .. }
+                        | GossipsubControlAction::Graft { .. } => {}
+                        GossipsubControlAction::Prune {
+                            topic_hash,
+                            peers,
+                            backoff,
+                        } => prune_msgs.push((topic_hash, peers, backoff)),
+                    }
+                }
+                if !prune_msgs.is_empty() {
+                    self.handle_prune(&propagation_source, prune_msgs);
+                }
             }
             HandlerEvent::PeerKind(_) => {}
         }
@@ -363,7 +409,7 @@ impl NetworkBehaviour for MaliciousBehaviour {
 
     fn poll(
         &mut self,
-        _cx: &mut Context<'_>,
+        cx: &mut Context<'_>,
         _params: &mut impl PollParameters,
     ) -> Poll<NetworkBehaviourAction<Self::OutEvent, Self::ConnectionHandler>> {
         if let Some(event) = self.events.pop_front() {
@@ -371,6 +417,28 @@ impl NetworkBehaviour for MaliciousBehaviour {
                 // clone send event reference if others references are present
                 Arc::try_unwrap(e).unwrap_or_else(|e| (*e).clone())
             }));
+        }
+
+        loop {
+            match self.regraft.poll_next_unpin(cx) {
+                Poll::Ready(Some(Ok((peer_id, topic_hash)))) => {
+                    if let Err(error) = self.send_message(
+                        peer_id,
+                        GossipsubRpc {
+                            subscriptions: Vec::new(),
+                            messages: Vec::new(),
+                            control_msgs: vec![GossipsubControlAction::Graft { topic_hash }],
+                        }
+                        .into_protobuf(),
+                    ) {
+                        error!("Failed sending grafts: {}", error);
+                    }
+                }
+                Poll::Ready(Some(Err(error))) => {
+                    error!("Failed to check for peers to re-GRAFT: {}", error);
+                }
+                Poll::Ready(None) | Poll::Pending => break,
+            }
         }
 
         Poll::Pending

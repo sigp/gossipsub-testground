@@ -17,12 +17,16 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::borrow::Cow;
 use std::fmt::Debug;
+use std::time::Duration;
 use testground::client::Client;
 
 // States for `barrier()`
 pub(crate) const BARRIER_STARTED_LIBP2P: &str = "Started libp2p";
 pub(crate) const BARRIER_DIALED: &str = "Dialed";
 pub(crate) const BARRIER_DONE: &str = "Done";
+
+// The backoff time for pruned peers.
+pub(crate) const PRUNE_BACKOFF: u64 = 60;
 
 // Publish info and collect it from the participants. The return value includes one published by
 // myself.
@@ -55,6 +59,7 @@ pub(crate) async fn publish_and_collect<T: Serialize + DeserializeOwned>(
 pub(crate) fn build_swarm(keypair: Keypair) -> Swarm<Gossipsub> {
     // Build a Gossipsub network behaviour.
     let gossipsub_config = GossipsubConfigBuilder::default()
+        .prune_backoff(Duration::from_secs(PRUNE_BACKOFF))
         .history_length(12)
         .build()
         .expect("Valid configuration");
