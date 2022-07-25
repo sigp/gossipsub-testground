@@ -1,13 +1,15 @@
 use crate::utils::{barrier, build_swarm, BARRIER_DIALED, BARRIER_DONE, BARRIER_STARTED_LIBP2P};
-use crate::InstanceInfo;
+use crate::{InstanceInfo, Role};
 use libp2p::futures::StreamExt;
-use libp2p::gossipsub::{IdentTopic, Topic};
+use libp2p::gossipsub::{Gossipsub, IdentTopic, Topic};
 use libp2p::identity::Keypair;
 use libp2p::swarm::SwarmEvent;
+use libp2p::Swarm;
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
 use std::time::Duration;
 use testground::client::Client;
+use tokio::time::interval;
 
 pub(crate) async fn run(
     client: Client,
@@ -82,7 +84,48 @@ pub(crate) async fn run(
         }
     }
 
+    if matches!(instance_info.role, Role::Publisher) {
+        // ////////////////////////////////////////////////////////////////////////
+        // Publish messages
+        // ////////////////////////////////////////////////////////////////////////
+        // TODO: Parameterize
+        let runtime = Duration::from_secs(10);
+
+        loop {
+            tokio::select! {
+                _ = tokio::time::sleep(runtime) => {
+                    break;
+                }
+                _ = publish_message_periodically(&client, &mut swarm, topic.clone()) => {}
+            }
+        }
+    }
+
     barrier(&client, &mut swarm, BARRIER_DONE).await;
     client.record_success().await?;
     Ok(())
+}
+
+async fn publish_message_periodically(
+    client: &Client,
+    swarm: &mut Swarm<Gossipsub>,
+    topic: IdentTopic,
+) {
+    // TODO: Parameterize
+    let mut interval = interval(Duration::from_millis(500));
+    let mut message_counter = 0;
+
+    loop {
+        tokio::select! {
+            _ = interval.tick() => {
+                if let Err(e) = swarm.behaviour_mut().publish(topic.clone(), format!("message {}", message_counter).as_bytes()) {
+                    client.record_message(format!("Failed to publish message: {}", e))
+                }
+                message_counter += 1;
+            }
+            event = swarm.select_next_some() => {
+                client.record_message(format!("{:?}", event));
+            }
+        }
+    }
 }
