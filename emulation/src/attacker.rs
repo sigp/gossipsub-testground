@@ -1,4 +1,5 @@
-use crate::utils::{barrier, BARRIER_DIALED, BARRIER_DONE, BARRIER_STARTED_LIBP2P, PRUNE_BACKOFF};
+use crate::honest::PRUNE_BACKOFF;
+use crate::utils::{barrier, BARRIER_DIALED, BARRIER_DONE, BARRIER_STARTED_LIBP2P};
 use crate::InstanceInfo;
 use delay_map::HashSetDelay;
 use libp2p_testground::core::connection::ConnectionId;

@@ -1,15 +1,36 @@
-use crate::utils::{barrier, build_swarm, BARRIER_DIALED, BARRIER_DONE, BARRIER_STARTED_LIBP2P};
+use crate::utils::{barrier, BARRIER_DIALED, BARRIER_DONE, BARRIER_STARTED_LIBP2P};
 use crate::{InstanceInfo, Role};
+use libp2p::core::muxing::StreamMuxerBox;
+use libp2p::core::upgrade::{SelectUpgrade, Version};
+use libp2p::dns::TokioDnsConfig;
 use libp2p::futures::StreamExt;
-use libp2p::gossipsub::{Gossipsub, IdentTopic, Topic};
+use libp2p::gossipsub::error::{PublishError, SubscriptionError};
+use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
+use libp2p::gossipsub::{
+    Gossipsub, GossipsubConfigBuilder, GossipsubEvent, IdentTopic, IdentityTransform,
+    MessageAuthenticity, MessageId, Topic,
+};
 use libp2p::identity::Keypair;
-use libp2p::swarm::SwarmEvent;
+use libp2p::mplex::MplexConfig;
+use libp2p::noise::NoiseConfig;
+use libp2p::swarm::{
+    NetworkBehaviour, NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters,
+    SwarmBuilder, SwarmEvent,
+};
+use libp2p::tcp::{GenTcpConfig, TokioTcpTransport};
+use libp2p::yamux::YamuxConfig;
 use libp2p::Swarm;
+use libp2p::Transport;
+use libp2p::{NetworkBehaviour, PeerId};
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
+use std::task::{Context, Poll};
 use std::time::Duration;
 use testground::client::Client;
-use tokio::time::interval;
+use tokio::time::{interval, Interval};
+
+// The backoff time for pruned peers.
+pub(crate) const PRUNE_BACKOFF: u64 = 60;
 
 pub(crate) async fn run(
     client: Client,
@@ -20,7 +41,31 @@ pub(crate) async fn run(
     // ////////////////////////////////////////////////////////////////////////
     // Start libp2p
     // ////////////////////////////////////////////////////////////////////////
-    let mut swarm = build_swarm(keypair);
+    let mut swarm = {
+        let gossipsub_config = GossipsubConfigBuilder::default()
+            .prune_backoff(Duration::from_secs(PRUNE_BACKOFF))
+            .history_length(12)
+            .build()
+            .expect("Valid configuration");
+        let gossipsub = Gossipsub::new_with_subscription_filter_and_transform(
+            MessageAuthenticity::Signed(keypair.clone()),
+            gossipsub_config,
+            None,
+            AllowAllSubscriptionFilter {},
+            IdentityTransform {},
+        )
+        .expect("Valid configuration");
+
+        SwarmBuilder::new(
+            build_transport(&keypair),
+            HonestBehaviour::new(gossipsub),
+            PeerId::from(keypair.public()),
+        )
+        .executor(Box::new(|future| {
+            tokio::spawn(future);
+        }))
+        .build()
+    };
 
     swarm
         .listen_on(instance_info.multiaddr.clone())
@@ -106,9 +151,31 @@ pub(crate) async fn run(
     Ok(())
 }
 
+// Set up an encrypted TCP transport over the Mplex and Yamux protocols.
+fn build_transport(keypair: &Keypair) -> libp2p::core::transport::Boxed<(PeerId, StreamMuxerBox)> {
+    let transport = TokioDnsConfig::system(TokioTcpTransport::new(
+        GenTcpConfig::default().nodelay(true),
+    ))
+    .expect("DNS config");
+
+    let noise_keys = libp2p::noise::Keypair::<libp2p::noise::X25519Spec>::new()
+        .into_authentic(keypair)
+        .expect("Signing libp2p-noise static DH keypair failed.");
+
+    transport
+        .upgrade(Version::V1)
+        .authenticate(NoiseConfig::xx(noise_keys).into_authenticated())
+        .multiplex(SelectUpgrade::new(
+            YamuxConfig::default(),
+            MplexConfig::default(),
+        ))
+        .timeout(Duration::from_secs(20))
+        .boxed()
+}
+
 async fn publish_message_periodically(
     client: &Client,
-    swarm: &mut Swarm<Gossipsub>,
+    swarm: &mut Swarm<HonestBehaviour>,
     topic: IdentTopic,
 ) {
     // TODO: Parameterize
@@ -128,4 +195,53 @@ async fn publish_message_periodically(
             }
         }
     }
+}
+
+#[derive(NetworkBehaviour)]
+#[behaviour(event_process = true, poll_method = "poll")]
+pub(crate) struct HonestBehaviour {
+    gossipsub: Gossipsub,
+    #[behaviour(ignore)]
+    score_interval: Interval,
+}
+
+impl HonestBehaviour {
+    pub(crate) fn new(gossipsub: Gossipsub) -> Self {
+        HonestBehaviour {
+            gossipsub,
+            score_interval: interval(Duration::from_secs(1)),
+        }
+    }
+
+    fn publish(
+        &mut self,
+        topic: IdentTopic,
+        message: impl Into<Vec<u8>>,
+    ) -> Result<MessageId, PublishError> {
+        self.gossipsub.publish(topic, message)
+    }
+
+    fn subscribe(&mut self, topic: &IdentTopic) -> Result<bool, SubscriptionError> {
+        self.gossipsub.subscribe(topic)
+    }
+
+    fn poll(
+        &mut self,
+        cx: &mut Context<'_>,
+        _params: &mut impl PollParameters,
+    ) -> Poll<NetworkBehaviourAction<(), <HonestBehaviour as NetworkBehaviour>::ConnectionHandler>>
+    {
+        while self.score_interval.poll_tick(cx).is_ready() {
+            for (peer, _) in self.gossipsub.all_peers() {
+                // TODO: Store scores to InfluxDB.
+                println!("score: {}, {:?}", peer, self.gossipsub.peer_score(peer));
+            }
+        }
+
+        Poll::Pending
+    }
+}
+
+impl NetworkBehaviourEventProcess<GossipsubEvent> for HonestBehaviour {
+    fn inject_event(&mut self, _: GossipsubEvent) {}
 }
