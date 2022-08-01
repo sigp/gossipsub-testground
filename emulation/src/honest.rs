@@ -1,14 +1,15 @@
 use crate::utils::{barrier, BARRIER_DIALED, BARRIER_DONE, BARRIER_STARTED_LIBP2P};
 use crate::{InstanceInfo, Role};
+use chrono::Local;
 use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::upgrade::{SelectUpgrade, Version};
 use libp2p::dns::TokioDnsConfig;
-use libp2p::futures::StreamExt;
+use libp2p::futures::{FutureExt, StreamExt};
 use libp2p::gossipsub::error::{PublishError, SubscriptionError};
 use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
 use libp2p::gossipsub::{
     Gossipsub, GossipsubConfigBuilder, GossipsubEvent, IdentTopic, IdentityTransform,
-    MessageAuthenticity, MessageId, Topic,
+    MessageAuthenticity, MessageId, PeerScoreParams, PeerScoreThresholds, Topic, TopicScoreParams,
 };
 use libp2p::identity::Keypair;
 use libp2p::mplex::MplexConfig;
@@ -24,9 +25,11 @@ use libp2p::Transport;
 use libp2p::{NetworkBehaviour, PeerId};
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
+use std::collections::HashMap;
 use std::task::{Context, Poll};
 use std::time::Duration;
 use testground::client::Client;
+use testground::WriteQuery;
 use tokio::time::{interval, Interval};
 
 // The backoff time for pruned peers.
@@ -38,6 +41,9 @@ pub(crate) async fn run(
     participants: Vec<InstanceInfo>,
     keypair: Keypair,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // A topic used in this test plan. Only a single topic is supported for now.
+    let topic: IdentTopic = Topic::new("emulate");
+
     // ////////////////////////////////////////////////////////////////////////
     // Start libp2p
     // ////////////////////////////////////////////////////////////////////////
@@ -47,7 +53,7 @@ pub(crate) async fn run(
             .history_length(12)
             .build()
             .expect("Valid configuration");
-        let gossipsub = Gossipsub::new_with_subscription_filter_and_transform(
+        let mut gossipsub = Gossipsub::new_with_subscription_filter_and_transform(
             MessageAuthenticity::Signed(keypair.clone()),
             gossipsub_config,
             None,
@@ -56,9 +62,23 @@ pub(crate) async fn run(
         )
         .expect("Valid configuration");
 
+        // Setup the scoring system.
+        let mut peer_score_params = PeerScoreParams::default();
+        peer_score_params
+            .topics
+            .insert(topic.hash(), TopicScoreParams::default());
+        gossipsub
+            .with_peer_score(peer_score_params, PeerScoreThresholds::default())
+            .expect("Valid score params and thresholds");
+
         SwarmBuilder::new(
             build_transport(&keypair),
-            HonestBehaviour::new(gossipsub),
+            HonestBehaviour::new(
+                gossipsub,
+                instance_info.clone(),
+                participants.clone(),
+                client.clone(),
+            ),
             PeerId::from(keypair.public()),
         )
         .executor(Box::new(|future| {
@@ -113,7 +133,6 @@ pub(crate) async fn run(
     // ////////////////////////////////////////////////////////////////////////
     // Subscribe to a topic and wait for `warmup` time to expire
     // ////////////////////////////////////////////////////////////////////////
-    let topic: IdentTopic = Topic::new("emulate");
     swarm.behaviour_mut().subscribe(&topic)?;
 
     // TODO: Parameterize
@@ -202,13 +221,32 @@ async fn publish_message_periodically(
 pub(crate) struct HonestBehaviour {
     gossipsub: Gossipsub,
     #[behaviour(ignore)]
+    instance_info: InstanceInfo,
+    #[behaviour(ignore)]
+    participants: HashMap<PeerId, String>,
+    #[behaviour(ignore)]
+    client: Client,
+    #[behaviour(ignore)]
     score_interval: Interval,
 }
 
 impl HonestBehaviour {
-    pub(crate) fn new(gossipsub: Gossipsub) -> Self {
+    pub(crate) fn new(
+        gossipsub: Gossipsub,
+        instance_info: InstanceInfo,
+        participants: Vec<InstanceInfo>,
+        client: Client,
+    ) -> Self {
+        let mut peer_to_instance_name = HashMap::new();
+        for info in participants {
+            peer_to_instance_name.insert(info.peer_id, info.name());
+        }
+
         HonestBehaviour {
             gossipsub,
+            instance_info,
+            participants: peer_to_instance_name,
+            client,
             score_interval: interval(Duration::from_secs(1)),
         }
     }
@@ -231,10 +269,42 @@ impl HonestBehaviour {
         _params: &mut impl PollParameters,
     ) -> Poll<NetworkBehaviourAction<(), <HonestBehaviour as NetworkBehaviour>::ConnectionHandler>>
     {
+        // Store scores to InfluxDB.
         while self.score_interval.poll_tick(cx).is_ready() {
-            for (peer, _) in self.gossipsub.all_peers() {
-                // TODO: Store scores to InfluxDB.
-                println!("score: {}, {:?}", peer, self.gossipsub.peer_score(peer));
+            let scores = self
+                .gossipsub
+                .all_peers()
+                .map(|(peer, _)| (peer, self.gossipsub.peer_score(peer)))
+                .filter(|(_, score)| score.is_some())
+                .collect::<Vec<_>>();
+
+            if !scores.is_empty() {
+                let mut query = WriteQuery::new(
+                    Local::now().into(),
+                    format!(
+                        "gossipsub-testground_{}",
+                        self.client.run_parameters().test_run
+                    ),
+                )
+                .add_tag("instance", self.instance_info.name());
+
+                for (peer, score) in scores {
+                    query = query.add_field(self.participants.get(peer).unwrap(), score.unwrap());
+                }
+
+                let mut fut = Box::pin(self.client.record_metric(query));
+                loop {
+                    match fut.poll_unpin(cx) {
+                        Poll::Ready(result) => {
+                            if let Err(e) = result {
+                                self.client
+                                    .record_message(format!("Failed to record score: {:?}", e))
+                            }
+                            break;
+                        }
+                        Poll::Pending => {}
+                    }
+                }
             }
         }
 

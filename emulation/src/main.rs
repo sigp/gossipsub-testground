@@ -106,3 +106,9 @@ struct InstanceInfo {
     multiaddr: Multiaddr,
     role: Role,
 }
+
+impl InstanceInfo {
+    fn name(&self) -> String {
+        format!("{:?}{}", self.role, self.group_seq)
+    }
+}
