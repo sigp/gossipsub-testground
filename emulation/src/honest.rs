@@ -1,4 +1,6 @@
-use crate::utils::{barrier, BARRIER_DIALED, BARRIER_DONE, BARRIER_STARTED_LIBP2P};
+use crate::utils::{
+    barrier, get_gauge_value, get_topic_hash, BARRIER_DIALED, BARRIER_DONE, BARRIER_STARTED_LIBP2P,
+};
 use crate::{InstanceInfo, Role};
 use chrono::Local;
 use libp2p::core::muxing::StreamMuxerBox;
@@ -6,6 +8,7 @@ use libp2p::core::upgrade::{SelectUpgrade, Version};
 use libp2p::dns::TokioDnsConfig;
 use libp2p::futures::{FutureExt, StreamExt};
 use libp2p::gossipsub::error::{PublishError, SubscriptionError};
+use libp2p::gossipsub::metrics::Config;
 use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
 use libp2p::gossipsub::{
     Gossipsub, GossipsubConfigBuilder, GossipsubEvent, IdentTopic, IdentityTransform,
@@ -23,6 +26,8 @@ use libp2p::yamux::YamuxConfig;
 use libp2p::Swarm;
 use libp2p::Transport;
 use libp2p::{NetworkBehaviour, PeerId};
+use prometheus_client::encoding::proto::EncodeMetric;
+use prometheus_client::registry::Registry;
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
 use std::collections::HashMap;
@@ -47,6 +52,10 @@ pub(crate) async fn run(
     // ////////////////////////////////////////////////////////////////////////
     // Start libp2p
     // ////////////////////////////////////////////////////////////////////////
+    let mut registry: Registry<Box<dyn EncodeMetric>> = Registry::default();
+    // let mut registry: Registry<_> = Registry::default();
+    registry.sub_registry_with_prefix("gossipsub");
+
     let mut swarm = {
         let gossipsub_config = GossipsubConfigBuilder::default()
             .prune_backoff(Duration::from_secs(PRUNE_BACKOFF))
@@ -56,7 +65,7 @@ pub(crate) async fn run(
         let mut gossipsub = Gossipsub::new_with_subscription_filter_and_transform(
             MessageAuthenticity::Signed(keypair.clone()),
             gossipsub_config,
-            None,
+            Some((&mut registry, Config::default())),
             AllowAllSubscriptionFilter {},
             IdentityTransform {},
         )
@@ -166,6 +175,73 @@ pub(crate) async fn run(
     }
 
     barrier(&client, &mut swarm, BARRIER_DONE).await;
+
+    // ////////////////////////////////////////////////////////////////////////
+    // Record metrics
+    // ////////////////////////////////////////////////////////////////////////
+
+    // Encode the metrics to an instance of the OpenMetrics protobuf format.
+    // https://github.com/OpenObservability/OpenMetrics/blob/main/proto/openmetrics_data_model.proto
+    let metric_set = prometheus_client::encoding::proto::encode(&registry);
+
+    let mut query = WriteQuery::new(
+        Local::now().into(),
+        format!("gossipsub-testground_{}", client.run_parameters().test_run),
+    )
+    .add_tag("instance", instance_info.name());
+
+    for family in metric_set.metric_families.iter() {
+        match family.name.as_str() {
+            // Metrics per known topic
+            "topic_subscription_status" => {
+                for metric in family.metrics.iter() {
+                    assert_eq!(1, metric.metric_points.len());
+                    let metric_point = metric.metric_points.first().unwrap();
+                    let metric_point_value = metric_point.value.as_ref().unwrap().clone();
+                    let value = get_gauge_value(metric_point_value)
+                        .0
+                        .expect("should have int value");
+
+                    // Field name: `topic_subscription_status_{TopicHash}` (e.g. `topic_subscription_status_emulate`)
+                    query = query.add_field(
+                        format!("{}_{}", family.name, get_topic_hash(&metric.labels)),
+                        value,
+                    );
+                }
+            }
+            "topic_peers_counts" => {}          // TODO
+            "invalid_messages_per_topic" => {}  // TODO
+            "accepted_messages_per_topic" => {} // TODO
+            "ignored_messages_per_topic" => {}  // TODO
+            "rejected_messages_per_topic" => {} // TODO
+            // Metrics regarding mesh state
+            "mesh_peer_counts" => {}           // TODO
+            "mesh_peer_inclusion_events" => {} // TODO
+            "mesh_peer_churn_events" => {}     // TODO
+            // Metrics regarding messages sent/received
+            "topic_msg_sent_counts" => {}            // TODO
+            "topic_msg_published" => {}              // TODO
+            "topic_msg_sent_bytes" => {}             // TODO
+            "topic_msg_recv_counts_unfiltered" => {} // TODO
+            "topic_msg_recv_counts" => {}            // TODO
+            "topic_msg_recv_bytes" => {}             // TODO
+            // Metrics related to scoring
+            "score_per_mesh" => {}    // TODO
+            "scoring_penalties" => {} // TODO
+            // General Metrics
+            "peers_per_protocol" => {} // TODO
+            "heartbeat_duration" => {} // TODO
+            // Performance metrics
+            "topic_iwant_msgs" => {} // TODO
+            "memcache_misses" => {}  // TODO
+            _ => unreachable!(),
+        }
+    }
+
+    if let Err(e) = client.record_metric(query).await {
+        client.record_message(format!("Failed to record metrics: {:?}", e));
+    }
+
     client.record_success().await?;
     Ok(())
 }

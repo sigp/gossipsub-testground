@@ -1,4 +1,7 @@
 use libp2p::futures::{Stream, StreamExt};
+use prometheus_client::encoding::proto::openmetrics_data_model::gauge_value;
+use prometheus_client::encoding::proto::openmetrics_data_model::metric_point;
+use prometheus_client::encoding::proto::openmetrics_data_model::Label;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::borrow::Cow;
@@ -57,4 +60,24 @@ pub(crate) async fn barrier<T: StreamExt + Unpin + libp2p::futures::stream::Fuse
             }
         }
     }
+}
+
+pub(crate) fn get_gauge_value(value: metric_point::Value) -> (Option<i64>, Option<f64>) {
+    match value {
+        metric_point::Value::GaugeValue(gauge_value) => match gauge_value.value {
+            Some(gauge_value::Value::IntValue(i)) => (Some(i), None),
+            Some(gauge_value::Value::DoubleValue(f)) => (None, Some(f)),
+            _ => unreachable!(),
+        },
+        _ => unreachable!(),
+    }
+}
+
+pub(crate) fn get_topic_hash(labels: &[Label]) -> String {
+    labels
+        .iter()
+        .find(|l| l.name == "hash")
+        .expect("have topic hash")
+        .value
+        .clone()
 }
