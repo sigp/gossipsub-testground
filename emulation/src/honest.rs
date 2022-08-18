@@ -193,7 +193,9 @@ pub(crate) async fn run(
 
     for family in metric_set.metric_families.iter() {
         match family.name.as_str() {
+            // ///////////////////////////////////
             // Metrics per known topic
+            // ///////////////////////////////////
             "topic_subscription_status" => {
                 // field name: `topic_subscription_status_{TopicHash}` (e.g. `topic_subscription_status_emulate`)
                 query = add_gauge_metrics(query, family);
@@ -218,14 +220,18 @@ pub(crate) async fn run(
                 // field name: `rejected_messages_per_topic_{TopicHash}` (e.g. `rejected_messages_per_topic_emulate`)
                 query = add_counter_metrics(query, family);
             }
+            // ///////////////////////////////////
             // Metrics regarding mesh state
+            // ///////////////////////////////////
             "mesh_peer_counts" => {
                 // field name: `mesh_peer_counts_{TopicHash}` (e.g. `mesh_peer_counts_emulate`)
                 query = add_gauge_metrics(query, family);
             }
             "mesh_peer_inclusion_events" => {} // TODO
             "mesh_peer_churn_events" => {}     // TODO
+            // ///////////////////////////////////
             // Metrics regarding messages sent/received
+            // ///////////////////////////////////
             "topic_msg_sent_counts" => {
                 // field name: `topic_msg_sent_counts_{TopicHash}` (e.g. `topic_msg_sent_counts_emulate`)
                 query = add_counter_metrics(query, family);
@@ -250,13 +256,19 @@ pub(crate) async fn run(
                 // field name: `topic_msg_recv_bytes_{TopicHash}` (e.g. `topic_msg_recv_bytes_emulate`)
                 query = add_counter_metrics(query, family);
             }
+            // ///////////////////////////////////
             // Metrics related to scoring
+            // ///////////////////////////////////
             "score_per_mesh" => {}    // TODO
             "scoring_penalties" => {} // TODO
+            // ///////////////////////////////////
             // General Metrics
+            // ///////////////////////////////////
             "peers_per_protocol" => {} // TODO
             "heartbeat_duration" => {} // TODO
+            // ///////////////////////////////////
             // Performance metrics
+            // ///////////////////////////////////
             "topic_iwant_msgs" => {
                 // field name: `topic_iwant_msgs_{TopicHash}` (e.g. `topic_iwant_msgs_emulate`)
                 query = add_counter_metrics(query, family);
