@@ -1,5 +1,6 @@
 use crate::utils::{
-    barrier, get_gauge_value, get_topic_hash, BARRIER_DIALED, BARRIER_DONE, BARRIER_STARTED_LIBP2P,
+    add_counter_metrics, add_gauge_metrics, barrier, BARRIER_DIALED, BARRIER_DONE,
+    BARRIER_STARTED_LIBP2P,
 };
 use crate::{InstanceInfo, Role};
 use chrono::Local;
@@ -194,37 +195,61 @@ pub(crate) async fn run(
         match family.name.as_str() {
             // Metrics per known topic
             "topic_subscription_status" => {
-                for metric in family.metrics.iter() {
-                    assert_eq!(1, metric.metric_points.len());
-                    let metric_point = metric.metric_points.first().unwrap();
-                    let metric_point_value = metric_point.value.as_ref().unwrap().clone();
-                    let value = get_gauge_value(metric_point_value)
-                        .0
-                        .expect("should have int value");
-
-                    // Field name: `topic_subscription_status_{TopicHash}` (e.g. `topic_subscription_status_emulate`)
-                    query = query.add_field(
-                        format!("{}_{}", family.name, get_topic_hash(&metric.labels)),
-                        value,
-                    );
-                }
+                // field name: `topic_subscription_status_{TopicHash}` (e.g. `topic_subscription_status_emulate`)
+                query = add_gauge_metrics(query, family);
             }
-            "topic_peers_counts" => {}          // TODO
-            "invalid_messages_per_topic" => {}  // TODO
-            "accepted_messages_per_topic" => {} // TODO
-            "ignored_messages_per_topic" => {}  // TODO
-            "rejected_messages_per_topic" => {} // TODO
+            "topic_peers_counts" => {
+                // field name: `topic_peers_counts_{TopicHash}` (e.g. `topic_peers_counts_emulate`)
+                query = add_gauge_metrics(query, family);
+            }
+            "invalid_messages_per_topic" => {
+                // field name: `invalid_messages_per_topic_{TopicHash}` (e.g. `invalid_messages_per_topic_emulate`)
+                query = add_counter_metrics(query, family);
+            }
+            "accepted_messages_per_topic" => {
+                // field name: `accepted_messages_per_topic_{TopicHash}` (e.g. `accepted_messages_per_topic_emulate`)
+                query = add_counter_metrics(query, family);
+            }
+            "ignored_messages_per_topic" => {
+                // field name: `ignored_messages_per_topic_{TopicHash}` (e.g. `ignored_messages_per_topic_emulate`)
+                query = add_counter_metrics(query, family);
+            }
+            "rejected_messages_per_topic" => {
+                // field name: `rejected_messages_per_topic_{TopicHash}` (e.g. `rejected_messages_per_topic_emulate`)
+                query = add_counter_metrics(query, family);
+            }
             // Metrics regarding mesh state
-            "mesh_peer_counts" => {}           // TODO
+            "mesh_peer_counts" => {
+                // field name: `mesh_peer_counts_{TopicHash}` (e.g. `mesh_peer_counts_emulate`)
+                query = add_gauge_metrics(query, family);
+            }
             "mesh_peer_inclusion_events" => {} // TODO
             "mesh_peer_churn_events" => {}     // TODO
             // Metrics regarding messages sent/received
-            "topic_msg_sent_counts" => {}            // TODO
-            "topic_msg_published" => {}              // TODO
-            "topic_msg_sent_bytes" => {}             // TODO
-            "topic_msg_recv_counts_unfiltered" => {} // TODO
-            "topic_msg_recv_counts" => {}            // TODO
-            "topic_msg_recv_bytes" => {}             // TODO
+            "topic_msg_sent_counts" => {
+                // field name: `topic_msg_sent_counts_{TopicHash}` (e.g. `topic_msg_sent_counts_emulate`)
+                query = add_counter_metrics(query, family);
+            }
+            "topic_msg_published" => {
+                // field name: `topic_msg_published_{TopicHash}` (e.g. `topic_msg_published_emulate`)
+                query = add_counter_metrics(query, family);
+            }
+            "topic_msg_sent_bytes" => {
+                // field name: `topic_msg_sent_bytes_{TopicHash}` (e.g. `topic_msg_sent_bytes_emulate`)
+                query = add_counter_metrics(query, family);
+            }
+            "topic_msg_recv_counts_unfiltered" => {
+                // field name: `topic_msg_recv_counts_unfiltered_{TopicHash}` (e.g. `topic_msg_recv_counts_unfiltered_emulate`)
+                query = add_counter_metrics(query, family);
+            }
+            "topic_msg_recv_counts" => {
+                // field name: `topic_msg_recv_counts_{TopicHash}` (e.g. `topic_msg_recv_counts_emulate`)
+                query = add_counter_metrics(query, family);
+            }
+            "topic_msg_recv_bytes" => {
+                // field name: `topic_msg_recv_bytes_{TopicHash}` (e.g. `topic_msg_recv_bytes_emulate`)
+                query = add_counter_metrics(query, family);
+            }
             // Metrics related to scoring
             "score_per_mesh" => {}    // TODO
             "scoring_penalties" => {} // TODO
@@ -232,8 +257,11 @@ pub(crate) async fn run(
             "peers_per_protocol" => {} // TODO
             "heartbeat_duration" => {} // TODO
             // Performance metrics
-            "topic_iwant_msgs" => {} // TODO
-            "memcache_misses" => {}  // TODO
+            "topic_iwant_msgs" => {
+                // field name: `topic_iwant_msgs_{TopicHash}` (e.g. `topic_iwant_msgs_emulate`)
+                query = add_counter_metrics(query, family);
+            }
+            "memcache_misses" => {} // TODO
             _ => unreachable!(),
         }
     }
