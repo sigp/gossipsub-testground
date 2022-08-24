@@ -1,5 +1,5 @@
 use crate::utils::{
-    add_counter_metrics, add_gauge_metrics, barrier, BARRIER_DIALED, BARRIER_DONE,
+    barrier, queries_for_counter, queries_for_gauge, BARRIER_DIALED, BARRIER_DONE,
     BARRIER_STARTED_LIBP2P,
 };
 use crate::{InstanceInfo, Role};
@@ -185,101 +185,77 @@ pub(crate) async fn run(
     // https://github.com/OpenObservability/OpenMetrics/blob/main/proto/openmetrics_data_model.proto
     let metric_set = prometheus_client::encoding::proto::encode(&registry);
 
-    let mut query = WriteQuery::new(
-        Local::now().into(),
-        format!("gossipsub-testground_{}", client.run_parameters().test_run),
-    )
-    .add_tag("instance", instance_info.name());
+    let mut queries = vec![];
+    let instance_name = instance_info.name();
+    let run_id = &client.run_parameters().test_run;
 
     for family in metric_set.metric_families.iter() {
-        match family.name.as_str() {
+        let q = match family.name.as_str() {
             // ///////////////////////////////////
             // Metrics per known topic
             // ///////////////////////////////////
             "topic_subscription_status" => {
-                // field name: `topic_subscription_status_{TopicHash}` (e.g. `topic_subscription_status_emulate`)
-                query = add_gauge_metrics(query, family);
+                queries_for_gauge(family, &instance_name, run_id, "status")
             }
-            "topic_peers_counts" => {
-                // field name: `topic_peers_counts_{TopicHash}` (e.g. `topic_peers_counts_emulate`)
-                query = add_gauge_metrics(query, family);
-            }
-            "invalid_messages_per_topic" => {
-                // field name: `invalid_messages_per_topic_{TopicHash}` (e.g. `invalid_messages_per_topic_emulate`)
-                query = add_counter_metrics(query, family);
-            }
-            "accepted_messages_per_topic" => {
-                // field name: `accepted_messages_per_topic_{TopicHash}` (e.g. `accepted_messages_per_topic_emulate`)
-                query = add_counter_metrics(query, family);
-            }
-            "ignored_messages_per_topic" => {
-                // field name: `ignored_messages_per_topic_{TopicHash}` (e.g. `ignored_messages_per_topic_emulate`)
-                query = add_counter_metrics(query, family);
-            }
-            "rejected_messages_per_topic" => {
-                // field name: `rejected_messages_per_topic_{TopicHash}` (e.g. `rejected_messages_per_topic_emulate`)
-                query = add_counter_metrics(query, family);
-            }
+            "topic_peers_counts" => queries_for_gauge(family, &instance_name, run_id, "count"),
+            "invalid_messages_per_topic"
+            | "accepted_messages_per_topic"
+            | "ignored_messages_per_topic"
+            | "rejected_messages_per_topic" => queries_for_counter(family, &instance_name, run_id),
             // ///////////////////////////////////
             // Metrics regarding mesh state
             // ///////////////////////////////////
-            "mesh_peer_counts" => {
-                // field name: `mesh_peer_counts_{TopicHash}` (e.g. `mesh_peer_counts_emulate`)
-                query = add_gauge_metrics(query, family);
-            }
-            "mesh_peer_inclusion_events" => {} // TODO
-            "mesh_peer_churn_events" => {}     // TODO
+            "mesh_peer_counts" => queries_for_gauge(family, &instance_name, run_id, "count"),
+            "mesh_peer_inclusion_events" => {
+                vec![]
+            } // TODO
+            "mesh_peer_churn_events" => {
+                vec![]
+            } // TODO
             // ///////////////////////////////////
             // Metrics regarding messages sent/received
             // ///////////////////////////////////
-            "topic_msg_sent_counts" => {
-                // field name: `topic_msg_sent_counts_{TopicHash}` (e.g. `topic_msg_sent_counts_emulate`)
-                query = add_counter_metrics(query, family);
-            }
-            "topic_msg_published" => {
-                // field name: `topic_msg_published_{TopicHash}` (e.g. `topic_msg_published_emulate`)
-                query = add_counter_metrics(query, family);
-            }
-            "topic_msg_sent_bytes" => {
-                // field name: `topic_msg_sent_bytes_{TopicHash}` (e.g. `topic_msg_sent_bytes_emulate`)
-                query = add_counter_metrics(query, family);
-            }
-            "topic_msg_recv_counts_unfiltered" => {
-                // field name: `topic_msg_recv_counts_unfiltered_{TopicHash}` (e.g. `topic_msg_recv_counts_unfiltered_emulate`)
-                query = add_counter_metrics(query, family);
-            }
-            "topic_msg_recv_counts" => {
-                // field name: `topic_msg_recv_counts_{TopicHash}` (e.g. `topic_msg_recv_counts_emulate`)
-                query = add_counter_metrics(query, family);
-            }
-            "topic_msg_recv_bytes" => {
-                // field name: `topic_msg_recv_bytes_{TopicHash}` (e.g. `topic_msg_recv_bytes_emulate`)
-                query = add_counter_metrics(query, family);
-            }
+            "topic_msg_sent_counts"
+            | "topic_msg_published"
+            | "topic_msg_sent_bytes"
+            | "topic_msg_recv_counts_unfiltered"
+            | "topic_msg_recv_counts"
+            | "topic_msg_recv_bytes" => queries_for_counter(family, &instance_name, run_id),
             // ///////////////////////////////////
             // Metrics related to scoring
             // ///////////////////////////////////
-            "score_per_mesh" => {}    // TODO
-            "scoring_penalties" => {} // TODO
+            "score_per_mesh" => {
+                vec![]
+            } // TODO
+            "scoring_penalties" => {
+                vec![]
+            } // TODO
             // ///////////////////////////////////
             // General Metrics
             // ///////////////////////////////////
-            "peers_per_protocol" => {} // TODO
-            "heartbeat_duration" => {} // TODO
+            "peers_per_protocol" => {
+                vec![]
+            } // TODO
+            "heartbeat_duration" => {
+                vec![]
+            } // TODO
             // ///////////////////////////////////
             // Performance metrics
             // ///////////////////////////////////
-            "topic_iwant_msgs" => {
-                // field name: `topic_iwant_msgs_{TopicHash}` (e.g. `topic_iwant_msgs_emulate`)
-                query = add_counter_metrics(query, family);
-            }
-            "memcache_misses" => {} // TODO
+            "topic_iwant_msgs" => queries_for_counter(family, &instance_name, run_id),
+            "memcache_misses" => {
+                vec![]
+            } // TODO
             _ => unreachable!(),
-        }
+        };
+
+        queries.extend(q);
     }
 
-    if let Err(e) = client.record_metric(query).await {
-        client.record_message(format!("Failed to record metrics: {:?}", e));
+    for q in queries {
+        if let Err(e) = client.record_metric(q).await {
+            client.record_message(format!("Failed to record metrics: {:?}", e));
+        }
     }
 
     client.record_success().await?;

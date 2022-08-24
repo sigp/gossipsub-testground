@@ -273,15 +273,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cmake"
-version = "0.1.48"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8ad8cef104ac57b68b89df3208164d228503abbdce70f6880ffa3d970e7443a"
-dependencies = [
- "cc",
-]
-
-[[package]]
 name = "core2"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -427,10 +418,10 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "delay_map",
- "libp2p 0.47.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground)",
- "libp2p 0.47.0 (git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400)",
- "prometheus-client 0.17.0",
- "prost 0.10.4",
+ "libp2p 0.47.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
+ "libp2p 0.47.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
+ "prometheus-client",
+ "prost 0.11.0",
  "rand 0.8.5",
  "serde",
  "serde_json",
@@ -895,7 +886,7 @@ checksum = "505e71a4706fa491e9b1b55f51b95d4037d0821ee40131190475f692b35b009b"
 [[package]]
 name = "libp2p"
 version = "0.47.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground#8366684a0fe011d7e46047edef586f51c32b15a6"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16953d826b1ad5a650c03e6f826cc45d15285f00"
 dependencies = [
  "bytes",
  "futures",
@@ -903,17 +894,17 @@ dependencies = [
  "getrandom 0.2.7",
  "instant",
  "lazy_static",
- "libp2p-core 0.34.0",
- "libp2p-dns 0.34.0",
- "libp2p-gossipsub 0.40.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground)",
- "libp2p-kad 0.39.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground)",
- "libp2p-metrics 0.8.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground)",
- "libp2p-mplex 0.34.0",
- "libp2p-noise 0.37.0",
- "libp2p-swarm 0.38.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground)",
- "libp2p-swarm-derive 0.28.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground)",
- "libp2p-tcp 0.34.0",
- "libp2p-yamux 0.38.0",
+ "libp2p-core 0.35.1 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
+ "libp2p-dns 0.35.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
+ "libp2p-gossipsub 0.40.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
+ "libp2p-kad 0.39.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
+ "libp2p-metrics 0.8.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
+ "libp2p-mplex 0.35.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
+ "libp2p-noise 0.38.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
+ "libp2p-swarm 0.38.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
+ "libp2p-swarm-derive 0.29.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
+ "libp2p-tcp 0.35.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
+ "libp2p-yamux 0.39.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
  "multiaddr",
  "parking_lot 0.12.1",
  "pin-project",
@@ -924,7 +915,7 @@ dependencies = [
 [[package]]
 name = "libp2p"
 version = "0.47.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400#4db881d95f9bd661d274b734c814ef766a84c400"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=testground#846b897036df675464b1d2b54db1dd8ee3b606a2"
 dependencies = [
  "bytes",
  "futures",
@@ -932,17 +923,17 @@ dependencies = [
  "getrandom 0.2.7",
  "instant",
  "lazy_static",
- "libp2p-core 0.35.0",
- "libp2p-dns 0.35.0",
- "libp2p-gossipsub 0.40.0 (git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400)",
- "libp2p-kad 0.39.0 (git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400)",
- "libp2p-metrics 0.8.0 (git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400)",
- "libp2p-mplex 0.35.0",
- "libp2p-noise 0.38.0",
- "libp2p-swarm 0.38.0 (git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400)",
- "libp2p-swarm-derive 0.28.0 (git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400)",
- "libp2p-tcp 0.35.0",
- "libp2p-yamux 0.39.0",
+ "libp2p-core 0.35.1 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
+ "libp2p-dns 0.35.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
+ "libp2p-gossipsub 0.40.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
+ "libp2p-kad 0.39.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
+ "libp2p-metrics 0.8.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
+ "libp2p-mplex 0.35.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
+ "libp2p-noise 0.38.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
+ "libp2p-swarm 0.38.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
+ "libp2p-swarm-derive 0.29.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
+ "libp2p-tcp 0.35.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
+ "libp2p-yamux 0.39.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
  "multiaddr",
  "parking_lot 0.12.1",
  "pin-project",
@@ -952,8 +943,8 @@ dependencies = [
 
 [[package]]
 name = "libp2p-core"
-version = "0.34.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground#8366684a0fe011d7e46047edef586f51c32b15a6"
+version = "0.35.1"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16953d826b1ad5a650c03e6f826cc45d15285f00"
 dependencies = [
  "asn1_der",
  "bs58",
@@ -967,14 +958,14 @@ dependencies = [
  "log",
  "multiaddr",
  "multihash",
- "multistream-select 0.11.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground)",
+ "multistream-select 0.11.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
  "parking_lot 0.12.1",
  "pin-project",
- "prost 0.10.4",
- "prost-build 0.10.4",
+ "prost 0.11.0",
+ "prost-build 0.11.1",
  "rand 0.8.5",
  "ring",
- "rw-stream-sink 0.3.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground)",
+ "rw-stream-sink 0.3.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
  "serde",
  "sha2 0.10.2",
  "smallvec",
@@ -986,8 +977,8 @@ dependencies = [
 
 [[package]]
 name = "libp2p-core"
-version = "0.35.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400#4db881d95f9bd661d274b734c814ef766a84c400"
+version = "0.35.1"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=testground#846b897036df675464b1d2b54db1dd8ee3b606a2"
 dependencies = [
  "asn1_der",
  "bs58",
@@ -1001,14 +992,14 @@ dependencies = [
  "log",
  "multiaddr",
  "multihash",
- "multistream-select 0.11.0 (git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400)",
+ "multistream-select 0.11.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
  "parking_lot 0.12.1",
  "pin-project",
- "prost 0.10.4",
- "prost-build 0.10.4",
+ "prost 0.11.0",
+ "prost-build 0.11.1",
  "rand 0.8.5",
  "ring",
- "rw-stream-sink 0.3.0 (git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400)",
+ "rw-stream-sink 0.3.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
  "serde",
  "sha2 0.10.2",
  "smallvec",
@@ -1020,11 +1011,11 @@ dependencies = [
 
 [[package]]
 name = "libp2p-dns"
-version = "0.34.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground#8366684a0fe011d7e46047edef586f51c32b15a6"
+version = "0.35.0"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16953d826b1ad5a650c03e6f826cc45d15285f00"
 dependencies = [
  "futures",
- "libp2p-core 0.34.0",
+ "libp2p-core 0.35.1 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
  "log",
  "parking_lot 0.12.1",
  "smallvec",
@@ -1034,10 +1025,10 @@ dependencies = [
 [[package]]
 name = "libp2p-dns"
 version = "0.35.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400#4db881d95f9bd661d274b734c814ef766a84c400"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=testground#846b897036df675464b1d2b54db1dd8ee3b606a2"
 dependencies = [
  "futures",
- "libp2p-core 0.35.0",
+ "libp2p-core 0.35.1 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
  "log",
  "parking_lot 0.12.1",
  "smallvec",
@@ -1047,7 +1038,7 @@ dependencies = [
 [[package]]
 name = "libp2p-gossipsub"
 version = "0.40.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground#8366684a0fe011d7e46047edef586f51c32b15a6"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16953d826b1ad5a650c03e6f826cc45d15285f00"
 dependencies = [
  "asynchronous-codec",
  "base64",
@@ -1057,12 +1048,12 @@ dependencies = [
  "futures",
  "hex_fmt",
  "instant",
- "libp2p-core 0.34.0",
- "libp2p-swarm 0.38.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground)",
+ "libp2p-core 0.35.1 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
+ "libp2p-swarm 0.38.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
  "log",
- "prometheus-client 0.16.0",
- "prost 0.10.4",
- "prost-build 0.10.4",
+ "prometheus-client",
+ "prost 0.11.0",
+ "prost-build 0.11.1",
  "rand 0.7.3",
  "regex",
  "serde",
@@ -1075,7 +1066,7 @@ dependencies = [
 [[package]]
 name = "libp2p-gossipsub"
 version = "0.40.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400#4db881d95f9bd661d274b734c814ef766a84c400"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=testground#846b897036df675464b1d2b54db1dd8ee3b606a2"
 dependencies = [
  "asynchronous-codec",
  "base64",
@@ -1085,12 +1076,12 @@ dependencies = [
  "futures",
  "hex_fmt",
  "instant",
- "libp2p-core 0.35.0",
- "libp2p-swarm 0.38.0 (git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400)",
+ "libp2p-core 0.35.1 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
+ "libp2p-swarm 0.38.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
  "log",
- "prometheus-client 0.17.0",
- "prost 0.10.4",
- "prost-build 0.10.4",
+ "prometheus-client",
+ "prost 0.11.0",
+ "prost-build 0.11.1",
  "rand 0.7.3",
  "regex",
  "serde",
@@ -1103,7 +1094,7 @@ dependencies = [
 [[package]]
 name = "libp2p-kad"
 version = "0.39.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground#8366684a0fe011d7e46047edef586f51c32b15a6"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16953d826b1ad5a650c03e6f826cc45d15285f00"
 dependencies = [
  "arrayvec",
  "asynchronous-codec",
@@ -1113,11 +1104,11 @@ dependencies = [
  "futures",
  "futures-timer",
  "instant",
- "libp2p-core 0.34.0",
- "libp2p-swarm 0.38.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground)",
+ "libp2p-core 0.35.1 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
+ "libp2p-swarm 0.38.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
  "log",
- "prost 0.10.4",
- "prost-build 0.10.4",
+ "prost 0.11.0",
+ "prost-build 0.11.1",
  "rand 0.7.3",
  "serde",
  "sha2 0.10.2",
@@ -1131,7 +1122,7 @@ dependencies = [
 [[package]]
 name = "libp2p-kad"
 version = "0.39.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400#4db881d95f9bd661d274b734c814ef766a84c400"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=testground#846b897036df675464b1d2b54db1dd8ee3b606a2"
 dependencies = [
  "arrayvec",
  "asynchronous-codec",
@@ -1141,11 +1132,11 @@ dependencies = [
  "futures",
  "futures-timer",
  "instant",
- "libp2p-core 0.35.0",
- "libp2p-swarm 0.38.0 (git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400)",
+ "libp2p-core 0.35.1 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
+ "libp2p-swarm 0.38.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
  "log",
- "prost 0.10.4",
- "prost-build 0.10.4",
+ "prost 0.11.0",
+ "prost-build 0.11.1",
  "rand 0.7.3",
  "serde",
  "sha2 0.10.2",
@@ -1159,34 +1150,34 @@ dependencies = [
 [[package]]
 name = "libp2p-metrics"
 version = "0.8.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground#8366684a0fe011d7e46047edef586f51c32b15a6"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16953d826b1ad5a650c03e6f826cc45d15285f00"
 dependencies = [
- "libp2p-core 0.34.0",
- "libp2p-gossipsub 0.40.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground)",
- "libp2p-swarm 0.38.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground)",
- "prometheus-client 0.16.0",
+ "libp2p-core 0.35.1 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
+ "libp2p-gossipsub 0.40.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
+ "libp2p-swarm 0.38.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
+ "prometheus-client",
 ]
 
 [[package]]
 name = "libp2p-metrics"
 version = "0.8.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400#4db881d95f9bd661d274b734c814ef766a84c400"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=testground#846b897036df675464b1d2b54db1dd8ee3b606a2"
 dependencies = [
- "libp2p-core 0.35.0",
- "libp2p-gossipsub 0.40.0 (git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400)",
- "libp2p-swarm 0.38.0 (git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400)",
- "prometheus-client 0.17.0",
+ "libp2p-core 0.35.1 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
+ "libp2p-gossipsub 0.40.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
+ "libp2p-swarm 0.38.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
+ "prometheus-client",
 ]
 
 [[package]]
 name = "libp2p-mplex"
-version = "0.34.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground#8366684a0fe011d7e46047edef586f51c32b15a6"
+version = "0.35.0"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16953d826b1ad5a650c03e6f826cc45d15285f00"
 dependencies = [
  "asynchronous-codec",
  "bytes",
  "futures",
- "libp2p-core 0.34.0",
+ "libp2p-core 0.35.1 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
  "log",
  "nohash-hasher",
  "parking_lot 0.12.1",
@@ -1198,12 +1189,12 @@ dependencies = [
 [[package]]
 name = "libp2p-mplex"
 version = "0.35.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400#4db881d95f9bd661d274b734c814ef766a84c400"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=testground#846b897036df675464b1d2b54db1dd8ee3b606a2"
 dependencies = [
  "asynchronous-codec",
  "bytes",
  "futures",
- "libp2p-core 0.35.0",
+ "libp2p-core 0.35.1 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
  "log",
  "nohash-hasher",
  "parking_lot 0.12.1",
@@ -1214,17 +1205,17 @@ dependencies = [
 
 [[package]]
 name = "libp2p-noise"
-version = "0.37.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground#8366684a0fe011d7e46047edef586f51c32b15a6"
+version = "0.38.0"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16953d826b1ad5a650c03e6f826cc45d15285f00"
 dependencies = [
  "bytes",
  "curve25519-dalek 3.2.1",
  "futures",
  "lazy_static",
- "libp2p-core 0.34.0",
+ "libp2p-core 0.35.1 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
  "log",
- "prost 0.10.4",
- "prost-build 0.10.4",
+ "prost 0.11.0",
+ "prost-build 0.11.1",
  "rand 0.8.5",
  "sha2 0.10.2",
  "snow",
@@ -1236,16 +1227,16 @@ dependencies = [
 [[package]]
 name = "libp2p-noise"
 version = "0.38.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400#4db881d95f9bd661d274b734c814ef766a84c400"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=testground#846b897036df675464b1d2b54db1dd8ee3b606a2"
 dependencies = [
  "bytes",
  "curve25519-dalek 3.2.1",
  "futures",
  "lazy_static",
- "libp2p-core 0.35.0",
+ "libp2p-core 0.35.1 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
  "log",
- "prost 0.10.4",
- "prost-build 0.10.4",
+ "prost 0.11.0",
+ "prost-build 0.11.1",
  "rand 0.8.5",
  "sha2 0.10.2",
  "snow",
@@ -1257,14 +1248,14 @@ dependencies = [
 [[package]]
 name = "libp2p-swarm"
 version = "0.38.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground#8366684a0fe011d7e46047edef586f51c32b15a6"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16953d826b1ad5a650c03e6f826cc45d15285f00"
 dependencies = [
  "either",
  "fnv",
  "futures",
  "futures-timer",
  "instant",
- "libp2p-core 0.34.0",
+ "libp2p-core 0.35.1 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
  "log",
  "pin-project",
  "rand 0.7.3",
@@ -1276,14 +1267,14 @@ dependencies = [
 [[package]]
 name = "libp2p-swarm"
 version = "0.38.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400#4db881d95f9bd661d274b734c814ef766a84c400"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=testground#846b897036df675464b1d2b54db1dd8ee3b606a2"
 dependencies = [
  "either",
  "fnv",
  "futures",
  "futures-timer",
  "instant",
- "libp2p-core 0.35.0",
+ "libp2p-core 0.35.1 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
  "log",
  "pin-project",
  "rand 0.7.3",
@@ -1294,33 +1285,35 @@ dependencies = [
 
 [[package]]
 name = "libp2p-swarm-derive"
-version = "0.28.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground#8366684a0fe011d7e46047edef586f51c32b15a6"
+version = "0.29.0"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16953d826b1ad5a650c03e6f826cc45d15285f00"
 dependencies = [
+ "heck 0.4.0",
  "quote",
  "syn",
 ]
 
 [[package]]
 name = "libp2p-swarm-derive"
-version = "0.28.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400#4db881d95f9bd661d274b734c814ef766a84c400"
+version = "0.29.0"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=testground#846b897036df675464b1d2b54db1dd8ee3b606a2"
 dependencies = [
+ "heck 0.4.0",
  "quote",
  "syn",
 ]
 
 [[package]]
 name = "libp2p-tcp"
-version = "0.34.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground#8366684a0fe011d7e46047edef586f51c32b15a6"
+version = "0.35.0"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16953d826b1ad5a650c03e6f826cc45d15285f00"
 dependencies = [
  "futures",
  "futures-timer",
  "if-addrs",
  "ipnet",
  "libc",
- "libp2p-core 0.34.0",
+ "libp2p-core 0.35.1 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
  "log",
  "socket2",
  "tokio",
@@ -1329,14 +1322,14 @@ dependencies = [
 [[package]]
 name = "libp2p-tcp"
 version = "0.35.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400#4db881d95f9bd661d274b734c814ef766a84c400"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=testground#846b897036df675464b1d2b54db1dd8ee3b606a2"
 dependencies = [
  "futures",
  "futures-timer",
  "if-addrs",
  "ipnet",
  "libc",
- "libp2p-core 0.35.0",
+ "libp2p-core 0.35.1 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
  "log",
  "socket2",
  "tokio",
@@ -1344,11 +1337,11 @@ dependencies = [
 
 [[package]]
 name = "libp2p-yamux"
-version = "0.38.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground#8366684a0fe011d7e46047edef586f51c32b15a6"
+version = "0.39.0"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16953d826b1ad5a650c03e6f826cc45d15285f00"
 dependencies = [
  "futures",
- "libp2p-core 0.34.0",
+ "libp2p-core 0.35.1 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
  "parking_lot 0.12.1",
  "thiserror",
  "yamux",
@@ -1357,10 +1350,10 @@ dependencies = [
 [[package]]
 name = "libp2p-yamux"
 version = "0.39.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400#4db881d95f9bd661d274b734c814ef766a84c400"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=testground#846b897036df675464b1d2b54db1dd8ee3b606a2"
 dependencies = [
  "futures",
- "libp2p-core 0.35.0",
+ "libp2p-core 0.35.1 (git+https://github.com/ackintosh/rust-libp2p.git?branch=testground)",
  "parking_lot 0.12.1",
  "thiserror",
  "yamux",
@@ -1501,7 +1494,7 @@ checksum = "e5ce46fe64a9d73be07dcbe690a38ce1b293be448fd8ce1e6c1b8062c9f72c6a"
 [[package]]
 name = "multistream-select"
 version = "0.11.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground#8366684a0fe011d7e46047edef586f51c32b15a6"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16953d826b1ad5a650c03e6f826cc45d15285f00"
 dependencies = [
  "bytes",
  "futures",
@@ -1514,7 +1507,7 @@ dependencies = [
 [[package]]
 name = "multistream-select"
 version = "0.11.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400#4db881d95f9bd661d274b734c814ef766a84c400"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=testground#846b897036df675464b1d2b54db1dd8ee3b606a2"
 dependencies = [
  "bytes",
  "futures",
@@ -1576,15 +1569,6 @@ name = "os_str_bytes"
 version = "6.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "648001efe5d5c0102d8cea768e348da85d90af8ba91f0bea908f157951493cd4"
-
-[[package]]
-name = "owning_ref"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ff55baddef9e4ad00f88b6c743a2a8062d4c6ade126c2a528644b8e444d52ce"
-dependencies = [
- "stable_deref_trait",
-]
 
 [[package]]
 name = "parking_lot"
@@ -1757,46 +1741,24 @@ dependencies = [
 
 [[package]]
 name = "prometheus-client"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac1abe0255c04d15f571427a2d1e00099016506cf3297b53853acd2b7eb87825"
+version = "0.18.0"
+source = "git+https://github.com/ackintosh/client_rust.git?rev=343f0477fd914aef0b397c411d8860f1782e35d1#343f0477fd914aef0b397c411d8860f1782e35d1"
 dependencies = [
  "dtoa",
  "itoa",
- "owning_ref",
- "prometheus-client-derive-text-encode 0.2.0",
-]
-
-[[package]]
-name = "prometheus-client"
-version = "0.17.0"
-source = "git+https://github.com/ackintosh/client_rust.git?rev=2c16ebc31cb8b2d36a6fb7d49308f87f11ff2558#2c16ebc31cb8b2d36a6fb7d49308f87f11ff2558"
-dependencies = [
- "dtoa",
- "itoa",
- "owning_ref",
+ "parking_lot 0.12.1",
  "prometheus-client-derive-proto-encode",
- "prometheus-client-derive-text-encode 0.3.0",
+ "prometheus-client-derive-text-encode",
  "prost 0.9.0",
  "prost-build 0.9.0",
  "prost-types 0.9.0",
+ "void",
 ]
 
 [[package]]
 name = "prometheus-client-derive-proto-encode"
 version = "0.1.0"
-source = "git+https://github.com/ackintosh/client_rust.git?rev=2c16ebc31cb8b2d36a6fb7d49308f87f11ff2558#2c16ebc31cb8b2d36a6fb7d49308f87f11ff2558"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "prometheus-client-derive-text-encode"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8e12d01b9d66ad9eb4529c57666b6263fc1993cb30261d83ead658fdd932652"
+source = "git+https://github.com/ackintosh/client_rust.git?rev=343f0477fd914aef0b397c411d8860f1782e35d1#343f0477fd914aef0b397c411d8860f1782e35d1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1806,7 +1768,7 @@ dependencies = [
 [[package]]
 name = "prometheus-client-derive-text-encode"
 version = "0.3.0"
-source = "git+https://github.com/ackintosh/client_rust.git?rev=2c16ebc31cb8b2d36a6fb7d49308f87f11ff2558#2c16ebc31cb8b2d36a6fb7d49308f87f11ff2558"
+source = "git+https://github.com/ackintosh/client_rust.git?rev=343f0477fd914aef0b397c411d8860f1782e35d1#343f0477fd914aef0b397c411d8860f1782e35d1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1825,12 +1787,12 @@ dependencies = [
 
 [[package]]
 name = "prost"
-version = "0.10.4"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71adf41db68aa0daaefc69bb30bcd68ded9b9abaad5d1fbb6304c4fb390e083e"
+checksum = "399c3c31cdec40583bb68f0b18403400d01ec4289c383aa047560439952c4dd7"
 dependencies = [
  "bytes",
- "prost-derive 0.10.1",
+ "prost-derive 0.11.0",
 ]
 
 [[package]]
@@ -1855,21 +1817,19 @@ dependencies = [
 
 [[package]]
 name = "prost-build"
-version = "0.10.4"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ae5a4388762d5815a9fc0dea33c56b021cdc8dde0c55e0c9ca57197254b0cab"
+checksum = "7f835c582e6bd972ba8347313300219fed5bfa52caf175298d860b61ff6069bb"
 dependencies = [
  "bytes",
- "cfg-if",
- "cmake",
  "heck 0.4.0",
  "itertools",
  "lazy_static",
  "log",
  "multimap",
  "petgraph",
- "prost 0.10.4",
- "prost-types 0.10.1",
+ "prost 0.11.0",
+ "prost-types 0.11.1",
  "regex",
  "tempfile",
  "which",
@@ -1890,9 +1850,9 @@ dependencies = [
 
 [[package]]
 name = "prost-derive"
-version = "0.10.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b670f45da57fb8542ebdbb6105a925fe571b67f9e7ed9f47a06a84e72b4e7cc"
+checksum = "7345d5f0e08c0536d7ac7229952590239e77abf0a0100a1b1d890add6ea96364"
 dependencies = [
  "anyhow",
  "itertools",
@@ -1913,12 +1873,12 @@ dependencies = [
 
 [[package]]
 name = "prost-types"
-version = "0.10.1"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d0a014229361011dc8e69c8a1ec6c2e8d0f2af7c91e3ea3f5b2170298461e68"
+checksum = "4dfaa718ad76a44b3415e6c4d53b17c8f99160dcb3a99b10470fce8ad43f6e3e"
 dependencies = [
  "bytes",
- "prost 0.10.4",
+ "prost 0.11.0",
 ]
 
 [[package]]
@@ -2122,7 +2082,7 @@ dependencies = [
 [[package]]
 name = "rw-stream-sink"
 version = "0.3.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=gossipsub-testground#8366684a0fe011d7e46047edef586f51c32b15a6"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16953d826b1ad5a650c03e6f826cc45d15285f00"
 dependencies = [
  "futures",
  "pin-project",
@@ -2132,7 +2092,7 @@ dependencies = [
 [[package]]
 name = "rw-stream-sink"
 version = "0.3.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=4db881d95f9bd661d274b734c814ef766a84c400#4db881d95f9bd661d274b734c814ef766a84c400"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=testground#846b897036df675464b1d2b54db1dd8ee3b606a2"
 dependencies = [
  "futures",
  "pin-project",
@@ -2343,12 +2303,6 @@ name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
-
-[[package]]
-name = "stable_deref_trait"
-version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
 name = "static_assertions"

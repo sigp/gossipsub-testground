@@ -11,12 +11,13 @@ delay_map = "0.1.1"
 
 # TODO: Switch back from the forked one, once libp2p-gossipsub supports protobuf encoding.
 #libp2p = { version = "0.46.1", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux", "serde"] }
-libp2p = { git = "https://github.com/ackintosh/rust-libp2p.git", rev = "4db881d95f9bd661d274b734c814ef766a84c400", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux", "serde"] }
+libp2p = { git = "https://github.com/ackintosh/rust-libp2p.git", branch = "prometheus-ptotobuf-support", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux", "serde"] }
+#libp2p = { path = "../../rust-libp2p", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux", "serde"] }
 
 # This is a fork of `libp2p` in order to emulate malicious behaviour.
 # This `libp2p-testground` is used in `attacker` module instead of `libp2p`.
 # See https://github.com/ackintosh/rust-libp2p/pull/45
-libp2p-testground = { git = "https://github.com/ackintosh/rust-libp2p.git", branch = "gossipsub-testground", package = "libp2p", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux", "serde"] }
+libp2p-testground = { git = "https://github.com/ackintosh/rust-libp2p.git", branch = "testground", package = "libp2p", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux", "serde"] }
 
 rand = "0.8.5"
 serde = "1.0.139"
@@ -29,13 +30,13 @@ tracing-subscriber = { version = "0.3.14", features = ["env-filter"] }
 
 # TODO: Switch back from the forked one, once the PR is merged.
 # https://github.com/prometheus/client_rust/pull/47
-prometheus-client = { git = "https://github.com/ackintosh/client_rust.git", rev = "2c16ebc31cb8b2d36a6fb7d49308f87f11ff2558", features = ["protobuf"] }
+prometheus-client = { git = "https://github.com/ackintosh/client_rust.git", rev = "343f0477fd914aef0b397c411d8860f1782e35d1", features = ["protobuf"] }
 
-prost = "0.10"
+prost = "0.11"
 
 [patch]
 [patch.crates-io]
 # TODO 1: Switch back from the forked one, once the PR is merged.
 # https://github.com/prometheus/client_rust/pull/47
 # TODO 2: Remove this once libp2p-gossipsub supports protobuf encoding.
-prometheus-client = { git = "https://github.com/ackintosh/client_rust.git", rev = "2c16ebc31cb8b2d36a6fb7d49308f87f11ff2558"}
+prometheus-client = { git = "https://github.com/ackintosh/client_rust.git", rev = "343f0477fd914aef0b397c411d8860f1782e35d1"}

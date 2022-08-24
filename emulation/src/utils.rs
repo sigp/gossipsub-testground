@@ -1,3 +1,4 @@
+use chrono::Local;
 use libp2p::futures::{Stream, StreamExt};
 use prometheus_client::encoding::proto::openmetrics_data_model::counter_value;
 use prometheus_client::encoding::proto::openmetrics_data_model::gauge_value;
@@ -66,32 +67,55 @@ pub(crate) async fn barrier<T: StreamExt + Unpin + libp2p::futures::stream::Fuse
     }
 }
 
-// Add fields to the InfluxDB write query.
+// Create queries for InfluxDB.
 // This function is dedicated for the metrics type `Family<TopicHash, Counter>`.
-pub(crate) fn add_counter_metrics(mut query: WriteQuery, family: &MetricFamily) -> WriteQuery {
+pub(crate) fn queries_for_counter(
+    family: &MetricFamily,
+    instance_name: &String,
+    run_id: &String,
+) -> Vec<WriteQuery> {
+    let mut queries = vec![];
+
     for metric in family.metrics.iter() {
-        // Field name: `{Family}_{TopicHash}` (e.g. `invalid_messages_per_topic_emulate`)
-        query = query.add_field(
-            format!("{}_{}", family.name, get_topic_hash(&metric.labels)),
-            get_counter_value(metric).0.expect("should have int value"),
-        );
+        let query = WriteQuery::new(Local::now().into(), family.name.clone())
+            .add_tag("instance_name", instance_name.clone())
+            .add_tag("run_id", run_id.clone())
+            .add_tag("topic_hash", get_topic_hash(&metric.labels))
+            .add_field(
+                "count",
+                get_counter_value(metric).0.expect("should have int value"),
+            );
+
+        queries.push(query);
     }
 
-    query
+    queries
 }
 
-// Add fields to the InfluxDB write query.
+// Create queries for InfluxDB.
 // This function is dedicated for the metrics type `Family<TopicHash, Gauge>`.
-pub(crate) fn add_gauge_metrics(mut query: WriteQuery, family: &MetricFamily) -> WriteQuery {
+pub(crate) fn queries_for_gauge(
+    family: &MetricFamily,
+    instance_name: &String,
+    run_id: &String,
+    field_name: &str,
+) -> Vec<WriteQuery> {
+    let mut queries = vec![];
+
     for metric in family.metrics.iter() {
-        // Field name: `{Family}_{TopicHash}` (e.g. `topic_subscription_status_emulate`)
-        query = query.add_field(
-            format!("{}_{}", family.name, get_topic_hash(&metric.labels)),
-            get_gauge_value(metric).0.expect("should have int value"),
-        );
+        let query = WriteQuery::new(Local::now().into(), family.name.clone())
+            .add_tag("instance_name", instance_name.clone())
+            .add_tag("run_id", run_id.clone())
+            .add_tag("topic_hash", get_topic_hash(&metric.labels))
+            .add_field(
+                field_name,
+                get_gauge_value(metric).0.expect("should have int value"),
+            );
+
+        queries.push(query);
     }
 
-    query
+    queries
 }
 
 pub(crate) fn get_gauge_value(metric: &Metric) -> (Option<i64>, Option<f64>) {
