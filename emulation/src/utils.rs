@@ -3,9 +3,9 @@ use libp2p::futures::{Stream, StreamExt};
 use prometheus_client::encoding::proto::openmetrics_data_model::counter_value;
 use prometheus_client::encoding::proto::openmetrics_data_model::gauge_value;
 use prometheus_client::encoding::proto::openmetrics_data_model::metric_point;
-use prometheus_client::encoding::proto::openmetrics_data_model::Label;
 use prometheus_client::encoding::proto::openmetrics_data_model::Metric;
 use prometheus_client::encoding::proto::openmetrics_data_model::MetricFamily;
+use prometheus_client::encoding::proto::HistogramValue;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::borrow::Cow;
@@ -67,50 +67,54 @@ pub(crate) async fn barrier<T: StreamExt + Unpin + libp2p::futures::stream::Fuse
     }
 }
 
-// Create queries for InfluxDB.
-// This function is dedicated for the metrics type `Family<TopicHash, Counter>`.
+// Create InfluxDB queries for Counter metrics.
 pub(crate) fn queries_for_counter(
     family: &MetricFamily,
-    instance_name: &String,
-    run_id: &String,
+    instance_name: &str,
+    run_id: &str,
 ) -> Vec<WriteQuery> {
     let mut queries = vec![];
 
     for metric in family.metrics.iter() {
-        let query = WriteQuery::new(Local::now().into(), family.name.clone())
-            .add_tag("instance_name", instance_name.clone())
-            .add_tag("run_id", run_id.clone())
-            .add_tag("topic_hash", get_topic_hash(&metric.labels))
+        let mut query = WriteQuery::new(Local::now().into(), family.name.clone())
+            .add_tag("instance_name", instance_name.to_owned())
+            .add_tag("run_id", run_id.to_owned())
             .add_field(
                 "count",
                 get_counter_value(metric).0.expect("should have int value"),
             );
 
+        for l in &metric.labels {
+            query = query.add_tag(l.name.clone(), l.value.clone());
+        }
+
         queries.push(query);
     }
 
     queries
 }
 
-// Create queries for InfluxDB.
-// This function is dedicated for the metrics type `Family<TopicHash, Gauge>`.
+// Create InfluxDB queries for Gauge metrics.
 pub(crate) fn queries_for_gauge(
     family: &MetricFamily,
-    instance_name: &String,
-    run_id: &String,
+    instance_name: &str,
+    run_id: &str,
     field_name: &str,
 ) -> Vec<WriteQuery> {
     let mut queries = vec![];
 
     for metric in family.metrics.iter() {
-        let query = WriteQuery::new(Local::now().into(), family.name.clone())
-            .add_tag("instance_name", instance_name.clone())
-            .add_tag("run_id", run_id.clone())
-            .add_tag("topic_hash", get_topic_hash(&metric.labels))
+        let mut query = WriteQuery::new(Local::now().into(), family.name.clone())
+            .add_tag("instance_name", instance_name.to_owned())
+            .add_tag("run_id", run_id.to_owned())
             .add_field(
                 field_name,
                 get_gauge_value(metric).0.expect("should have int value"),
             );
+
+        for l in &metric.labels {
+            query = query.add_tag(l.name.clone(), l.value.clone());
+        }
 
         queries.push(query);
     }
@@ -118,7 +122,34 @@ pub(crate) fn queries_for_gauge(
     queries
 }
 
-pub(crate) fn get_gauge_value(metric: &Metric) -> (Option<i64>, Option<f64>) {
+// Create InfluxDB queries for Histogram metrics.
+pub(crate) fn queries_for_histogram(
+    family: &MetricFamily,
+    instance_name: &str,
+    run_id: &str,
+) -> Vec<WriteQuery> {
+    let mut queries = vec![];
+
+    for metric in family.metrics.iter() {
+        let histogram = get_histogram_value(metric);
+        for bucket in histogram.buckets.iter() {
+            let mut query = WriteQuery::new(Local::now().into(), family.name.clone())
+                .add_tag("instance_name", instance_name.to_owned())
+                .add_tag("run_id", run_id.to_owned())
+                .add_field("count", bucket.count)
+                .add_field("upper_bound", bucket.upper_bound);
+
+            for l in &metric.labels {
+                query = query.add_tag(l.name.clone(), l.value.clone());
+            }
+            queries.push(query);
+        }
+    }
+
+    queries
+}
+
+fn get_gauge_value(metric: &Metric) -> (Option<i64>, Option<f64>) {
     assert_eq!(1, metric.metric_points.len());
 
     let metric_point = metric.metric_points.first().unwrap();
@@ -133,7 +164,7 @@ pub(crate) fn get_gauge_value(metric: &Metric) -> (Option<i64>, Option<f64>) {
     }
 }
 
-pub(crate) fn get_counter_value(metric: &Metric) -> (Option<u64>, Option<f64>) {
+fn get_counter_value(metric: &Metric) -> (Option<u64>, Option<f64>) {
     assert_eq!(1, metric.metric_points.len());
 
     let metric_point = metric.metric_points.first().unwrap();
@@ -148,11 +179,13 @@ pub(crate) fn get_counter_value(metric: &Metric) -> (Option<u64>, Option<f64>) {
     }
 }
 
-pub(crate) fn get_topic_hash(labels: &[Label]) -> String {
-    labels
-        .iter()
-        .find(|l| l.name == "hash")
-        .expect("have topic hash")
-        .value
-        .clone()
+fn get_histogram_value(metric: &Metric) -> HistogramValue {
+    assert_eq!(1, metric.metric_points.len());
+
+    let metric_point = metric.metric_points.first().unwrap();
+    let metric_point_value = metric_point.value.as_ref().unwrap().clone();
+    match metric_point_value {
+        metric_point::Value::HistogramValue(histogram_value) => histogram_value,
+        _ => unreachable!(),
+    }
 }

@@ -1,6 +1,6 @@
 use crate::utils::{
-    barrier, queries_for_counter, queries_for_gauge, BARRIER_DIALED, BARRIER_DONE,
-    BARRIER_STARTED_LIBP2P,
+    barrier, queries_for_counter, queries_for_gauge, queries_for_histogram, BARRIER_DIALED,
+    BARRIER_DONE, BARRIER_STARTED_LIBP2P,
 };
 use crate::{InstanceInfo, Role};
 use chrono::Local;
@@ -206,12 +206,8 @@ pub(crate) async fn run(
             // Metrics regarding mesh state
             // ///////////////////////////////////
             "mesh_peer_counts" => queries_for_gauge(family, &instance_name, run_id, "count"),
-            "mesh_peer_inclusion_events" => {
-                vec![]
-            } // TODO
-            "mesh_peer_churn_events" => {
-                vec![]
-            } // TODO
+            "mesh_peer_inclusion_events" => queries_for_counter(family, &instance_name, run_id),
+            "mesh_peer_churn_events" => queries_for_counter(family, &instance_name, run_id),
             // ///////////////////////////////////
             // Metrics regarding messages sent/received
             // ///////////////////////////////////
@@ -224,36 +220,26 @@ pub(crate) async fn run(
             // ///////////////////////////////////
             // Metrics related to scoring
             // ///////////////////////////////////
-            "score_per_mesh" => {
-                vec![]
-            } // TODO
-            "scoring_penalties" => {
-                vec![]
-            } // TODO
+            "score_per_mesh" => queries_for_histogram(family, &instance_name, run_id),
+            "scoring_penalties" => queries_for_counter(family, &instance_name, run_id),
             // ///////////////////////////////////
             // General Metrics
             // ///////////////////////////////////
-            "peers_per_protocol" => {
-                vec![]
-            } // TODO
-            "heartbeat_duration" => {
-                vec![]
-            } // TODO
+            "peers_per_protocol" => queries_for_gauge(family, &instance_name, run_id, "status"),
+            "heartbeat_duration" => queries_for_histogram(family, &instance_name, run_id),
             // ///////////////////////////////////
             // Performance metrics
             // ///////////////////////////////////
             "topic_iwant_msgs" => queries_for_counter(family, &instance_name, run_id),
-            "memcache_misses" => {
-                vec![]
-            } // TODO
+            "memcache_misses" => queries_for_counter(family, &instance_name, run_id),
             _ => unreachable!(),
         };
 
         queries.extend(q);
     }
 
-    for q in queries {
-        if let Err(e) = client.record_metric(q).await {
+    for query in queries {
+        if let Err(e) = client.record_metric(query).await {
             client.record_message(format!("Failed to record metrics: {:?}", e));
         }
     }

@@ -12,11 +12,10 @@ delay_map = "0.1.1"
 # TODO: Switch back from the forked one, once libp2p-gossipsub supports protobuf encoding.
 #libp2p = { version = "0.46.1", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux", "serde"] }
 libp2p = { git = "https://github.com/ackintosh/rust-libp2p.git", branch = "prometheus-ptotobuf-support", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux", "serde"] }
-#libp2p = { path = "../../rust-libp2p", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux", "serde"] }
 
 # This is a fork of `libp2p` in order to emulate malicious behaviour.
 # This `libp2p-testground` is used in `attacker` module instead of `libp2p`.
-# See https://github.com/ackintosh/rust-libp2p/pull/45
+# See https://github.com/ackintosh/rust-libp2p/pull/50
 libp2p-testground = { git = "https://github.com/ackintosh/rust-libp2p.git", branch = "testground", package = "libp2p", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux", "serde"] }
 
 rand = "0.8.5"
@@ -29,14 +28,14 @@ tracing = "0.1.35"
 tracing-subscriber = { version = "0.3.14", features = ["env-filter"] }
 
 # TODO: Switch back from the forked one, once the PR is merged.
-# https://github.com/prometheus/client_rust/pull/47
-prometheus-client = { git = "https://github.com/ackintosh/client_rust.git", rev = "343f0477fd914aef0b397c411d8860f1782e35d1", features = ["protobuf"] }
+# https://github.com/prometheus/client_rust/pull/83
+prometheus-client = { git = "https://github.com/ackintosh/client_rust.git", rev = "48745c4b77d582166ddac7a05acc27ff03ff3b85", features = ["protobuf"] }
 
 prost = "0.11"
 
 [patch]
 [patch.crates-io]
 # TODO 1: Switch back from the forked one, once the PR is merged.
-# https://github.com/prometheus/client_rust/pull/47
+# https://github.com/prometheus/client_rust/pull/83
 # TODO 2: Remove this once libp2p-gossipsub supports protobuf encoding.
-prometheus-client = { git = "https://github.com/ackintosh/client_rust.git", rev = "343f0477fd914aef0b397c411d8860f1782e35d1"}
+prometheus-client = { git = "https://github.com/ackintosh/client_rust.git", rev = "48745c4b77d582166ddac7a05acc27ff03ff3b85"}
