@@ -224,7 +224,7 @@ pub(crate) async fn run(
             // ///////////////////////////////////
             // General Metrics
             // ///////////////////////////////////
-            "peers_per_protocol" => queries_for_gauge(family, &instance_info, run_id, "status"),
+            "peers_per_protocol" => queries_for_gauge(family, &instance_info, run_id, "peers"),
             "heartbeat_duration" => queries_for_histogram(family, &instance_info, run_id),
             // ///////////////////////////////////
             // Performance metrics
