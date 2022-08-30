@@ -12,6 +12,7 @@ use std::borrow::Cow;
 use std::fmt::Debug;
 use testground::client::Client;
 use testground::WriteQuery;
+use crate::InstanceInfo;
 
 // States for `barrier()`
 pub(crate) const BARRIER_STARTED_LIBP2P: &str = "Started libp2p";
@@ -70,14 +71,15 @@ pub(crate) async fn barrier<T: StreamExt + Unpin + libp2p::futures::stream::Fuse
 // Create InfluxDB queries for Counter metrics.
 pub(crate) fn queries_for_counter(
     family: &MetricFamily,
-    instance_name: &str,
+    instance_info: &InstanceInfo,
     run_id: &str,
 ) -> Vec<WriteQuery> {
     let mut queries = vec![];
 
     for metric in family.metrics.iter() {
         let mut query = WriteQuery::new(Local::now().into(), family.name.clone())
-            .add_tag("instance_name", instance_name.to_owned())
+            .add_tag("instance_peer_id", instance_info.peer_id.to_string())
+            .add_tag("instance_name", instance_info.name())
             .add_tag("run_id", run_id.to_owned())
             .add_field(
                 "count",
@@ -97,7 +99,7 @@ pub(crate) fn queries_for_counter(
 // Create InfluxDB queries for Gauge metrics.
 pub(crate) fn queries_for_gauge(
     family: &MetricFamily,
-    instance_name: &str,
+    instance_info: &InstanceInfo,
     run_id: &str,
     field_name: &str,
 ) -> Vec<WriteQuery> {
@@ -105,7 +107,8 @@ pub(crate) fn queries_for_gauge(
 
     for metric in family.metrics.iter() {
         let mut query = WriteQuery::new(Local::now().into(), family.name.clone())
-            .add_tag("instance_name", instance_name.to_owned())
+            .add_tag("instance_peer_id", instance_info.peer_id.to_string())
+            .add_tag("instance_name", instance_info.name())
             .add_tag("run_id", run_id.to_owned())
             .add_field(
                 field_name,
@@ -125,7 +128,7 @@ pub(crate) fn queries_for_gauge(
 // Create InfluxDB queries for Histogram metrics.
 pub(crate) fn queries_for_histogram(
     family: &MetricFamily,
-    instance_name: &str,
+    instance_info: &InstanceInfo,
     run_id: &str,
 ) -> Vec<WriteQuery> {
     let mut queries = vec![];
@@ -134,7 +137,8 @@ pub(crate) fn queries_for_histogram(
         let histogram = get_histogram_value(metric);
         for bucket in histogram.buckets.iter() {
             let mut query = WriteQuery::new(Local::now().into(), family.name.clone())
-                .add_tag("instance_name", instance_name.to_owned())
+                .add_tag("instance_peer_id", instance_info.peer_id.to_string())
+                .add_tag("instance_name", instance_info.name())
                 .add_tag("run_id", run_id.to_owned())
                 .add_field("count", bucket.count)
                 .add_field("upper_bound", bucket.upper_bound);

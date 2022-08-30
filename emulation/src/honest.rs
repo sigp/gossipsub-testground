@@ -186,7 +186,6 @@ pub(crate) async fn run(
     let metric_set = prometheus_client::encoding::proto::encode(&registry);
 
     let mut queries = vec![];
-    let instance_name = instance_info.name();
     let run_id = &client.run_parameters().test_run;
 
     for family in metric_set.metric_families.iter() {
@@ -195,19 +194,19 @@ pub(crate) async fn run(
             // Metrics per known topic
             // ///////////////////////////////////
             "topic_subscription_status" => {
-                queries_for_gauge(family, &instance_name, run_id, "status")
+                queries_for_gauge(family, &instance_info, run_id, "status")
             }
-            "topic_peers_counts" => queries_for_gauge(family, &instance_name, run_id, "count"),
+            "topic_peers_counts" => queries_for_gauge(family, &instance_info, run_id, "count"),
             "invalid_messages_per_topic"
             | "accepted_messages_per_topic"
             | "ignored_messages_per_topic"
-            | "rejected_messages_per_topic" => queries_for_counter(family, &instance_name, run_id),
+            | "rejected_messages_per_topic" => queries_for_counter(family, &instance_info, run_id),
             // ///////////////////////////////////
             // Metrics regarding mesh state
             // ///////////////////////////////////
-            "mesh_peer_counts" => queries_for_gauge(family, &instance_name, run_id, "count"),
-            "mesh_peer_inclusion_events" => queries_for_counter(family, &instance_name, run_id),
-            "mesh_peer_churn_events" => queries_for_counter(family, &instance_name, run_id),
+            "mesh_peer_counts" => queries_for_gauge(family, &instance_info, run_id, "count"),
+            "mesh_peer_inclusion_events" => queries_for_counter(family, &instance_info, run_id),
+            "mesh_peer_churn_events" => queries_for_counter(family, &instance_info, run_id),
             // ///////////////////////////////////
             // Metrics regarding messages sent/received
             // ///////////////////////////////////
@@ -216,22 +215,22 @@ pub(crate) async fn run(
             | "topic_msg_sent_bytes"
             | "topic_msg_recv_counts_unfiltered"
             | "topic_msg_recv_counts"
-            | "topic_msg_recv_bytes" => queries_for_counter(family, &instance_name, run_id),
+            | "topic_msg_recv_bytes" => queries_for_counter(family, &instance_info, run_id),
             // ///////////////////////////////////
             // Metrics related to scoring
             // ///////////////////////////////////
-            "score_per_mesh" => queries_for_histogram(family, &instance_name, run_id),
-            "scoring_penalties" => queries_for_counter(family, &instance_name, run_id),
+            "score_per_mesh" => queries_for_histogram(family, &instance_info, run_id),
+            "scoring_penalties" => queries_for_counter(family, &instance_info, run_id),
             // ///////////////////////////////////
             // General Metrics
             // ///////////////////////////////////
-            "peers_per_protocol" => queries_for_gauge(family, &instance_name, run_id, "status"),
-            "heartbeat_duration" => queries_for_histogram(family, &instance_name, run_id),
+            "peers_per_protocol" => queries_for_gauge(family, &instance_info, run_id, "status"),
+            "heartbeat_duration" => queries_for_histogram(family, &instance_info, run_id),
             // ///////////////////////////////////
             // Performance metrics
             // ///////////////////////////////////
-            "topic_iwant_msgs" => queries_for_counter(family, &instance_name, run_id),
-            "memcache_misses" => queries_for_counter(family, &instance_name, run_id),
+            "topic_iwant_msgs" => queries_for_counter(family, &instance_info, run_id),
+            "memcache_misses" => queries_for_counter(family, &instance_info, run_id),
             _ => unreachable!(),
         };
 
@@ -348,7 +347,6 @@ impl HonestBehaviour {
     ) -> Poll<NetworkBehaviourAction<(), <HonestBehaviour as NetworkBehaviour>::ConnectionHandler>>
     {
         // Store scores to InfluxDB.
-        let run_id = self.client.run_parameters().test_run;
         while self.score_interval.poll_tick(cx).is_ready() {
             let scores = self
                 .gossipsub
@@ -359,8 +357,9 @@ impl HonestBehaviour {
 
             if !scores.is_empty() {
                 let mut query = WriteQuery::new(Local::now().into(), "scores")
+                    .add_tag("instance_peer_id", self.instance_info.peer_id.to_string())
                     .add_tag("instance_name", self.instance_info.name())
-                    .add_tag("run_id", run_id.clone());
+                    .add_tag("run_id", self.client.run_parameters().test_run);
 
                 for (peer, score) in scores {
                     query = query.add_field(self.participants.get(peer).unwrap(), score.unwrap());
