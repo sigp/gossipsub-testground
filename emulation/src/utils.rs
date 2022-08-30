@@ -1,3 +1,4 @@
+use crate::InstanceInfo;
 use chrono::Local;
 use libp2p::futures::{Stream, StreamExt};
 use prometheus_client::encoding::proto::openmetrics_data_model::counter_value;
@@ -12,7 +13,6 @@ use std::borrow::Cow;
 use std::fmt::Debug;
 use testground::client::Client;
 use testground::WriteQuery;
-use crate::InstanceInfo;
 
 // States for `barrier()`
 pub(crate) const BARRIER_STARTED_LIBP2P: &str = "Started libp2p";

@@ -164,13 +164,25 @@ pub(crate) async fn run(
         // ////////////////////////////////////////////////////////////////////////
         // TODO: Parameterize
         let runtime = Duration::from_secs(10);
+        // TODO: Parameterize
+        let message_rate = 100;
+        let publish_interval = Duration::from_millis(1000 / message_rate);
+        let total_expected_messages = runtime.as_millis() / publish_interval.as_millis();
+
+        client.record_message(format!(
+            "Publishing to topic {}. message_rate: {}/1s, publish_interval {:?}, total expected messages: {}",
+            topic,
+            message_rate,
+            publish_interval,
+            total_expected_messages
+        ));
 
         loop {
             tokio::select! {
                 _ = tokio::time::sleep(runtime) => {
                     break;
                 }
-                _ = publish_message_periodically(&client, &mut swarm, topic.clone()) => {}
+                _ = publish_message_periodically(&client, &mut swarm, topic.clone(), publish_interval) => {}
             }
         }
     }
@@ -273,9 +285,9 @@ async fn publish_message_periodically(
     client: &Client,
     swarm: &mut Swarm<HonestBehaviour>,
     topic: IdentTopic,
+    publish_interval: Duration,
 ) {
-    // TODO: Parameterize
-    let mut interval = interval(Duration::from_millis(500));
+    let mut interval = interval(publish_interval);
     let mut message_counter = 0;
 
     loop {
