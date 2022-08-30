@@ -41,6 +41,43 @@ use tokio::time::{interval, Interval};
 // The backoff time for pruned peers.
 pub(crate) const PRUNE_BACKOFF: u64 = 60;
 
+pub(crate) struct TestParams {
+    pub(crate) peers_to_connect: usize,
+    pub(crate) message_rate: u64,
+    pub(crate) warmup: Duration,
+    pub(crate) run: Duration,
+}
+
+impl TestParams {
+    pub(crate) fn new(
+        instance_params: HashMap<String, String>,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let peers_to_connect = instance_params
+            .get("peers_to_connect")
+            .ok_or("peers_to_connect is not specified.")?
+            .parse::<usize>()?;
+        let message_rate = instance_params
+            .get("message_rate")
+            .ok_or("message_rate is not specified.")?
+            .parse::<u64>()?;
+        let warmup = instance_params
+            .get("warmup")
+            .ok_or("warmup is not specified.")?
+            .parse::<u64>()?;
+        let run = instance_params
+            .get("run")
+            .ok_or("run is not specified.")?
+            .parse::<u64>()?;
+
+        Ok(TestParams {
+            peers_to_connect,
+            message_rate,
+            warmup: Duration::from_secs(warmup),
+            run: Duration::from_secs(run),
+        })
+    }
+}
+
 pub(crate) async fn run(
     client: Client,
     instance_info: InstanceInfo,
@@ -49,6 +86,8 @@ pub(crate) async fn run(
 ) -> Result<(), Box<dyn std::error::Error>> {
     // A topic used in this test plan. Only a single topic is supported for now.
     let topic: IdentTopic = Topic::new("emulate");
+
+    let test_params = TestParams::new(client.run_parameters().test_instance_params)?;
 
     // ////////////////////////////////////////////////////////////////////////
     // Start libp2p
@@ -121,13 +160,10 @@ pub(crate) async fn run(
             .filter(|&info| info.role.is_honest())
             .collect::<Vec<_>>();
 
-        // TODO: Parameterize
-        let n_peers: usize = 5;
-
         // Select peers to connect from the honest.
         let mut rnd = rand::rngs::StdRng::seed_from_u64(client.global_seq());
         honest.shuffle(&mut rnd);
-        honest[..n_peers]
+        honest[..test_params.peers_to_connect]
             .iter()
             .map(|&p| p.clone())
             .collect::<Vec<_>>()
@@ -145,11 +181,9 @@ pub(crate) async fn run(
     // ////////////////////////////////////////////////////////////////////////
     swarm.behaviour_mut().subscribe(&topic)?;
 
-    // TODO: Parameterize
-    let warmup = Duration::from_secs(5);
     loop {
         tokio::select! {
-            _ = tokio::time::sleep(warmup) => {
+            _ = tokio::time::sleep(test_params.warmup) => {
                 break;
             }
             event = swarm.select_next_some() => {
@@ -162,24 +196,20 @@ pub(crate) async fn run(
         // ////////////////////////////////////////////////////////////////////////
         // Publish messages
         // ////////////////////////////////////////////////////////////////////////
-        // TODO: Parameterize
-        let runtime = Duration::from_secs(10);
-        // TODO: Parameterize
-        let message_rate = 100;
-        let publish_interval = Duration::from_millis(1000 / message_rate);
-        let total_expected_messages = runtime.as_millis() / publish_interval.as_millis();
+        let publish_interval = Duration::from_millis(1000 / test_params.message_rate);
+        let total_expected_messages = test_params.run.as_millis() / publish_interval.as_millis();
 
         client.record_message(format!(
             "Publishing to topic {}. message_rate: {}/1s, publish_interval {:?}, total expected messages: {}",
             topic,
-            message_rate,
+            test_params.message_rate,
             publish_interval,
             total_expected_messages
         ));
 
         loop {
             tokio::select! {
-                _ = tokio::time::sleep(runtime) => {
+                _ = tokio::time::sleep(test_params.run) => {
                     break;
                 }
                 _ = publish_message_periodically(&client, &mut swarm, topic.clone(), publish_interval) => {}

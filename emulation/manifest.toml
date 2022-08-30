@@ -13,3 +13,9 @@ enabled = true
 [[testcases]]
 name = "emulation"
 instances = { min = 3, max = 100, default = 3 }
+  [testcases.params]
+  ## honest node config
+  peers_to_connect = { type = "int", desc = "The number of peers to connect", default=5 }
+  message_rate = { type = "int", desc = "The number of messages to publish per 1 second.", default=100 }
+  warmup = { type = "int", desc = "Time to wait for nodes to establish connections before beginning publishing", default=5, unit="sec" }
+  run = { type = "int", desc = "Time to run the emulation", default=10, unit="sec" }

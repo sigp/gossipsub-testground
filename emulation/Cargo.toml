@@ -12,7 +12,6 @@ delay_map = "0.1.1"
 # TODO: Switch back from the forked one, once libp2p-gossipsub supports protobuf encoding.
 #libp2p = { version = "0.46.1", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux", "serde"] }
 libp2p = { git = "https://github.com/ackintosh/rust-libp2p.git", branch = "prometheus-ptotobuf-support", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux", "serde"] }
-#libp2p = { path = "../../rust-libp2p", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux", "serde"] }
 
 # This is a fork of `libp2p` in order to emulate malicious behaviour.
 # This `libp2p-testground` is used in `attacker` module instead of `libp2p`.
