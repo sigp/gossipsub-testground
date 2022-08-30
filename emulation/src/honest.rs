@@ -348,6 +348,7 @@ impl HonestBehaviour {
     ) -> Poll<NetworkBehaviourAction<(), <HonestBehaviour as NetworkBehaviour>::ConnectionHandler>>
     {
         // Store scores to InfluxDB.
+        let run_id = self.client.run_parameters().test_run;
         while self.score_interval.poll_tick(cx).is_ready() {
             let scores = self
                 .gossipsub
@@ -357,14 +358,9 @@ impl HonestBehaviour {
                 .collect::<Vec<_>>();
 
             if !scores.is_empty() {
-                let mut query = WriteQuery::new(
-                    Local::now().into(),
-                    format!(
-                        "gossipsub-testground_{}",
-                        self.client.run_parameters().test_run
-                    ),
-                )
-                .add_tag("instance", self.instance_info.name());
+                let mut query = WriteQuery::new(Local::now().into(), "scores")
+                    .add_tag("instance_name", self.instance_info.name())
+                    .add_tag("run_id", run_id.clone());
 
                 for (peer, score) in scores {
                     query = query.add_field(self.participants.get(peer).unwrap(), score.unwrap());
