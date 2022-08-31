@@ -1,6 +1,6 @@
 use crate::utils::{
-    barrier, queries_for_counter, queries_for_gauge, queries_for_histogram, BARRIER_DIALED,
-    BARRIER_DONE, BARRIER_STARTED_LIBP2P,
+    barrier_and_drive_swarm, queries_for_counter, queries_for_gauge, queries_for_histogram,
+    BARRIER_DIALED, BARRIER_DONE, BARRIER_STARTED_LIBP2P,
 };
 use crate::{InstanceInfo, Role};
 use chrono::Local;
@@ -12,15 +12,14 @@ use libp2p::gossipsub::error::{PublishError, SubscriptionError};
 use libp2p::gossipsub::metrics::Config;
 use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
 use libp2p::gossipsub::{
-    Gossipsub, GossipsubConfigBuilder, GossipsubEvent, IdentTopic, IdentityTransform,
-    MessageAuthenticity, MessageId, PeerScoreParams, PeerScoreThresholds, Topic, TopicScoreParams,
+    Gossipsub, GossipsubConfigBuilder, IdentTopic, IdentityTransform, MessageAuthenticity,
+    MessageId, PeerScoreParams, PeerScoreThresholds, Topic, TopicScoreParams,
 };
 use libp2p::identity::Keypair;
 use libp2p::mplex::MplexConfig;
 use libp2p::noise::NoiseConfig;
 use libp2p::swarm::{
-    NetworkBehaviour, NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters,
-    SwarmBuilder, SwarmEvent,
+    NetworkBehaviour, NetworkBehaviourAction, PollParameters, SwarmBuilder, SwarmEvent,
 };
 use libp2p::tcp::{GenTcpConfig, TokioTcpTransport};
 use libp2p::yamux::YamuxConfig;
@@ -37,6 +36,7 @@ use std::time::Duration;
 use testground::client::Client;
 use testground::WriteQuery;
 use tokio::time::{interval, Interval};
+use tracing::debug;
 
 // The backoff time for pruned peers.
 pub(crate) const PRUNE_BACKOFF: u64 = 60;
@@ -149,7 +149,7 @@ pub(crate) async fn run(
         }
     }
 
-    barrier(&client, &mut swarm, BARRIER_STARTED_LIBP2P).await;
+    barrier_and_drive_swarm(&client, &mut swarm, BARRIER_STARTED_LIBP2P).await?;
 
     // /////////////////////////////////////////////////////////////////////////////////////////////
     // Setup discovery
@@ -174,7 +174,7 @@ pub(crate) async fn run(
         swarm.dial(peer.multiaddr)?;
     }
 
-    barrier(&client, &mut swarm, BARRIER_DIALED).await;
+    barrier_and_drive_swarm(&client, &mut swarm, BARRIER_DIALED).await?;
 
     // ////////////////////////////////////////////////////////////////////////
     // Subscribe to a topic and wait for `warmup` time to expire
@@ -187,7 +187,7 @@ pub(crate) async fn run(
                 break;
             }
             event = swarm.select_next_some() => {
-                client.record_message(format!("{:?}", event));
+                debug!("{:?}", event);
             }
         }
     }
@@ -200,7 +200,7 @@ pub(crate) async fn run(
         let total_expected_messages = test_params.run.as_millis() / publish_interval.as_millis();
 
         client.record_message(format!(
-            "Publishing to topic {}. message_rate: {}/1s, publish_interval {:?}, total expected messages: {}",
+            "Publishing to topic `{}`. message_rate: {}/1s, publish_interval {:?}, total expected messages: {}",
             topic,
             test_params.message_rate,
             publish_interval,
@@ -217,7 +217,7 @@ pub(crate) async fn run(
         }
     }
 
-    barrier(&client, &mut swarm, BARRIER_DONE).await;
+    barrier_and_drive_swarm(&client, &mut swarm, BARRIER_DONE).await?;
 
     // ////////////////////////////////////////////////////////////////////////
     // Record metrics
@@ -329,14 +329,14 @@ async fn publish_message_periodically(
                 message_counter += 1;
             }
             event = swarm.select_next_some() => {
-                client.record_message(format!("{:?}", event));
+                debug!("{:?}", event);
             }
         }
     }
 }
 
 #[derive(NetworkBehaviour)]
-#[behaviour(event_process = true, poll_method = "poll")]
+#[behaviour(poll_method = "poll")]
 pub(crate) struct HonestBehaviour {
     gossipsub: Gossipsub,
     #[behaviour(ignore)]
@@ -386,8 +386,12 @@ impl HonestBehaviour {
         &mut self,
         cx: &mut Context<'_>,
         _params: &mut impl PollParameters,
-    ) -> Poll<NetworkBehaviourAction<(), <HonestBehaviour as NetworkBehaviour>::ConnectionHandler>>
-    {
+    ) -> Poll<
+        NetworkBehaviourAction<
+            HonestBehaviourEvent,
+            <HonestBehaviour as NetworkBehaviour>::ConnectionHandler,
+        >,
+    > {
         // ////////////////////////////////////////////////////////////////////////
         // Record peer scores to InfluxDB.
         // ////////////////////////////////////////////////////////////////////////
@@ -427,8 +431,4 @@ impl HonestBehaviour {
 
         Poll::Pending
     }
-}
-
-impl NetworkBehaviourEventProcess<GossipsubEvent> for HonestBehaviour {
-    fn inject_event(&mut self, _: GossipsubEvent) {}
 }

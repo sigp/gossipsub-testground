@@ -1,5 +1,5 @@
 use crate::honest::PRUNE_BACKOFF;
-use crate::utils::{barrier, BARRIER_DIALED, BARRIER_DONE, BARRIER_STARTED_LIBP2P};
+use crate::utils::{barrier_and_drive_swarm, BARRIER_DIALED, BARRIER_DONE, BARRIER_STARTED_LIBP2P};
 use crate::InstanceInfo;
 use delay_map::HashSetDelay;
 use libp2p_testground::core::connection::ConnectionId;
@@ -65,7 +65,7 @@ pub(crate) async fn run(
         e => panic!("Unexpected event {:?}", e),
     }
 
-    barrier(&client, &mut swarm, BARRIER_STARTED_LIBP2P).await;
+    barrier_and_drive_swarm(&client, &mut swarm, BARRIER_STARTED_LIBP2P).await?;
 
     // /////////////////////////////////////////////////////////////////////////////////////////////
     // Setup discovery
@@ -81,9 +81,10 @@ pub(crate) async fn run(
 
     swarm.dial(victim.multiaddr)?;
 
-    barrier(&client, &mut swarm, BARRIER_DIALED).await;
+    barrier_and_drive_swarm(&client, &mut swarm, BARRIER_DIALED).await?;
 
-    barrier(&client, &mut swarm, BARRIER_DONE).await;
+    barrier_and_drive_swarm(&client, &mut swarm, BARRIER_DONE).await?;
+
     client.record_success().await?;
     Ok(())
 }

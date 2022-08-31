@@ -1,5 +1,6 @@
 use crate::InstanceInfo;
 use chrono::Local;
+use libp2p::futures::FutureExt;
 use libp2p::futures::{Stream, StreamExt};
 use prometheus_client::encoding::proto::openmetrics_data_model::counter_value;
 use prometheus_client::encoding::proto::openmetrics_data_model::gauge_value;
@@ -13,6 +14,7 @@ use std::borrow::Cow;
 use std::fmt::Debug;
 use testground::client::Client;
 use testground::WriteQuery;
+use tracing::{debug, info};
 
 // States for `barrier()`
 pub(crate) const BARRIER_STARTED_LIBP2P: &str = "Started libp2p";
@@ -48,24 +50,31 @@ pub(crate) async fn publish_and_collect<T: Serialize + DeserializeOwned>(
 }
 
 // Sets a barrier on the supplied state that fires when it reaches all participants.
-pub(crate) async fn barrier<T: StreamExt + Unpin + libp2p::futures::stream::FusedStream>(
+pub(crate) async fn barrier_and_drive_swarm<
+    T: StreamExt + Unpin + libp2p::futures::stream::FusedStream,
+>(
     client: &Client,
     swarm: &mut T,
     state: impl Into<Cow<'static, str>> + Copy,
-) where
+) -> Result<(), Box<dyn std::error::Error>>
+where
     <T as Stream>::Item: Debug,
 {
-    loop {
-        tokio::select! {
-            _ = client.signal_and_wait(state, client.run_parameters().test_instance_count) => {
-                break;
-            }
-            // Record the Swarm events that happen while waiting for the barrier.
-            event = swarm.select_next_some() => {
-                client.record_message(format!("{:?}", event));
-            }
-        }
-    }
+    info!(
+        "Signal and wait for all peers to signal being done with \"{}\".",
+        state.into(),
+    );
+    swarm
+        .take_until(
+            client
+                .signal_and_wait(state, client.run_parameters().test_instance_count)
+                .boxed_local(),
+        )
+        .map(|event| debug!("Event: {:?}", event))
+        .collect::<Vec<()>>()
+        .await;
+
+    Ok(())
 }
 
 // Create InfluxDB queries for Counter metrics.
