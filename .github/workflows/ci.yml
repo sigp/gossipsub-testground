@@ -35,6 +35,10 @@ jobs:
         working-directory: ${{ matrix.plan }}
     steps:
     - uses: actions/checkout@v1
+    - name: Install protoc
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y protobuf-compiler
     - name: Get latest version of stable Rust
       run: rustup update stable
     - name: Lint code for quality and style with Clippy
