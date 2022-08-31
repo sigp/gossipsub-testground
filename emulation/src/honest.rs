@@ -388,7 +388,9 @@ impl HonestBehaviour {
         _params: &mut impl PollParameters,
     ) -> Poll<NetworkBehaviourAction<(), <HonestBehaviour as NetworkBehaviour>::ConnectionHandler>>
     {
-        // Store scores to InfluxDB.
+        // ////////////////////////////////////////////////////////////////////////
+        // Record peer scores to InfluxDB.
+        // ////////////////////////////////////////////////////////////////////////
         while self.score_interval.poll_tick(cx).is_ready() {
             let scores = self
                 .gossipsub
