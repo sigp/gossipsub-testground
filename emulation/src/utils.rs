@@ -77,7 +77,7 @@ where
     Ok(())
 }
 
-// Create InfluxDB queries for Counter metrics.
+/// Create InfluxDB queries for Counter metrics.
 pub(crate) fn queries_for_counter(
     family: &MetricFamily,
     instance_info: &InstanceInfo,
