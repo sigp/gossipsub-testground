@@ -21,8 +21,8 @@ pub(crate) const BARRIER_STARTED_LIBP2P: &str = "Started libp2p";
 pub(crate) const BARRIER_DIALED: &str = "Dialed";
 pub(crate) const BARRIER_DONE: &str = "Done";
 
-// Publish info and collect it from the participants. The return value includes one published by
-// myself.
+/// Publish info and collect it from the participants. The return value includes one published by
+/// myself.
 pub(crate) async fn publish_and_collect<T: Serialize + DeserializeOwned>(
     client: &Client,
     info: T,
