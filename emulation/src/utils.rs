@@ -105,7 +105,7 @@ pub(crate) fn queries_for_counter(
     queries
 }
 
-// Create InfluxDB queries for Gauge metrics.
+/// Create InfluxDB queries for Gauge metrics.
 pub(crate) fn queries_for_gauge(
     family: &MetricFamily,
     instance_info: &InstanceInfo,
