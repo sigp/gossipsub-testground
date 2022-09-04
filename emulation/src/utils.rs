@@ -49,7 +49,7 @@ pub(crate) async fn publish_and_collect<T: Serialize + DeserializeOwned>(
     Ok(vec)
 }
 
-// Sets a barrier on the supplied state that fires when it reaches all participants.
+/// Sets a barrier on the supplied state that fires when it reaches all participants.
 pub(crate) async fn barrier_and_drive_swarm<
     T: StreamExt + Unpin + libp2p::futures::stream::FusedStream,
 >(
