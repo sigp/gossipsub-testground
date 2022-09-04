@@ -399,8 +399,7 @@ impl HonestBehaviour {
             let scores = self
                 .gossipsub
                 .all_peers()
-                .map(|(peer, _)| (peer, self.gossipsub.peer_score(peer)))
-                .filter(|(_, score)| score.is_some())
+                .filter_map(|(peer, _)| self.gossipsub.peer_score(peer).map(|score| (peer, score)))
                 .collect::<Vec<_>>();
 
             if !scores.is_empty() {
