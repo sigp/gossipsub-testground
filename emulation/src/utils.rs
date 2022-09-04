@@ -21,6 +21,11 @@ pub(crate) const BARRIER_STARTED_LIBP2P: &str = "Started libp2p";
 pub(crate) const BARRIER_DIALED: &str = "Dialed";
 pub(crate) const BARRIER_DONE: &str = "Done";
 
+// Tags for InfluxDB
+const TAG_INSTANCE_PEER_ID: &str = "instance_peer_id";
+const TAG_INSTANCE_NAME: &str = "instance_name";
+const TAG_RUN_ID: &str = "run_id";
+
 /// Publish info and collect it from the participants. The return value includes one published by
 /// myself.
 pub(crate) async fn publish_and_collect<T: Serialize + DeserializeOwned>(
@@ -87,9 +92,9 @@ pub(crate) fn queries_for_counter(
 
     for metric in family.metrics.iter() {
         let mut query = WriteQuery::new(Local::now().into(), family.name.clone())
-            .add_tag("instance_peer_id", instance_info.peer_id.to_string())
-            .add_tag("instance_name", instance_info.name())
-            .add_tag("run_id", run_id.to_owned())
+            .add_tag(TAG_INSTANCE_PEER_ID, instance_info.peer_id.to_string())
+            .add_tag(TAG_INSTANCE_NAME, instance_info.name())
+            .add_tag(TAG_RUN_ID, run_id.to_owned())
             .add_field(
                 "count",
                 get_counter_value(metric).0.expect("should have int value"),
@@ -116,9 +121,9 @@ pub(crate) fn queries_for_gauge(
 
     for metric in family.metrics.iter() {
         let mut query = WriteQuery::new(Local::now().into(), family.name.clone())
-            .add_tag("instance_peer_id", instance_info.peer_id.to_string())
-            .add_tag("instance_name", instance_info.name())
-            .add_tag("run_id", run_id.to_owned())
+            .add_tag(TAG_INSTANCE_PEER_ID, instance_info.peer_id.to_string())
+            .add_tag(TAG_INSTANCE_NAME, instance_info.name())
+            .add_tag(TAG_RUN_ID, run_id.to_owned())
             .add_field(
                 field_name,
                 get_gauge_value(metric).0.expect("should have int value"),
@@ -146,9 +151,9 @@ pub(crate) fn queries_for_histogram(
         let histogram = get_histogram_value(metric);
         for bucket in histogram.buckets.iter() {
             let mut query = WriteQuery::new(Local::now().into(), family.name.clone())
-                .add_tag("instance_peer_id", instance_info.peer_id.to_string())
-                .add_tag("instance_name", instance_info.name())
-                .add_tag("run_id", run_id.to_owned())
+                .add_tag(TAG_INSTANCE_PEER_ID, instance_info.peer_id.to_string())
+                .add_tag(TAG_INSTANCE_NAME, instance_info.name())
+                .add_tag(TAG_RUN_ID, run_id.to_owned())
                 .add_field("count", bucket.count)
                 .add_field("upper_bound", bucket.upper_bound);
 
