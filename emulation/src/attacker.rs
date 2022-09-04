@@ -40,7 +40,7 @@ use tracing::{debug, error};
 // implement `MaliciousBehaviour`.
 // See https://github.com/ackintosh/rust-libp2p/pull/45 for changes made in `libp2p_testground`.
 
-// A delay before sending GRAFT after being pruned.
+/// A delay before sending GRAFT after being pruned.
 const PRUNE_BACKOFF_DELAY: u64 = 5;
 
 pub(crate) async fn run(
