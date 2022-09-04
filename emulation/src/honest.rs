@@ -409,7 +409,7 @@ impl HonestBehaviour {
                     .add_tag("run_id", self.client.run_parameters().test_run);
 
                 for (peer, score) in scores {
-                    query = query.add_field(self.participants.get(peer).unwrap(), score.unwrap());
+                    query = query.add_field(self.participants.get(peer).unwrap(), score);
                 }
 
                 let mut fut = Box::pin(self.client.record_metric(query));
