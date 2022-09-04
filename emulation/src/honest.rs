@@ -38,7 +38,7 @@ use testground::WriteQuery;
 use tokio::time::{interval, Interval};
 use tracing::debug;
 
-// The backoff time for pruned peers.
+/// The backoff time for pruned peers.
 pub(crate) const PRUNE_BACKOFF: u64 = 60;
 
 pub(crate) struct TestParams {
@@ -289,7 +289,7 @@ pub(crate) async fn run(
     Ok(())
 }
 
-// Set up an encrypted TCP transport over the Mplex and Yamux protocols.
+/// Set up an encrypted TCP transport over the Mplex and Yamux protocols.
 fn build_transport(keypair: &Keypair) -> libp2p::core::transport::Boxed<(PeerId, StreamMuxerBox)> {
     let transport = TokioDnsConfig::system(TokioTcpTransport::new(
         GenTcpConfig::default().nodelay(true),

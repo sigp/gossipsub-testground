@@ -134,7 +134,7 @@ pub(crate) fn queries_for_gauge(
     queries
 }
 
-// Create InfluxDB queries for Histogram metrics.
+/// Create InfluxDB queries for Histogram metrics.
 pub(crate) fn queries_for_histogram(
     family: &MetricFamily,
     instance_info: &InstanceInfo,
