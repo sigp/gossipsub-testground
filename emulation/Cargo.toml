@@ -9,10 +9,10 @@ edition = "2021"
 chrono = "0.4.19"
 delay_map = "0.1.1"
 
-# TODO: Switch back from the forked one, once libp2p-gossipsub supports protobuf encoding.
-#libp2p = { version = "0.46.1", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux", "serde"] }
-# `prometheus-ptotobuf-support` branch (libp2p v0.48)
-libp2p = { git = "https://github.com/ackintosh/rust-libp2p.git", rev = "9f6351f79c5376a8812a87630d9ca6bac3abc1a7", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux", "serde"] }
+# TODO: Switch back from the forked one, once https://github.com/libp2p/rust-libp2p/pull/2911 has been merged.
+# The PR is a work to enable `protobuf` feature of prometheus-client.
+# See https://github.com/libp2p/rust-libp2p/pull/2911 for the progress.
+libp2p = { git = "https://github.com/ackintosh/rust-libp2p.git", rev = "7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux", "serde"] }
 
 # This is a fork of `libp2p` in order to emulate malicious behaviour.
 # This `libp2p-testground` is used in `attacker` module instead of `libp2p`.
@@ -28,8 +28,9 @@ tokio = { version = "1.20.0", features = ["macros"] }
 tracing = "0.1.35"
 tracing-subscriber = { version = "0.3.14", features = ["env-filter"] }
 
-# TODO: Switch back from the forked one, once the PR is merged.
-# https://github.com/prometheus/client_rust/pull/83
-prometheus-client = { git = "https://github.com/ackintosh/client_rust.git", rev = "639cb0a6d4de5d23dc0d49388e475812cf7c2973", features = ["protobuf"] }
+# TODO: Switch back from the forked one, once v0.19 has been released.
+# The revision specified here is contained this PR:
+# https://github.com/prometheus/client_rust/pull/93
+prometheus-client = { git = "https://github.com/ackintosh/client_rust.git", rev = "5e145bb0cb52ab4ff01c862a6117fb61ee107f17", features = ["protobuf"] }
 
 prost = "0.11"
