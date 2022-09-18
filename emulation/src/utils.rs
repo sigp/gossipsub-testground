@@ -18,7 +18,7 @@ use tracing::{debug, info};
 
 // States for `barrier()`
 pub(crate) const BARRIER_STARTED_LIBP2P: &str = "Started libp2p";
-pub(crate) const BARRIER_DIALED: &str = "Dialed";
+pub(crate) const BARRIER_WARMUP: &str = "Warmup";
 pub(crate) const BARRIER_DONE: &str = "Done";
 
 // Tags for InfluxDB

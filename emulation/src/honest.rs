@@ -1,46 +1,44 @@
 use crate::utils::{
-    barrier_and_drive_swarm, queries_for_counter, queries_for_gauge, queries_for_histogram,
-    BARRIER_DIALED, BARRIER_DONE, BARRIER_STARTED_LIBP2P,
+    queries_for_counter, queries_for_gauge, queries_for_histogram, BARRIER_DONE,
+    BARRIER_STARTED_LIBP2P, BARRIER_WARMUP,
 };
 use crate::{InstanceInfo, Role};
 use chrono::Local;
 use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::upgrade::{SelectUpgrade, Version};
 use libp2p::dns::TokioDnsConfig;
-use libp2p::futures::{FutureExt, StreamExt};
-use libp2p::gossipsub::error::{PublishError, SubscriptionError};
+use libp2p::futures::StreamExt;
 use libp2p::gossipsub::metrics::Config;
 use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
 use libp2p::gossipsub::{
     Gossipsub, GossipsubConfigBuilder, IdentTopic, IdentityTransform, MessageAuthenticity,
-    MessageId, PeerScoreParams, PeerScoreThresholds, Topic, TopicScoreParams,
+    PeerScoreParams, PeerScoreThresholds, Topic, TopicScoreParams,
 };
 use libp2p::identity::Keypair;
 use libp2p::mplex::MplexConfig;
 use libp2p::noise::NoiseConfig;
-use libp2p::swarm::{
-    NetworkBehaviour, NetworkBehaviourAction, PollParameters, SwarmBuilder, SwarmEvent,
-};
+use libp2p::swarm::{DialError, SwarmBuilder, SwarmEvent};
 use libp2p::tcp::{GenTcpConfig, TokioTcpTransport};
 use libp2p::yamux::YamuxConfig;
-use libp2p::Swarm;
+use libp2p::PeerId;
 use libp2p::Transport;
-use libp2p::{NetworkBehaviour, PeerId};
+use libp2p::{Multiaddr, Swarm};
 use prometheus_client::encoding::proto::EncodeMetric;
 use prometheus_client::registry::Registry;
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
 use std::collections::HashMap;
-use std::task::{Context, Poll};
 use std::time::Duration;
 use testground::client::Client;
 use testground::WriteQuery;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::{interval, Interval};
 use tracing::debug;
 
 /// The backoff time for pruned peers.
 pub(crate) const PRUNE_BACKOFF: u64 = 60;
 
+#[derive(Clone)]
 pub(crate) struct TestParams {
     pub(crate) peers_to_connect: usize,
     pub(crate) message_rate: u64,
@@ -93,109 +91,40 @@ pub(crate) async fn run(
     // Start libp2p
     // ////////////////////////////////////////////////////////////////////////
     let mut registry: Registry<Box<dyn EncodeMetric>> = Registry::default();
-    // let mut registry: Registry<_> = Registry::default();
     registry.sub_registry_with_prefix("gossipsub");
 
-    let mut swarm = {
-        let gossipsub_config = GossipsubConfigBuilder::default()
-            .prune_backoff(Duration::from_secs(PRUNE_BACKOFF))
-            .history_length(12)
-            .build()
-            .expect("Valid configuration");
-        let mut gossipsub = Gossipsub::new_with_subscription_filter_and_transform(
-            MessageAuthenticity::Signed(keypair.clone()),
-            gossipsub_config,
-            Some((&mut registry, Config::default())),
-            AllowAllSubscriptionFilter {},
-            IdentityTransform {},
+    let network_send = spawn_honest_network(
+        &mut registry,
+        keypair.clone(),
+        instance_info.clone(),
+        &participants,
+        client.clone(),
+        &topic,
+        &test_params,
+    )
+    .await?;
+
+    client
+        .signal_and_wait(
+            BARRIER_STARTED_LIBP2P,
+            client.run_parameters().test_instance_count,
         )
-        .expect("Valid configuration");
-
-        // Setup the scoring system.
-        let mut peer_score_params = PeerScoreParams::default();
-        peer_score_params
-            .topics
-            .insert(topic.hash(), TopicScoreParams::default());
-        gossipsub
-            .with_peer_score(peer_score_params, PeerScoreThresholds::default())
-            .expect("Valid score params and thresholds");
-
-        SwarmBuilder::new(
-            build_transport(&keypair),
-            HonestBehaviour::new(
-                gossipsub,
-                instance_info.clone(),
-                participants.clone(),
-                client.clone(),
-            ),
-            PeerId::from(keypair.public()),
-        )
-        .executor(Box::new(|future| {
-            tokio::spawn(future);
-        }))
-        .build()
-    };
-
-    swarm
-        .listen_on(instance_info.multiaddr.clone())
-        .expect("Swarm starts listening");
-
-    loop {
-        match swarm.select_next_some().await {
-            SwarmEvent::NewListenAddr { .. } => break,
-            event => {
-                client.record_message(format!("{:?}", event));
-            }
-        }
-    }
-
-    barrier_and_drive_swarm(&client, &mut swarm, BARRIER_STARTED_LIBP2P).await?;
-
-    // /////////////////////////////////////////////////////////////////////////////////////////////
-    // Setup discovery
-    // /////////////////////////////////////////////////////////////////////////////////////////////
-    let peers_to_connect = {
-        let mut honest = participants
-            .iter()
-            .filter(|&info| info.role.is_honest())
-            .collect::<Vec<_>>();
-
-        // Select peers to connect from the honest.
-        let mut rnd = rand::rngs::StdRng::seed_from_u64(client.global_seq());
-        honest.shuffle(&mut rnd);
-        honest[..test_params.peers_to_connect]
-            .iter()
-            .map(|&p| p.clone())
-            .collect::<Vec<_>>()
-    };
-    client.record_message(format!("Peers to connect: {:?}", peers_to_connect));
-
-    for peer in peers_to_connect {
-        swarm.dial(peer.multiaddr)?;
-    }
-
-    barrier_and_drive_swarm(&client, &mut swarm, BARRIER_DIALED).await?;
+        .await?;
 
     // ////////////////////////////////////////////////////////////////////////
     // Subscribe to a topic and wait for `warmup` time to expire
     // ////////////////////////////////////////////////////////////////////////
-    swarm.behaviour_mut().subscribe(&topic)?;
+    network_send.send(HonestMessage::Subscribe(topic.clone()))?;
+    tokio::time::sleep(test_params.warmup).await;
 
-    loop {
-        tokio::select! {
-            _ = tokio::time::sleep(test_params.warmup) => {
-                break;
-            }
-            event = swarm.select_next_some() => {
-                debug!("{:?}", event);
-            }
-        }
-    }
+    client
+        .signal_and_wait(BARRIER_WARMUP, client.run_parameters().test_instance_count)
+        .await?;
 
+    // ////////////////////////////////////////////////////////////////////////
+    // Publish messages
+    // ////////////////////////////////////////////////////////////////////////
     if matches!(instance_info.role, Role::Publisher) {
-        // ////////////////////////////////////////////////////////////////////////
-        // Publish messages
-        // ////////////////////////////////////////////////////////////////////////
         let publish_interval = Duration::from_millis(1000 / test_params.message_rate);
         let total_expected_messages = test_params.run.as_millis() / publish_interval.as_millis();
 
@@ -207,17 +136,14 @@ pub(crate) async fn run(
             total_expected_messages
         ));
 
-        loop {
-            tokio::select! {
-                _ = tokio::time::sleep(test_params.run) => {
-                    break;
-                }
-                _ = publish_message_periodically(&client, &mut swarm, topic.clone(), publish_interval) => {}
-            }
-        }
+        network_send.send(HonestMessage::StartPublishing)?;
+        tokio::time::sleep(test_params.run).await;
+        network_send.send(HonestMessage::StopPublishing)?;
     }
 
-    barrier_and_drive_swarm(&client, &mut swarm, BARRIER_DONE).await?;
+    client
+        .signal_and_wait(BARRIER_DONE, client.run_parameters().test_instance_count)
+        .await?;
 
     // ////////////////////////////////////////////////////////////////////////
     // Record metrics
@@ -311,123 +237,224 @@ fn build_transport(keypair: &Keypair) -> libp2p::core::transport::Boxed<(PeerId,
         .boxed()
 }
 
-async fn publish_message_periodically(
-    client: &Client,
-    swarm: &mut Swarm<HonestBehaviour>,
-    topic: IdentTopic,
-    publish_interval: Duration,
-) {
-    let mut interval = interval(publish_interval);
-    let mut message_counter = 0;
-
-    loop {
-        tokio::select! {
-            _ = interval.tick() => {
-                if let Err(e) = swarm.behaviour_mut().publish(topic.clone(), format!("message {}", message_counter).as_bytes()) {
-                    client.record_message(format!("Failed to publish message: {}", e))
-                }
-                message_counter += 1;
-            }
-            event = swarm.select_next_some() => {
-                debug!("{:?}", event);
-            }
-        }
-    }
+#[derive(Debug)]
+enum HonestMessage {
+    Subscribe(IdentTopic),
+    StartPublishing,
+    StopPublishing,
 }
 
-#[derive(NetworkBehaviour)]
-#[behaviour(poll_method = "poll")]
-pub(crate) struct HonestBehaviour {
-    gossipsub: Gossipsub,
-    #[behaviour(ignore)]
+enum PublishState {
+    Awaiting,
+    Started,
+    Stopped,
+}
+
+pub(crate) struct HonestNetwork {
+    swarm: Swarm<Gossipsub>,
     instance_info: InstanceInfo,
-    #[behaviour(ignore)]
     participants: HashMap<PeerId, String>,
-    #[behaviour(ignore)]
     client: Client,
-    #[behaviour(ignore)]
     score_interval: Interval,
+    publish_interval: Interval,
+    publish_state: PublishState,
+    topic: IdentTopic,
+    recv: UnboundedReceiver<HonestMessage>,
 }
 
-impl HonestBehaviour {
-    pub(crate) fn new(
-        gossipsub: Gossipsub,
+impl HonestNetwork {
+    #[allow(clippy::too_many_arguments)]
+    fn new(
+        registry: &mut Registry<Box<dyn EncodeMetric>>,
+        keypair: Keypair,
         instance_info: InstanceInfo,
-        participants: Vec<InstanceInfo>,
+        participants: &Vec<InstanceInfo>,
         client: Client,
+        topic: &IdentTopic,
+        test_params: TestParams,
+        recv: UnboundedReceiver<HonestMessage>,
     ) -> Self {
+        let gossipsub = {
+            let gossipsub_config = GossipsubConfigBuilder::default()
+                .prune_backoff(Duration::from_secs(PRUNE_BACKOFF))
+                .history_length(12)
+                .build()
+                .expect("Valid configuration");
+
+            let mut gs = Gossipsub::new_with_subscription_filter_and_transform(
+                MessageAuthenticity::Signed(keypair.clone()),
+                gossipsub_config,
+                Some((registry, Config::default())),
+                AllowAllSubscriptionFilter {},
+                IdentityTransform {},
+            )
+            .expect("Valid configuration");
+
+            // Setup the scoring system.
+            let mut peer_score_params = PeerScoreParams::default();
+            peer_score_params
+                .topics
+                .insert(topic.hash(), TopicScoreParams::default());
+            gs.with_peer_score(peer_score_params, PeerScoreThresholds::default())
+                .expect("Valid score params and thresholds");
+
+            gs
+        };
+
+        let swarm = SwarmBuilder::new(
+            build_transport(&keypair),
+            gossipsub,
+            PeerId::from(keypair.public()),
+        )
+        .executor(Box::new(|future| {
+            tokio::spawn(future);
+        }))
+        .build();
+
         let mut peer_to_instance_name = HashMap::new();
         for info in participants {
             peer_to_instance_name.insert(info.peer_id, info.name());
         }
 
-        HonestBehaviour {
-            gossipsub,
+        HonestNetwork {
+            swarm,
             instance_info,
             participants: peer_to_instance_name,
             client,
             score_interval: interval(Duration::from_secs(1)),
+            publish_interval: interval(Duration::from_millis(1000 / test_params.message_rate)),
+            publish_state: PublishState::Awaiting,
+            topic: topic.clone(),
+            recv,
         }
     }
 
-    fn publish(
-        &mut self,
-        topic: IdentTopic,
-        message: impl Into<Vec<u8>>,
-    ) -> Result<MessageId, PublishError> {
-        self.gossipsub.publish(topic, message)
+    async fn start(&mut self) {
+        self.swarm
+            .listen_on(self.instance_info.multiaddr.clone())
+            .expect("Swarm starts listening");
+
+        match self.swarm.next().await.unwrap() {
+            SwarmEvent::NewListenAddr { address, .. } => {
+                assert_eq!(address, self.instance_info.multiaddr)
+            }
+            e => panic!("Unexpected event {:?}", e),
+        };
     }
 
-    fn subscribe(&mut self, topic: &IdentTopic) -> Result<bool, SubscriptionError> {
-        self.gossipsub.subscribe(topic)
+    fn dial(&mut self, addr: Multiaddr) -> Result<(), DialError> {
+        self.swarm.dial(addr)
     }
 
-    fn poll(
-        &mut self,
-        cx: &mut Context<'_>,
-        _params: &mut impl PollParameters,
-    ) -> Poll<
-        NetworkBehaviourAction<
-            HonestBehaviourEvent,
-            <HonestBehaviour as NetworkBehaviour>::ConnectionHandler,
-        >,
-    > {
-        // ////////////////////////////////////////////////////////////////////////
-        // Record peer scores to InfluxDB.
-        // ////////////////////////////////////////////////////////////////////////
-        while self.score_interval.poll_tick(cx).is_ready() {
-            let scores = self
-                .gossipsub
-                .all_peers()
-                .filter_map(|(peer, _)| self.gossipsub.peer_score(peer).map(|score| (peer, score)))
-                .collect::<Vec<_>>();
-
-            if !scores.is_empty() {
-                let mut query = WriteQuery::new(Local::now().into(), "scores")
-                    .add_tag("instance_peer_id", self.instance_info.peer_id.to_string())
-                    .add_tag("instance_name", self.instance_info.name())
-                    .add_tag("run_id", self.client.run_parameters().test_run);
-
-                for (peer, score) in scores {
-                    query = query.add_field(self.participants.get(peer).unwrap(), score);
-                }
-
-                let mut fut = Box::pin(self.client.record_metric(query));
-                loop {
-                    match fut.poll_unpin(cx) {
-                        Poll::Ready(result) => {
-                            if let Err(e) = result {
-                                self.client
-                                    .record_message(format!("Failed to record score: {:?}", e))
-                            }
-                            break;
+    fn spawn(mut self) {
+        let fut = async move {
+            loop {
+                tokio::select! {
+                    // Record peer scores
+                    _ = self.score_interval.tick() => {
+                        self.record_peer_scores().await;
+                    }
+                    // Publish messages
+                    _ = self.publish_interval.tick(), if matches!(self.publish_state, PublishState::Started) => {
+                        if let Err(e) = self.swarm.behaviour_mut().publish(self.topic.clone(), "message".as_bytes()) {
+                            self.client.record_message(format!("Failed to publish message: {}", e))
                         }
-                        Poll::Pending => {}
+                    }
+                    event = self.swarm.select_next_some() => {
+                        debug!("SwarmEvent: {:?}", event);
+                    }
+                    Some(message) = self.recv.recv() => {
+                        match message {
+                            HonestMessage::Subscribe(topic) => {
+                                if let Err(e) = self.swarm.behaviour_mut().subscribe(&topic) {
+                                    self.client.record_message(format!("Failed to subscribe: {}", e));
+                                }
+                            }
+                            HonestMessage::StartPublishing => {
+                                self.publish_state = PublishState::Started;
+                            }
+                            HonestMessage::StopPublishing => {
+                                self.publish_state = PublishState::Stopped;
+                            }
+                        }
                     }
                 }
             }
-        }
+        };
 
-        Poll::Pending
+        tokio::runtime::Handle::current().spawn(fut);
     }
+
+    async fn record_peer_scores(&mut self) {
+        let gossipsub = self.swarm.behaviour_mut();
+        let scores = gossipsub
+            .all_peers()
+            .filter_map(|(peer, _)| gossipsub.peer_score(peer).map(|score| (peer, score)))
+            .collect::<Vec<_>>();
+
+        if !scores.is_empty() {
+            let mut query = WriteQuery::new(Local::now().into(), "scores")
+                .add_tag("instance_peer_id", self.instance_info.peer_id.to_string())
+                .add_tag("instance_name", self.instance_info.name())
+                .add_tag("run_id", self.client.run_parameters().test_run);
+
+            for (peer, score) in scores {
+                query = query.add_field(self.participants.get(peer).unwrap(), score);
+            }
+
+            if let Err(e) = self.client.record_metric(query).await {
+                self.client
+                    .record_message(format!("Failed to record score: {:?}", e))
+            }
+        }
+    }
+}
+
+async fn spawn_honest_network(
+    registry: &mut Registry<Box<dyn EncodeMetric>>,
+    keypair: Keypair,
+    instance_info: InstanceInfo,
+    participants: &Vec<InstanceInfo>,
+    client: Client,
+    topic: &IdentTopic,
+    test_params: &TestParams,
+) -> Result<UnboundedSender<HonestMessage>, Box<dyn std::error::Error>> {
+    let (send, recv) = tokio::sync::mpsc::unbounded_channel();
+
+    let mut honest_network = HonestNetwork::new(
+        registry,
+        keypair,
+        instance_info,
+        participants,
+        client.clone(),
+        topic,
+        test_params.clone(),
+        recv,
+    );
+    honest_network.start().await;
+
+    // Setup discovery
+    let peers_to_connect = {
+        let mut honest = participants
+            .iter()
+            .filter(|&info| info.role.is_honest())
+            .collect::<Vec<_>>();
+
+        // Select peers to connect from the honest.
+        let mut rnd = rand::rngs::StdRng::seed_from_u64(client.global_seq());
+        honest.shuffle(&mut rnd);
+        honest[..test_params.peers_to_connect]
+            .iter()
+            .map(|&p| p.clone())
+            .collect::<Vec<_>>()
+    };
+    client.record_message(format!("Peers to connect: {:?}", peers_to_connect));
+
+    for peer in peers_to_connect {
+        honest_network.dial(peer.multiaddr)?;
+    }
+
+    honest_network.spawn();
+
+    Ok(send)
 }
