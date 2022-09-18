@@ -33,10 +33,3 @@ tracing-subscriber = { version = "0.3.14", features = ["env-filter"] }
 prometheus-client = { git = "https://github.com/ackintosh/client_rust.git", rev = "639cb0a6d4de5d23dc0d49388e475812cf7c2973", features = ["protobuf"] }
 
 prost = "0.11"
-
-[patch]
-[patch.crates-io]
-# TODO 1: Switch back from the forked one, once the PR is merged.
-# https://github.com/prometheus/client_rust/pull/83
-# TODO 2: Remove this once libp2p-gossipsub supports protobuf encoding.
-prometheus-client = { git = "https://github.com/ackintosh/client_rust.git", rev = "639cb0a6d4de5d23dc0d49388e475812cf7c2973"}
