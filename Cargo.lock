@@ -1151,7 +1151,7 @@ dependencies = [
 [[package]]
 name = "libp2p"
 version = "0.49.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5#7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16ab1e70ad9c93c59fa50808b9f665a6e33f820e"
 dependencies = [
  "bytes",
  "futures",
@@ -1248,7 +1248,7 @@ dependencies = [
 [[package]]
 name = "libp2p-core"
 version = "0.36.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5#7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16ab1e70ad9c93c59fa50808b9f665a6e33f820e"
 dependencies = [
  "asn1_der",
  "bs58",
@@ -1262,13 +1262,13 @@ dependencies = [
  "log",
  "multiaddr",
  "multihash",
- "multistream-select 0.11.0 (git+https://github.com/ackintosh/rust-libp2p.git?rev=7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5)",
+ "multistream-select 0.11.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
  "parking_lot 0.12.1",
  "pin-project",
  "prost 0.11.0",
  "prost-build 0.11.1",
  "rand 0.8.5",
- "rw-stream-sink 0.3.0 (git+https://github.com/ackintosh/rust-libp2p.git?rev=7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5)",
+ "rw-stream-sink 0.3.0 (git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support)",
  "serde",
  "sha2 0.10.5",
  "smallvec",
@@ -1308,7 +1308,7 @@ dependencies = [
 [[package]]
 name = "libp2p-dns"
 version = "0.36.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5#7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16ab1e70ad9c93c59fa50808b9f665a6e33f820e"
 dependencies = [
  "futures",
  "libp2p-core 0.36.0",
@@ -1377,7 +1377,7 @@ dependencies = [
 [[package]]
 name = "libp2p-gossipsub"
 version = "0.41.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5#7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16ab1e70ad9c93c59fa50808b9f665a6e33f820e"
 dependencies = [
  "asynchronous-codec",
  "base64",
@@ -1433,7 +1433,7 @@ dependencies = [
 [[package]]
 name = "libp2p-kad"
 version = "0.41.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5#7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16ab1e70ad9c93c59fa50808b9f665a6e33f820e"
 dependencies = [
  "arrayvec",
  "asynchronous-codec",
@@ -1484,7 +1484,7 @@ dependencies = [
 [[package]]
 name = "libp2p-metrics"
 version = "0.10.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5#7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16ab1e70ad9c93c59fa50808b9f665a6e33f820e"
 dependencies = [
  "libp2p-core 0.36.0",
  "libp2p-gossipsub 0.41.0",
@@ -1530,7 +1530,7 @@ dependencies = [
 [[package]]
 name = "libp2p-mplex"
 version = "0.36.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5#7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16ab1e70ad9c93c59fa50808b9f665a6e33f820e"
 dependencies = [
  "asynchronous-codec",
  "bytes",
@@ -1590,7 +1590,7 @@ dependencies = [
 [[package]]
 name = "libp2p-noise"
 version = "0.39.1"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5#7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16ab1e70ad9c93c59fa50808b9f665a6e33f820e"
 dependencies = [
  "bytes",
  "curve25519-dalek 3.2.1",
@@ -1650,7 +1650,7 @@ dependencies = [
 [[package]]
 name = "libp2p-swarm"
 version = "0.39.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5#7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16ab1e70ad9c93c59fa50808b9f665a6e33f820e"
 dependencies = [
  "either",
  "fnv",
@@ -1689,7 +1689,7 @@ dependencies = [
 [[package]]
 name = "libp2p-swarm-derive"
 version = "0.30.1"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5#7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16ab1e70ad9c93c59fa50808b9f665a6e33f820e"
 dependencies = [
  "heck 0.4.0",
  "quote",
@@ -1732,7 +1732,7 @@ dependencies = [
 [[package]]
 name = "libp2p-tcp"
 version = "0.37.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5#7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16ab1e70ad9c93c59fa50808b9f665a6e33f820e"
 dependencies = [
  "futures",
  "futures-timer",
@@ -1772,7 +1772,7 @@ dependencies = [
 [[package]]
 name = "libp2p-yamux"
 version = "0.40.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5#7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16ab1e70ad9c93c59fa50808b9f665a6e33f820e"
 dependencies = [
  "futures",
  "libp2p-core 0.36.0",
@@ -1930,7 +1930,7 @@ dependencies = [
 [[package]]
 name = "multistream-select"
 version = "0.11.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=testground#846b897036df675464b1d2b54db1dd8ee3b606a2"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16ab1e70ad9c93c59fa50808b9f665a6e33f820e"
 dependencies = [
  "bytes",
  "futures",
@@ -1943,7 +1943,7 @@ dependencies = [
 [[package]]
 name = "multistream-select"
 version = "0.11.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5#7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=testground#846b897036df675464b1d2b54db1dd8ee3b606a2"
 dependencies = [
  "bytes",
  "futures",
@@ -2314,7 +2314,7 @@ dependencies = [
 [[package]]
 name = "prometheus-client"
 version = "0.19.0"
-source = "git+https://github.com/ackintosh/client_rust.git?rev=5e145bb0cb52ab4ff01c862a6117fb61ee107f17#5e145bb0cb52ab4ff01c862a6117fb61ee107f17"
+source = "git+https://github.com/prometheus/client_rust.git?rev=682b24ee8c6c857b76c0683b1dd7df5a97b75c27#682b24ee8c6c857b76c0683b1dd7df5a97b75c27"
 dependencies = [
  "dtoa",
  "itoa",
@@ -2329,7 +2329,7 @@ dependencies = [
 [[package]]
 name = "prometheus-client-derive-encode"
 version = "0.3.1"
-source = "git+https://github.com/ackintosh/client_rust.git?rev=5e145bb0cb52ab4ff01c862a6117fb61ee107f17#5e145bb0cb52ab4ff01c862a6117fb61ee107f17"
+source = "git+https://github.com/prometheus/client_rust.git?rev=682b24ee8c6c857b76c0683b1dd7df5a97b75c27#682b24ee8c6c857b76c0683b1dd7df5a97b75c27"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2746,7 +2746,7 @@ dependencies = [
 [[package]]
 name = "rw-stream-sink"
 version = "0.3.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=testground#846b897036df675464b1d2b54db1dd8ee3b606a2"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=prometheus-ptotobuf-support#16ab1e70ad9c93c59fa50808b9f665a6e33f820e"
 dependencies = [
  "futures",
  "pin-project",
@@ -2756,7 +2756,7 @@ dependencies = [
 [[package]]
 name = "rw-stream-sink"
 version = "0.3.0"
-source = "git+https://github.com/ackintosh/rust-libp2p.git?rev=7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5#7eb216f4c259c8f5b6f23dbdc044b45e8a38c2e5"
+source = "git+https://github.com/ackintosh/rust-libp2p.git?branch=testground#846b897036df675464b1d2b54db1dd8ee3b606a2"
 dependencies = [
  "futures",
  "pin-project",
