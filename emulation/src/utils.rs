@@ -207,3 +207,20 @@ fn get_histogram_value(metric: &Metric) -> HistogramValue {
         _ => unreachable!(),
     }
 }
+
+/// Record an InstanceInfo to InfluxDB. This is useful on Grafana dashboard.
+pub(crate) async fn record_instance_info(
+    client: &Client,
+    instance_info: &InstanceInfo,
+    run_id: &str,
+) -> Result<(), testground::errors::Error> {
+    let query = WriteQuery::new(Local::now().into(), "participants")
+        .add_tag(TAG_RUN_ID, run_id.to_owned())
+        // Add below as "field" not tag, because in InfluxQL, SELECT clause can't specify only tag.
+        // https://docs.influxdata.com/influxdb/v1.8/query_language/explore-data/#select-clause
+        // > The SELECT clause must specify at least one field when it includes a tag.
+        .add_field(TAG_INSTANCE_NAME, instance_info.name())
+        .add_field(TAG_INSTANCE_PEER_ID, instance_info.peer_id.to_string());
+
+    client.record_metric(query).await
+}

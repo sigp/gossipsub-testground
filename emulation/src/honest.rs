@@ -1,6 +1,6 @@
 use crate::utils::{
-    queries_for_counter, queries_for_gauge, queries_for_histogram, BARRIER_DONE,
-    BARRIER_STARTED_LIBP2P, BARRIER_WARMUP,
+    queries_for_counter, queries_for_gauge, queries_for_histogram, record_instance_info,
+    BARRIER_DONE, BARRIER_STARTED_LIBP2P, BARRIER_WARMUP,
 };
 use crate::{InstanceInfo, Role};
 use chrono::Local;
@@ -82,6 +82,9 @@ pub(crate) async fn run(
     participants: Vec<InstanceInfo>,
     keypair: Keypair,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let run_id = &client.run_parameters().test_run;
+    record_instance_info(&client, &instance_info, run_id).await?;
+
     // A topic used in this test plan. Only a single topic is supported for now.
     let topic: IdentTopic = Topic::new("emulate");
 
@@ -154,7 +157,6 @@ pub(crate) async fn run(
     let metric_set = prometheus_client::encoding::proto::encode(&registry);
 
     let mut queries = vec![];
-    let run_id = &client.run_parameters().test_run;
 
     for family in metric_set.metric_families.iter() {
         let q = match family.name.as_str() {

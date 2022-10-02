@@ -58,6 +58,7 @@
       }
     ]
   },
+  "description": "Metrics defined in libp2p-gossipsub. These are collected once the emulation finished.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -828,8 +829,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -944,8 +944,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1034,8 +1033,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1137,8 +1135,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1263,8 +1260,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1339,8 +1335,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1454,8 +1449,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1569,8 +1563,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1586,7 +1579,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 110
+        "y": 102
       },
       "id": 28,
       "options": {
@@ -1633,7 +1626,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 118
+        "y": 110
       },
       "id": 31,
       "panels": [],
@@ -1672,8 +1665,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1689,7 +1681,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 119
+        "y": 111
       },
       "id": 29,
       "options": {
@@ -1752,25 +1744,25 @@
       {
         "current": {
           "selected": false,
-          "text": "ccrtv9r4lvk12ph2il8g",
-          "value": "ccrtv9r4lvk12ph2il8g"
+          "text": "cct1vlb4lvk4irh6jk60",
+          "value": "cct1vlb4lvk4irh6jk60"
         },
         "hide": 0,
         "name": "run_id",
         "options": [
           {
             "selected": true,
-            "text": "ccrtv9r4lvk12ph2il8g",
-            "value": "ccrtv9r4lvk12ph2il8g"
+            "text": "cct1vlb4lvk4irh6jk60",
+            "value": "cct1vlb4lvk4irh6jk60"
           }
         ],
-        "query": "ccrtv9r4lvk12ph2il8g",
+        "query": "cct1vlb4lvk4irh6jk60",
         "skipUrlSync": false,
         "type": "textbox"
       },
       {
         "current": {
-          "selected": true,
+          "selected": false,
           "text": "emulate",
           "value": "emulate"
         },
@@ -1789,7 +1781,7 @@
       },
       {
         "current": {
-          "selected": true,
+          "selected": false,
           "text": "Publisher1",
           "value": "Publisher1"
         },
@@ -1808,9 +1800,13 @@
       },
       {
         "current": {
-          "selected": false,
-          "text": "Gossipsubv1_1",
-          "value": "Gossipsubv1_1"
+          "selected": true,
+          "text": [
+            "Gossipsubv1_1"
+          ],
+          "value": [
+            "Gossipsubv1_1"
+          ]
         },
         "hide": 2,
         "includeAll": false,
@@ -1851,8 +1847,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Gossipsub",
+  "title": "Gossipsub metrics",
   "uid": "zXV9rK44k",
-  "version": 35,
+  "version": 36,
   "weekStart": ""
 }
