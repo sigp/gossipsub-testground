@@ -792,7 +792,7 @@
             "fields": {},
             "sort": [
               {
-                "field": "instance_name"
+                "field": "name"
               }
             ]
           }
@@ -1414,6 +1414,19 @@
         }
       ],
       "title": "topic_msg_recv_counts  (topic: ${topic})",
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "instance_name"
+              }
+            ]
+          }
+        }
+      ],
       "type": "barchart"
     },
     {
@@ -2001,7 +2014,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 118
+        "y": 150
       },
       "id": 28,
       "options": {
@@ -2048,7 +2061,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 126
+        "y": 158
       },
       "id": 31,
       "panels": [],
@@ -2104,7 +2117,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 127
+        "y": 159
       },
       "id": 29,
       "options": {
@@ -2208,7 +2221,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 127
+        "y": 159
       },
       "id": 36,
       "options": {
@@ -2270,19 +2283,19 @@
       {
         "current": {
           "selected": false,
-          "text": "ccv0aer4lvkbmbhnrqu0",
-          "value": "ccv0aer4lvkbmbhnrqu0"
+          "text": "ccv1e734lvkcruuq9ib0",
+          "value": "ccv1e734lvkcruuq9ib0"
         },
         "hide": 0,
         "name": "run_id",
         "options": [
           {
             "selected": true,
-            "text": "ccv0aer4lvkbmbhnrqu0",
-            "value": "ccv0aer4lvkbmbhnrqu0"
+            "text": "ccv1e734lvkcruuq9ib0",
+            "value": "ccv1e734lvkcruuq9ib0"
           }
         ],
-        "query": "ccv0aer4lvkbmbhnrqu0",
+        "query": "ccv1e734lvkcruuq9ib0",
         "skipUrlSync": false,
         "type": "textbox"
       },
@@ -2306,23 +2319,23 @@
         "type": "textbox"
       },
       {
-        "current": {
-          "selected": true,
-          "text": "Publisher1",
-          "value": "Publisher1"
+        "current": {},
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${DS_INFLUXDB}"
         },
+        "definition": "SELECT instance_name FROM \"participants\" WHERE \"run_id\" = '${run_id:text}' ",
         "hide": 0,
+        "includeAll": false,
+        "multi": false,
         "name": "instance_name",
-        "options": [
-          {
-            "selected": true,
-            "text": "Publisher1",
-            "value": "Publisher1"
-          }
-        ],
-        "query": "Publisher1",
+        "options": [],
+        "query": "SELECT instance_name FROM \"participants\" WHERE \"run_id\" = '${run_id:text}' ",
+        "refresh": 1,
+        "regex": "",
         "skipUrlSync": false,
-        "type": "textbox"
+        "sort": 1,
+        "type": "query"
       },
       {
         "current": {
@@ -2371,6 +2384,6 @@
   "timezone": "",
   "title": "Gossipsub metrics",
   "uid": "zXV9rK44k",
-  "version": 45,
+  "version": 49,
   "weekStart": ""
 }

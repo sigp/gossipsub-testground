@@ -1,5 +1,5 @@
 use crate::InstanceInfo;
-use chrono::Local;
+use chrono::{DateTime, Local, Utc};
 use libp2p::futures::FutureExt;
 use libp2p::futures::{Stream, StreamExt};
 use prometheus_client::encoding::proto::openmetrics_data_model::counter_value;
@@ -84,6 +84,7 @@ where
 
 /// Create InfluxDB queries for Counter metrics.
 pub(crate) fn queries_for_counter(
+    datetime: &DateTime<Utc>,
     family: &MetricFamily,
     instance_info: &InstanceInfo,
     run_id: &str,
@@ -91,7 +92,7 @@ pub(crate) fn queries_for_counter(
     let mut queries = vec![];
 
     for metric in family.metrics.iter() {
-        let mut query = WriteQuery::new(Local::now().into(), family.name.clone())
+        let mut query = WriteQuery::new((*datetime).into(), family.name.clone())
             .add_tag(TAG_INSTANCE_PEER_ID, instance_info.peer_id.to_string())
             .add_tag(TAG_INSTANCE_NAME, instance_info.name())
             .add_tag(TAG_RUN_ID, run_id.to_owned())
@@ -112,6 +113,7 @@ pub(crate) fn queries_for_counter(
 
 /// Create InfluxDB queries for Gauge metrics.
 pub(crate) fn queries_for_gauge(
+    datetime: &DateTime<Utc>,
     family: &MetricFamily,
     instance_info: &InstanceInfo,
     run_id: &str,
@@ -120,7 +122,7 @@ pub(crate) fn queries_for_gauge(
     let mut queries = vec![];
 
     for metric in family.metrics.iter() {
-        let mut query = WriteQuery::new(Local::now().into(), family.name.clone())
+        let mut query = WriteQuery::new((*datetime).into(), family.name.clone())
             .add_tag(TAG_INSTANCE_PEER_ID, instance_info.peer_id.to_string())
             .add_tag(TAG_INSTANCE_NAME, instance_info.name())
             .add_tag(TAG_RUN_ID, run_id.to_owned())
@@ -141,6 +143,7 @@ pub(crate) fn queries_for_gauge(
 
 /// Create InfluxDB queries for Histogram metrics.
 pub(crate) fn queries_for_histogram(
+    datetime: &DateTime<Utc>,
     family: &MetricFamily,
     instance_info: &InstanceInfo,
     run_id: &str,
@@ -150,7 +153,7 @@ pub(crate) fn queries_for_histogram(
     for metric in family.metrics.iter() {
         let histogram = get_histogram_value(metric);
         for bucket in histogram.buckets.iter() {
-            let mut query = WriteQuery::new(Local::now().into(), family.name.clone())
+            let mut query = WriteQuery::new((*datetime).into(), family.name.clone())
                 .add_tag(TAG_INSTANCE_PEER_ID, instance_info.peer_id.to_string())
                 .add_tag(TAG_INSTANCE_NAME, instance_info.name())
                 .add_tag(TAG_RUN_ID, run_id.to_owned())
