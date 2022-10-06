@@ -242,7 +242,7 @@ impl HonestNetwork {
 
         let mut peer_to_instance_name = HashMap::new();
         for info in participants {
-            peer_to_instance_name.insert(info.peer_id, info.name());
+            // peer_to_instance_name.insert(info.peer_id, info.name());
         }
 
         HonestNetwork {
@@ -281,7 +281,7 @@ impl HonestNetwork {
                 tokio::select! {
                     // Record peer scores
                     _ = self.score_interval.tick() => {
-                        self.record_peer_scores().await;
+                        // self.record_peer_scores().await;
                     }
                     // Publish messages
                     _ = self.publish_interval.tick(), if matches!(self.publish_state, PublishState::Started) => {
@@ -312,30 +312,6 @@ impl HonestNetwork {
         };
 
         tokio::runtime::Handle::current().spawn(fut);
-    }
-
-    async fn record_peer_scores(&mut self) {
-        let gossipsub = self.swarm.behaviour_mut();
-        let scores = gossipsub
-            .all_peers()
-            .filter_map(|(peer, _)| gossipsub.peer_score(peer).map(|score| (peer, score)))
-            .collect::<Vec<_>>();
-
-        if !scores.is_empty() {
-            let mut query = WriteQuery::new(Local::now().into(), "scores")
-                .add_tag("instance_peer_id", self.instance_info.peer_id.to_string())
-                .add_tag("instance_name", self.instance_info.name())
-                .add_tag("run_id", self.client.run_parameters().test_run);
-
-            for (peer, score) in scores {
-                query = query.add_field(self.participants.get(peer).unwrap(), score);
-            }
-
-            if let Err(e) = self.client.record_metric(query).await {
-                self.client
-                    .record_message(format!("Failed to record score: {:?}", e))
-            }
-        }
     }
 }
 

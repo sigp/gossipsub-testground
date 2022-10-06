@@ -8,6 +8,12 @@ use libp2p::{Multiaddr, PeerId};
 use serde::{Deserialize, Serialize};
 use testground::client::Client;
 
+use gen_topology::Network;
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::BufReader;
+const CONFIG_FILE_KEY: &str = "config_file";
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Ok(env_filter) = tracing_subscriber::EnvFilter::try_from_default_env() {
@@ -29,47 +35,53 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         multiaddr
     };
 
-    // /////////////////////////////////////////////////////////////////////////////////////////////
+    // Read the network configuration file
+    let config_file = client
+        .run_parameters()
+        .test_instance_params
+        .get(CONFIG_FILE_KEY)
+        .ok_or("missing configuration file")?
+        .to_owned();
+
+    let file = File::open(config_file)?;
+    let reader = BufReader::new(file);
+    let network: Network = serde_json::from_reader(reader)?;
+
     // Publish information about this test instance to the network and collect the information of
     // all the participants in this test.
-    // /////////////////////////////////////////////////////////////////////////////////////////////
-    let instance_info = InstanceInfo {
-        global_seq: client.global_seq(),
-        group_seq: client.group_seq(),
-        peer_id,
-        multiaddr,
-    };
+    let node_id = client.global_seq() as usize;
+    let instance_info = InstanceInfo { peer_id, multiaddr };
 
     client.record_message(format!("InstanceInfo: {:?}", instance_info));
 
     let participants = {
-        let mut infos = publish_and_collect("node_info", &client, instance_info.clone()).await?;
-        // Remove the info about myself.
-        let pos = infos
-            .iter()
-            .position(|i| i.peer_id == peer_id)
-            .expect("Should have info about myself");
-        infos.remove(pos);
+        let mut infos =
+            publish_and_collect("node_info", &client, (node_id, instance_info.clone())).await?;
         infos
+            .into_iter()
+            .filter(|(other_node_id, _)| *other_node_id != node_id)
+            .collect::<HashMap<usize, InstanceInfo>>()
     };
 
-    honest::run(client, instance_info, participants, local_key).await?;
+    let peers_to_dial = network
+        .outbound_peers()
+        .get(&node_id)
+        .expect("Current node id should be in the network configuration");
+    for outbound_node_id in peers_to_dial {
+        let peer_info = participants
+            .get(&outbound_node_id)
+            .expect("All participants appear in the network configuration");
+        let addr = &peer_info.multiaddr;
+        tracing::info!("Dialing [{node_id}] -> [{outbound_node_id}] using {addr}")
+    }
+
+    // honest::run(client, instance_info, participants, local_key).await?;
 
     Ok(())
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct InstanceInfo {
-    /// A global sequence number assigned to this test instance by the sync service.
-    global_seq: u64,
-    /// A group-scoped sequence number assigned to this test instance by the sync service.
-    group_seq: u64,
     peer_id: PeerId,
     multiaddr: Multiaddr,
-}
-
-impl InstanceInfo {
-    fn name(&self) -> String {
-        format!("{}", self.group_seq)
-    }
 }

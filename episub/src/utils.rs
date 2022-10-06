@@ -1,5 +1,3 @@
-use crate::InstanceInfo;
-use chrono::{DateTime, Local, Utc};
 use libp2p::futures::FutureExt;
 use libp2p::futures::{Stream, StreamExt};
 use serde::de::DeserializeOwned;
@@ -7,18 +5,12 @@ use serde::Serialize;
 use std::borrow::Cow;
 use std::fmt::Debug;
 use testground::client::Client;
-use testground::WriteQuery;
 use tracing::{debug, info};
 
 // States for `barrier()`
 pub(crate) const BARRIER_STARTED_LIBP2P: &str = "Started libp2p";
 pub(crate) const BARRIER_WARMUP: &str = "Warmup";
 pub(crate) const BARRIER_DONE: &str = "Done";
-
-// Tags for InfluxDB
-const TAG_INSTANCE_PEER_ID: &str = "instance_peer_id";
-const TAG_INSTANCE_NAME: &str = "instance_name";
-const TAG_RUN_ID: &str = "run_id";
 
 /// Publish info and collect it from the participants. The return value includes one published by
 /// myself.
