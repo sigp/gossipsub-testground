@@ -16,15 +16,3 @@ tokio = { version = "1.19.2", features = ["macros"] }
 tracing = "0.1.35"
 tracing-subscriber = { version = "0.3.11", features = ["env-filter"] }
 npg = { git = "https://github.com/sigp/eth-npg", branch = "main" }
-
-
-[patch]
-[patch.crates-io]
-types = { git = "https://github.com/divagant-martian/lighthouse", branch = "sizes" }
-eth2_ssz = { git = "https://github.com/divagant-martian/lighthouse", branch = "sizes" }
-eth2_ssz_types = { git = "https://github.com/divagant-martian/lighthouse", branch = "sizes" }
-eth2_serde_utils = { git = "https://github.com/divagant-martian/lighthouse", branch = "sizes" }
-tree_hash = { git = "https://github.com/divagant-martian/lighthouse", branch = "sizes" }
-eth2_hashing = { git = "https://github.com/divagant-martian/lighthouse", branch = "sizes" }
-eth2_ssz_derive = { git = "https://github.com/divagant-martian/lighthouse", branch = "sizes" }
-tree_hash_derive = { git = "https://github.com/divagant-martian/lighthouse", branch = "sizes" }
