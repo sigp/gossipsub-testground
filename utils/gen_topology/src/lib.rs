@@ -126,19 +126,17 @@ impl Network {
         // topology checks
         //
 
-        let dialing_peers: HashSet<NodeId> = outbound_peers.keys().cloned().collect();
-        let dialed_peers: HashSet<NodeId> = outbound_peers
-            .values()
-            .flat_map(|dialed_peers| dialed_peers.iter())
+        let connected_peers: HashSet<NodeId> = outbound_peers
+            .iter()
+            .flat_map(|(peer_a, dialed_peers)| dialed_peers.iter().chain(Some(peer_a)))
             .cloned()
             .collect();
         let expected_peers: HashSet<usize> = (0..params.total_nodes).collect();
-        if dialing_peers != expected_peers {
-            return Err("set of dialing peers and expected peers differ".to_string());
-        }
-
-        if dialed_peers != expected_peers {
-            return Err("set of dialed peers and expected peers differ".to_string());
+        if connected_peers != expected_peers {
+            return Err(format!(
+                "set of dialed peers and expected peers differ: missing {:?}",
+                expected_peers.difference(&connected_peers)
+            ));
         }
 
         println!("Connectedness should be checked with an external tool!");
@@ -165,8 +163,6 @@ impl Network {
             all_validators.shuffle(&mut gen);
             cuts.sort();
 
-            println!("CUTS: {cuts:?}");
-
             let validator_assignments: BTreeMap<NodeId, BTreeSet<ValId>> = cuts
                 .windows(2)
                 .enumerate()
@@ -184,8 +180,6 @@ impl Network {
 
             validator_assignments
         };
-
-        println!("{:?}", validator_assignments);
 
         let outbound_peers = {
             let mut outbound_peers: BTreeMap<NodeId, Vec<NodeId>> = BTreeMap::default();
