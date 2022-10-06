@@ -57,7 +57,7 @@ fn gen_and_save() -> Result<(), String> {
     // gen the config file
     let mut file = std::fs::File::create(config_file_name)
         .map_err(|e| format!("Failed creating network file {e}"))?;
-    let network_rep = serde_json::to_string_pretty(&network)
+    let network_rep = serde_json::to_string(&network)
         .map_err(|e| format!("Failed to create network file {e}"))?;
     write!(file, "{}", network_rep).map_err(|e| format!("Failed to write network file {e}"))?;
 
