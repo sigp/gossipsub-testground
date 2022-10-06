@@ -8,4 +8,4 @@ edition = "2021"
 [dependencies]
 gen_topology = { path = "../gen_topology" }
 clap = { version = "4.0.10", features = ["derive"] }
-serde_json = "1.0"
+serde_json.workspace = true

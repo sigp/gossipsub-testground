@@ -1,4 +1,4 @@
-name = "smoke"
+name = "emulation"
 
 [defaults]
 builder = "docker:generic"
@@ -11,8 +11,11 @@ enabled = true
 enabled = true
 
 [[testcases]]
-name = "smoke"
-instances = { min = 2, max = 100, default = 2 }
-
+name = "emulation"
+instances = { min = 3, max = 100, default = 3 }
   [testcases.params]
-  gossipsub_history_length = { type = "int", desc = "Number of heartbeats to keep in the `memcache`", default = 5 }
+  ## honest node config
+  peers_to_connect = { type = "int", desc = "The number of peers to connect", default=5 }
+  message_rate = { type = "int", desc = "The number of messages to publish per 1 second.", default=100 }
+  warmup = { type = "int", desc = "Time to wait for nodes to establish connections before beginning publishing", default=5, unit="sec" }
+  run = { type = "int", desc = "Time to run the emulation", default=120, unit="sec" }
