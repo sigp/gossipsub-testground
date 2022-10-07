@@ -33,6 +33,7 @@ RUN cd ./plan/ && cargo build --release
 
 FROM debian:bullseye-slim
 COPY --from=builder /usr/src/test-plan/plan/target/release/episub /usr/local/bin/episub
+COPY --from=builder /usr/src/test-plan/plan/16instances.json /home/16instances.json
 
 # Configure Logging
 # ENV RUST_LOG=libp2p_gossipsub=debug

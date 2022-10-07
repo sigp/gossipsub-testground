@@ -13,6 +13,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 const CONFIG_FILE_KEY: &str = "config_file";
+const NULL_CONFIG_FILE: &str = "null";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -42,6 +43,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .get(CONFIG_FILE_KEY)
         .ok_or("missing configuration file")?
         .to_owned();
+    if config_file == NULL_CONFIG_FILE {
+        return Err("missing configuration file".into());
+    }
 
     let file = File::open(config_file)?;
     let reader = BufReader::new(file);
@@ -49,13 +53,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Publish information about this test instance to the network and collect the information of
     // all the participants in this test.
-    let node_id = client.global_seq() as usize;
+    // The network definition starts at 0 and the testground sequences start at 1, so adjust
+    // accordingly.
+    let node_id = client.global_seq() as usize - 1;
     let instance_info = InstanceInfo { peer_id, multiaddr };
 
     client.record_message(format!("InstanceInfo: {:?}", instance_info));
 
     let participants = {
-        let mut infos =
+        let infos =
             publish_and_collect("node_info", &client, (node_id, instance_info.clone())).await?;
         infos
             .into_iter()
