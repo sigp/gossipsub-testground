@@ -75,7 +75,7 @@ pub(crate) async fn run(
         // &mut registry,
         keypair.clone(),
         instance_info.clone(),
-        &participants,
+        participants,
         client.clone(),
         &test_params,
     )
@@ -142,7 +142,7 @@ enum PublishState {
 pub(crate) struct HonestNetwork {
     swarm: Swarm<Gossipsub>,
     instance_info: InstanceInfo,
-    participants: HashMap<PeerId, String>,
+    participants: HashMap<usize, InstanceInfo>,
     client: Client,
     score_interval: Interval,
     publish_state: PublishState,
@@ -154,7 +154,7 @@ impl HonestNetwork {
     fn new(
         keypair: Keypair,
         instance_info: InstanceInfo,
-        participants: &HashMap<usize, InstanceInfo>,
+        participants: HashMap<usize, InstanceInfo>,
         client: Client,
         test_params: TestParams,
         recv: UnboundedReceiver<HonestMessage>,
@@ -193,15 +193,10 @@ impl HonestNetwork {
         }))
         .build();
 
-        let mut peer_to_instance_name = HashMap::new();
-        for info in participants {
-            // peer_to_instance_name.insert(info.peer_id, info.name());
-        }
-
         HonestNetwork {
             swarm,
             instance_info,
-            participants: peer_to_instance_name,
+            participants,
             client,
             score_interval: interval(Duration::from_secs(1)),
             publish_state: PublishState::Awaiting,
@@ -264,7 +259,7 @@ impl HonestNetwork {
 async fn spawn_network(
     keypair: Keypair,
     instance_info: InstanceInfo,
-    participants: &HashMap<usize, InstanceInfo>,
+    participants: HashMap<usize, InstanceInfo>,
     client: Client,
     test_params: &TestParams,
 ) -> Result<UnboundedSender<HonestMessage>, Box<dyn std::error::Error>> {
@@ -279,19 +274,6 @@ async fn spawn_network(
         recv,
     );
     honest_network.start().await;
-
-    // Setup discovery
-    let peers_to_connect = {
-        let mut honest = participants.iter().collect::<Vec<_>>();
-
-        // Select peers to connect from the honest.
-        //TODO connect peers here
-    };
-    client.record_message(format!("Peers to connect: {:?}", peers_to_connect));
-
-    // for peer in peers_to_connect {
-    // honest_network.dial(peer.multiaddr)?;
-    // }
 
     honest_network.spawn();
 
