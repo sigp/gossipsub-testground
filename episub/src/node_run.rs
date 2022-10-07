@@ -22,7 +22,6 @@ use libp2p::{Multiaddr, Swarm};
 use std::collections::HashMap;
 use std::time::Duration;
 use testground::client::Client;
-use testground::WriteQuery;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::{interval, Interval};
 use tracing::debug;
@@ -32,8 +31,6 @@ pub(crate) const PRUNE_BACKOFF: u64 = 60;
 
 #[derive(Clone)]
 pub(crate) struct TestParams {
-    pub(crate) peers_to_connect: usize,
-    pub(crate) message_rate: u64,
     pub(crate) warmup: Duration,
     pub(crate) run: Duration,
 }
@@ -42,14 +39,6 @@ impl TestParams {
     pub(crate) fn new(
         instance_params: HashMap<String, String>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        let peers_to_connect = instance_params
-            .get("peers_to_connect")
-            .ok_or("peers_to_connect is not specified.")?
-            .parse::<usize>()?;
-        let message_rate = instance_params
-            .get("message_rate")
-            .ok_or("message_rate is not specified.")?
-            .parse::<u64>()?;
         let warmup = instance_params
             .get("warmup")
             .ok_or("warmup is not specified.")?
@@ -60,8 +49,6 @@ impl TestParams {
             .parse::<u64>()?;
 
         Ok(TestParams {
-            peers_to_connect,
-            message_rate,
             warmup: Duration::from_secs(warmup),
             run: Duration::from_secs(run),
         })
@@ -71,13 +58,10 @@ impl TestParams {
 pub(crate) async fn run(
     client: Client,
     instance_info: InstanceInfo,
-    participants: Vec<InstanceInfo>,
+    participants: HashMap<usize, InstanceInfo>,
     keypair: Keypair,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let run_id = &client.run_parameters().test_run;
-
-    // A topic used in this test plan. Only a single topic is supported for now.
-    let topic: IdentTopic = Topic::new("emulate");
 
     let test_params = TestParams::new(client.run_parameters().test_instance_params)?;
 
@@ -93,7 +77,6 @@ pub(crate) async fn run(
         instance_info.clone(),
         &participants,
         client.clone(),
-        &topic,
         &test_params,
     )
     .await?;
@@ -105,41 +88,17 @@ pub(crate) async fn run(
         )
         .await?;
 
-    // ////////////////////////////////////////////////////////////////////////
-    // Subscribe to a topic and wait for `warmup` time to expire
-    // ////////////////////////////////////////////////////////////////////////
-    network_send.send(HonestMessage::Subscribe(topic.clone()))?;
+    // Subscribe to a topic and wait for `warmup` time to expire TODO: subscriptions?
     tokio::time::sleep(test_params.warmup).await;
 
     client
         .signal_and_wait(BARRIER_WARMUP, client.run_parameters().test_instance_count)
         .await?;
 
-    // ////////////////////////////////////////////////////////////////////////
     // Publish messages
-    // ////////////////////////////////////////////////////////////////////////
-    let publish_interval = Duration::from_millis(1000 / test_params.message_rate);
-    let total_expected_messages = test_params.run.as_millis() / publish_interval.as_millis();
+    // TODO
 
-    client.record_message(format!(
-            "Publishing to topic `{}`. message_rate: {}/1s, publish_interval {:?}, total expected messages: {}",
-            topic,
-            test_params.message_rate,
-            publish_interval,
-            total_expected_messages
-        ));
-
-    network_send.send(HonestMessage::StartPublishing)?;
-    tokio::time::sleep(test_params.run).await;
-    network_send.send(HonestMessage::StopPublishing)?;
-
-    client
-        .signal_and_wait(BARRIER_DONE, client.run_parameters().test_instance_count)
-        .await?;
-
-    // ////////////////////////////////////////////////////////////////////////
-    // Record metrics
-    // ////////////////////////////////////////////////////////////////////////
+    // Record metrics TODO
 
     client.record_success().await?;
     Ok(())
@@ -186,9 +145,7 @@ pub(crate) struct HonestNetwork {
     participants: HashMap<PeerId, String>,
     client: Client,
     score_interval: Interval,
-    publish_interval: Interval,
     publish_state: PublishState,
-    topic: IdentTopic,
     recv: UnboundedReceiver<HonestMessage>,
 }
 
@@ -197,9 +154,8 @@ impl HonestNetwork {
     fn new(
         keypair: Keypair,
         instance_info: InstanceInfo,
-        participants: &Vec<InstanceInfo>,
+        participants: &HashMap<usize, InstanceInfo>,
         client: Client,
-        topic: &IdentTopic,
         test_params: TestParams,
         recv: UnboundedReceiver<HonestMessage>,
     ) -> Self {
@@ -220,10 +176,7 @@ impl HonestNetwork {
             .expect("Valid configuration");
 
             // Setup the scoring system.
-            let mut peer_score_params = PeerScoreParams::default();
-            peer_score_params
-                .topics
-                .insert(topic.hash(), TopicScoreParams::default());
+            let peer_score_params = PeerScoreParams::default();
             gs.with_peer_score(peer_score_params, PeerScoreThresholds::default())
                 .expect("Valid score params and thresholds");
 
@@ -251,9 +204,7 @@ impl HonestNetwork {
             participants: peer_to_instance_name,
             client,
             score_interval: interval(Duration::from_secs(1)),
-            publish_interval: interval(Duration::from_millis(1000 / test_params.message_rate)),
             publish_state: PublishState::Awaiting,
-            topic: topic.clone(),
             recv,
         }
     }
@@ -283,12 +234,7 @@ impl HonestNetwork {
                     _ = self.score_interval.tick() => {
                         // self.record_peer_scores().await;
                     }
-                    // Publish messages
-                    _ = self.publish_interval.tick(), if matches!(self.publish_state, PublishState::Started) => {
-                        if let Err(e) = self.swarm.behaviour_mut().publish(self.topic.clone(), "message".as_bytes()) {
-                            self.client.record_message(format!("Failed to publish message: {}", e))
-                        }
-                    }
+                    // Publish messages TODO: here
                     event = self.swarm.select_next_some() => {
                         debug!("SwarmEvent: {:?}", event);
                     }
@@ -318,9 +264,8 @@ impl HonestNetwork {
 async fn spawn_network(
     keypair: Keypair,
     instance_info: InstanceInfo,
-    participants: &Vec<InstanceInfo>,
+    participants: &HashMap<usize, InstanceInfo>,
     client: Client,
-    topic: &IdentTopic,
     test_params: &TestParams,
 ) -> Result<UnboundedSender<HonestMessage>, Box<dyn std::error::Error>> {
     let (send, recv) = tokio::sync::mpsc::unbounded_channel();
@@ -330,7 +275,6 @@ async fn spawn_network(
         instance_info,
         participants,
         client.clone(),
-        topic,
         test_params.clone(),
         recv,
     );

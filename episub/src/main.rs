@@ -1,4 +1,4 @@
-mod honest;
+mod node_run;
 mod utils;
 
 use crate::utils::publish_and_collect;
@@ -81,7 +81,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tracing::info!("Dialing [{node_id}] -> [{outbound_node_id}] using {addr}")
     }
 
-    // honest::run(client, instance_info, participants, local_key).await?;
+    node_run::run(client, instance_info, participants, local_key).await?;
 
     Ok(())
 }
