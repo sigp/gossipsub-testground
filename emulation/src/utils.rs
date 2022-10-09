@@ -10,6 +10,7 @@ use prometheus_client::encoding::proto::openmetrics_data_model::MetricFamily;
 use prometheus_client::encoding::proto::HistogramValue;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde_json::Value;
 use std::borrow::Cow;
 use std::fmt::Debug;
 use testground::client::Client;
@@ -34,16 +35,25 @@ pub(crate) async fn publish_and_collect<T: Serialize + DeserializeOwned>(
 ) -> Result<Vec<T>, Box<dyn std::error::Error>> {
     const TOPIC: &str = "publish_and_collect";
 
-    client.publish(TOPIC, serde_json::to_string(&info)?).await?;
+    client
+        .publish(
+            TOPIC,
+            Cow::Owned(Value::String(serde_json::to_string(&info)?)),
+        )
+        .await?;
 
-    let mut stream = client.subscribe(TOPIC).await;
+    let mut stream = client.subscribe(TOPIC, u16::MAX.into()).await;
 
     let mut vec: Vec<T> = vec![];
 
     for _ in 0..client.run_parameters().test_instance_count {
         match stream.next().await {
             Some(Ok(other)) => {
-                let info: T = serde_json::from_str(&other)?;
+                // let info: T = serde_json::from_str(&other)?;
+                let info: T = match other {
+                    Value::String(str) => serde_json::from_str(&str)?,
+                    _ => unreachable!(),
+                };
                 vec.push(info);
             }
             Some(Err(e)) => return Err(Box::new(e)),
