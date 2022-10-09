@@ -138,7 +138,7 @@
         }
       },
       "pluginVersion": "9.1.5",
-      "repeat": "instance",
+      "repeat": "instance_name",
       "repeatDirection": "h",
       "targets": [
         {
@@ -147,17 +147,17 @@
             "uid": "${DS_INFLUXDB}"
           },
           "key": "Q-6535cb9e-575c-4fab-a755-06776b267426-0",
-          "query": "SELECT * FROM \"scores\" WHERE run_id = '${run_id:text}' AND instance_name = '${instance:text}'",
+          "query": "SELECT * FROM \"scores\" WHERE run_id = '${run_id:text}' AND instance_name = '${instance_name:text}'",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table"
         }
       ],
-      "title": "${instance}",
+      "title": "${instance_name}",
       "type": "timeseries"
     }
   ],
-  "refresh": "5s",
+  "refresh": false,
   "schemaVersion": 37,
   "style": "dark",
   "tags": [],
@@ -166,19 +166,19 @@
       {
         "current": {
           "selected": false,
-          "text": "cct1vlb4lvk4irh6jk60",
-          "value": "cct1vlb4lvk4irh6jk60"
+          "text": "cd17shj4lvk1fog1qmf0",
+          "value": "cd17shj4lvk1fog1qmf0"
         },
         "hide": 0,
         "name": "run_id",
         "options": [
           {
-            "selected": true,
-            "text": "cct1vlb4lvk4irh6jk60",
-            "value": "cct1vlb4lvk4irh6jk60"
+            "selected": false,
+            "text": "",
+            "value": ""
           }
         ],
-        "query": "cct1vlb4lvk4irh6jk60",
+        "query": "cd17shj4lvk1fog1qmf0",
         "skipUrlSync": false,
         "type": "textbox"
       },
@@ -192,7 +192,7 @@
         "hide": 0,
         "includeAll": true,
         "multi": true,
-        "name": "instance",
+        "name": "instance_name",
         "options": [],
         "query": "SELECT instance_name FROM \"participants\" WHERE \"run_id\" = '${run_id:text}' ",
         "refresh": 1,
@@ -204,13 +204,13 @@
     ]
   },
   "time": {
-    "from": "now-5m",
-    "to": "now"
+    "from": "2022-10-09T07:57:58.989Z",
+    "to": "2022-10-09T08:00:02.988Z"
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Peer scores",
+  "title": "PeerScores",
   "uid": "eeQYWAV4z",
-  "version": 15,
+  "version": 19,
   "weekStart": ""
 }

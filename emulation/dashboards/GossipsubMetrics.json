@@ -1037,8 +1037,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1140,8 +1139,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1243,8 +1241,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1359,8 +1356,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1462,8 +1458,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1565,8 +1560,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1691,8 +1685,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1767,8 +1760,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1882,8 +1874,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1997,8 +1988,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -2014,7 +2004,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 150
+        "y": 102
       },
       "id": 28,
       "options": {
@@ -2061,7 +2051,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 158
+        "y": 110
       },
       "id": 31,
       "panels": [],
@@ -2100,8 +2090,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -2117,7 +2106,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 159
+        "y": 111
       },
       "id": 29,
       "options": {
@@ -2204,8 +2193,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -2221,7 +2209,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 159
+        "y": 111
       },
       "id": 36,
       "options": {
@@ -2283,19 +2271,19 @@
       {
         "current": {
           "selected": false,
-          "text": "ccv1e734lvkcruuq9ib0",
-          "value": "ccv1e734lvkcruuq9ib0"
+          "text": "cd17shj4lvk1fog1qmf0",
+          "value": "cd17shj4lvk1fog1qmf0"
         },
         "hide": 0,
         "name": "run_id",
         "options": [
           {
-            "selected": true,
-            "text": "ccv1e734lvkcruuq9ib0",
-            "value": "ccv1e734lvkcruuq9ib0"
+            "selected": false,
+            "text": "",
+            "value": ""
           }
         ],
-        "query": "ccv1e734lvkcruuq9ib0",
+        "query": "cd17shj4lvk1fog1qmf0",
         "skipUrlSync": false,
         "type": "textbox"
       },
@@ -2382,8 +2370,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Gossipsub metrics",
+  "title": "GossipsubMetrics",
   "uid": "zXV9rK44k",
-  "version": 49,
+  "version": 50,
   "weekStart": ""
 }
