@@ -1,7 +1,10 @@
+extern crate core;
+
 use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::upgrade::{SelectUpgrade, Version};
 use libp2p::core::ConnectedPoint;
 use libp2p::dns::TokioDnsConfig;
+use libp2p::futures::FutureExt;
 use libp2p::futures::StreamExt;
 use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
 use libp2p::gossipsub::{
@@ -15,14 +18,16 @@ use libp2p::noise::NoiseConfig;
 use libp2p::swarm::{SwarmBuilder, SwarmEvent};
 use libp2p::tcp::{GenTcpConfig, TokioTcpTransport};
 use libp2p::yamux::YamuxConfig;
-use libp2p::{Multiaddr, PeerId, Transport};
+use libp2p::{Multiaddr, PeerId, Swarm, Transport};
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::borrow::Cow;
 use std::collections::HashSet;
 use testground::client::Client;
 use testground::RunParameters;
+use tracing::{debug, info, warn};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -86,60 +91,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .listen_on(multiaddr.clone())
         .expect("Swarm starts listening");
 
-    // Sets a barrier on the supplied state that fires when it reaches all participants.
-    macro_rules! barrier {
-        ($state: expr) => {
-            loop {
-                tokio::select! {
-                    _ = client.signal_and_wait($state, run_parameters.test_instance_count) => {
-                        break;
-                    }
-                    event = swarm.select_next_some() => {
-                        // Record the Swarm events that happen while waiting for the barrier.
-                        match event {
-                            SwarmEvent::Behaviour(gossipsub_event) => match gossipsub_event {
-                                GossipsubEvent::Subscribed { peer_id, topic } => {
-                                    client.record_message(format!(
-                                        "Peer {} subscribed to a topic: {}",
-                                        peer_id, topic
-                                    ));
-                                    event_subscribed += 1;
-                                }
-                                GossipsubEvent::Message {
-                                    propagation_source,
-                                    message_id: _,
-                                    message,
-                                } => {
-                                    client.record_message(format!(
-                                        "Message: propagation_source: {}, source: {:?}",
-                                        propagation_source, message.source
-                                    ));
-
-                                    if !event_message.insert(message.source.expect("Source peer id")) {
-                                        client
-                                            .record_failure(format!(
-                                                "Received duplicated message: {:?}",
-                                                message
-                                            ))
-                                            .await?;
-                                        return Ok(());
-                                    }
-                                }
-                                ev => {
-                                    client.record_message(format!("{:?}", ev))
-                                }
-                            }
-                            ev => {
-                                client.record_message(format!("{:?}", ev))
-                            }
-                        }
-                    }
-                }
-            }
-        };
-    }
-
-    barrier!("Started listening");
+    barrier_and_drive_swarm(
+        &client,
+        &mut swarm,
+        "Started listening",
+        &mut event_subscribed,
+        &mut event_message,
+    )
+    .await?;
 
     // ////////////////////////////////////////////////////////////////////////
     // Connect to a peer randomly selected
@@ -180,7 +139,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    barrier!("Connected to a peer");
+    barrier_and_drive_swarm(
+        &client,
+        &mut swarm,
+        "Connected to a peer",
+        &mut event_subscribed,
+        &mut event_message,
+    )
+    .await?;
 
     // ////////////////////////////////////////////////////////////////////////
     // Subscribe a topic
@@ -213,7 +179,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    barrier!("Subscribed a topic");
+    barrier_and_drive_swarm(
+        &client,
+        &mut swarm,
+        "Subscribed a topic",
+        &mut event_subscribed,
+        &mut event_message,
+    )
+    .await?;
 
     // ////////////////////////////////////////////////////////////////////////
     // Publish a single message
@@ -269,7 +242,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     client.record_message("Received all the published messages");
 
-    barrier!("Published a message");
+    barrier_and_drive_swarm(
+        &client,
+        &mut swarm,
+        "Published a message",
+        &mut event_subscribed,
+        &mut event_message,
+    )
+    .await?;
 
     client.record_success().await?;
 
@@ -325,4 +305,55 @@ async fn publish_and_collect<T: Serialize + DeserializeOwned>(
     }
 
     Ok(vec)
+}
+
+/// Sets a barrier on the supplied state that fires when it reaches all participants.
+async fn barrier_and_drive_swarm(
+    client: &Client,
+    swarm: &mut Swarm<Gossipsub>,
+    state: impl Into<Cow<'static, str>> + Copy,
+    event_subscribed: &mut usize,
+    event_message: &mut HashSet<PeerId>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    info!(
+        "Signal and wait for all peers to signal being done with \"{}\".",
+        state.into(),
+    );
+
+    let events = swarm
+        .take_until(client.signal_and_wait(state, 3).boxed_local()) // TODO: fix the hard-coded `target: 3` at the time of upgradeing testground sdk.
+        .collect::<Vec<_>>()
+        .await;
+
+    for event in &events {
+        match event {
+            SwarmEvent::Behaviour(gossipsub_event) => match gossipsub_event {
+                GossipsubEvent::Subscribed { peer_id, topic } => {
+                    client.record_message(format!(
+                        "Peer {} subscribed to a topic: {}",
+                        peer_id, topic
+                    ));
+                    *event_subscribed += 1;
+                }
+                GossipsubEvent::Message {
+                    propagation_source,
+                    message_id: _,
+                    message,
+                } => {
+                    client.record_message(format!(
+                        "Message: propagation_source: {}, source: {:?}",
+                        propagation_source, message.source
+                    ));
+
+                    if !event_message.insert(message.source.expect("Source peer id")) {
+                        warn!("Received duplicated message: {:?}", message);
+                    }
+                }
+                _ => debug!("GossipsubEvent: {:?}", gossipsub_event),
+            },
+            _ => debug!("SwarmEvent: {:?}", event),
+        };
+    }
+
+    Ok(())
 }
