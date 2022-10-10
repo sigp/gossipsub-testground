@@ -11,8 +11,8 @@ use libp2p::swarm::{SwarmBuilder, SwarmEvent};
 use libp2p::tcp::TokioTcpConfig;
 use libp2p::yamux::YamuxConfig;
 use libp2p::{Multiaddr, PeerId, Transport};
-use libp2p_gossipsub::subscription_filter::AllowAllSubscriptionFilter;
-use libp2p_gossipsub::{
+use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
+use libp2p::gossipsub::{
     Gossipsub, GossipsubConfigBuilder, GossipsubEvent, IdentTopic as Topic, IdentityTransform,
     MessageAuthenticity,
 };

@@ -1857,7 +1857,6 @@ name = "smoke"
 version = "0.1.0"
 dependencies = [
  "libp2p",
- "libp2p-gossipsub",
  "rand 0.8.5",
  "serde",
  "serde_json",

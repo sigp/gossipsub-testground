@@ -7,7 +7,6 @@ edition = "2021"
 
 [dependencies]
 libp2p = { version = "0.45.1", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux"] }
-libp2p-gossipsub = "0.38.1"
 rand = "0.8.5"
 serde = "1.0.137"
 serde_json = "1.0.81"
