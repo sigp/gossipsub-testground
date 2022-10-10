@@ -3,19 +3,19 @@ use libp2p::core::upgrade::{SelectUpgrade, Version};
 use libp2p::core::ConnectedPoint;
 use libp2p::dns::TokioDnsConfig;
 use libp2p::futures::StreamExt;
-use libp2p::identity::Keypair;
-use libp2p::mplex::MplexConfig;
-use libp2p::multiaddr::Protocol;
-use libp2p::noise::NoiseConfig;
-use libp2p::swarm::{SwarmBuilder, SwarmEvent};
-use libp2p::tcp::TokioTcpConfig;
-use libp2p::yamux::YamuxConfig;
-use libp2p::{Multiaddr, PeerId, Transport};
 use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
 use libp2p::gossipsub::{
     Gossipsub, GossipsubConfigBuilder, GossipsubEvent, IdentTopic as Topic, IdentityTransform,
     MessageAuthenticity,
 };
+use libp2p::identity::Keypair;
+use libp2p::mplex::MplexConfig;
+use libp2p::multiaddr::Protocol;
+use libp2p::noise::NoiseConfig;
+use libp2p::swarm::{SwarmBuilder, SwarmEvent};
+use libp2p::tcp::{GenTcpConfig, TokioTcpTransport};
+use libp2p::yamux::YamuxConfig;
+use libp2p::{Multiaddr, PeerId, Transport};
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
 use serde::de::DeserializeOwned;
@@ -278,8 +278,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 // Set up an encrypted TCP transport over the Mplex and Yamux protocols.
 fn build_transport(keypair: &Keypair) -> libp2p::core::transport::Boxed<(PeerId, StreamMuxerBox)> {
-    let transport =
-        TokioDnsConfig::system(TokioTcpConfig::new().nodelay(true)).expect("DNS config");
+    let transport = TokioDnsConfig::system(TokioTcpTransport::new(
+        GenTcpConfig::default().nodelay(true),
+    ))
+    .expect("DNS config");
 
     let noise_keys = libp2p::noise::Keypair::<libp2p::noise::X25519Spec>::new()
         .into_authentic(keypair)
