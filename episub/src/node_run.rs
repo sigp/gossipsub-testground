@@ -1,59 +1,74 @@
-use crate::utils::{BARRIER_DONE, BARRIER_TOPOLOGY_READY, BARRIER_WARMUP};
+use crate::utils::{BARRIER_LIBP2P_READY, BARRIER_TOPOLOGY_READY};
 use crate::InstanceInfo;
-use chrono::Local;
-use gen_topology::Network as Topology;
+use gen_topology::Params;
 use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::upgrade::{SelectUpgrade, Version};
 use libp2p::dns::TokioDnsConfig;
 use libp2p::futures::StreamExt;
 use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
 use libp2p::gossipsub::{
-    Gossipsub, GossipsubConfigBuilder, IdentTopic, IdentityTransform, MessageAuthenticity,
-    PeerScoreParams, PeerScoreThresholds, Topic, TopicScoreParams,
+    Gossipsub, GossipsubConfigBuilder, IdentityTransform, MessageAuthenticity, PeerScoreParams,
+    PeerScoreThresholds,
 };
 use libp2p::identity::Keypair;
 use libp2p::mplex::MplexConfig;
 use libp2p::noise::NoiseConfig;
-use libp2p::swarm::{DialError, SwarmBuilder, SwarmEvent};
+use libp2p::swarm::{SwarmBuilder, SwarmEvent};
 use libp2p::tcp::{GenTcpConfig, TokioTcpTransport};
 use libp2p::yamux::YamuxConfig;
 use libp2p::PeerId;
+use libp2p::Swarm;
 use libp2p::Transport;
-use libp2p::{Multiaddr, Swarm};
+use npg::slot_generator::{Subnet, ValId};
+use npg::{Generator, Message};
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 use testground::client::Client;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::{interval, Interval};
 use tracing::{debug, info};
 
-/// The backoff time for pruned peers.
-pub(crate) const PRUNE_BACKOFF: u64 = 60;
+pub(crate) fn parse_params(
+    instance_count: usize,
+    instance_params: HashMap<String, String>,
+) -> Result<(Duration, Params), Box<dyn std::error::Error>> {
+    let seed = instance_params
+        .get("seed")
+        .ok_or("seed is not specified.")?
+        .parse::<u64>()?;
+    let no_val_percentage = instance_params
+        .get("no_val_percentage")
+        .ok_or("`no_val_percentage` is not specified")?
+        .parse::<usize>()?
+        .min(100);
+    let total_validators = instance_params
+        .get("total_validators")
+        .ok_or("`total_validators` not specified")?
+        .parse::<usize>()?;
+    let min_peers_per_node = instance_params
+        .get("min_peers_per_node")
+        .ok_or("`min_peers_per_node` not specified")?
+        .parse::<usize>()?;
+    let max_peers_per_node_inclusive = instance_params
+        .get("max_peers_per_node_inclusive")
+        .ok_or("`max_peers_per_node_inclusive` not specified")?
+        .parse::<usize>()?;
+    let total_nodes_without_vals = instance_count * no_val_percentage / 100;
+    let total_nodes_with_vals = instance_count - total_nodes_without_vals;
+    let run = instance_params
+        .get("run")
+        .ok_or("run is not specified.")?
+        .parse::<u64>()?;
 
-#[derive(Clone)]
-pub(crate) struct TestParams {
-    pub(crate) warmup: Duration,
-    pub(crate) run: Duration,
-}
+    let params = Params::new(
+        seed,
+        total_validators,
+        total_nodes_with_vals,
+        instance_count,
+        min_peers_per_node,
+        max_peers_per_node_inclusive,
+    )?;
 
-impl TestParams {
-    pub(crate) fn new(
-        instance_params: HashMap<String, String>,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
-        let warmup = instance_params
-            .get("warmup")
-            .ok_or("warmup is not specified.")?
-            .parse::<u64>()?;
-        let run = instance_params
-            .get("run")
-            .ok_or("run is not specified.")?
-            .parse::<u64>()?;
-
-        Ok(TestParams {
-            warmup: Duration::from_secs(warmup),
-            run: Duration::from_secs(run),
-        })
-    }
+    Ok((Duration::from_secs(run), params))
 }
 
 pub(crate) async fn run(
@@ -61,35 +76,25 @@ pub(crate) async fn run(
     node_id: usize,
     instance_info: InstanceInfo,
     participants: HashMap<usize, InstanceInfo>,
-    topology: Topology,
     keypair: Keypair,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let run_id = &client.run_parameters().test_run;
 
-    let test_params = TestParams::new(client.run_parameters().test_instance_params)?;
+    let test_instance_count = client.run_parameters().test_instance_count;
+    let (run_duration, params) = parse_params(
+        test_instance_count as usize,
+        client.run_parameters().test_instance_params,
+    )?;
 
-    // ////////////////////////////////////////////////////////////////////////
-    // Start libp2p
-    // ////////////////////////////////////////////////////////////////////////
-    // let mut registry: Registry<Box<dyn EncodeMetric>> = Registry::default();
-    // registry.sub_registry_with_prefix("gossipsub");
+    let (params, outbound_peers, validator_assignments) =
+        gen_topology::Network::generate(params)?.destructure();
 
-    let keypair = keypair.clone();
-    let node_id = node_id;
-    let instance_info = instance_info.clone();
-    let client = client.clone();
-    let test_params = &test_params;
-
-    let (params, outbound_peers, validator_assignments): (
-        gen_topology::Params,
-        std::collections::BTreeMap<usize, Vec<usize>>,
-        std::collections::BTreeMap<usize, std::collections::BTreeSet<usize>>,
-    ) = topology.destructure();
     let validator_set = validator_assignments
         .get(&node_id)
         .cloned()
         .unwrap_or_default();
-    let validator_set: HashSet<u64> = validator_set.into_iter().map(|v| v as u64).collect();
+    let validator_set: HashSet<ValId> =
+        validator_set.into_iter().map(|v| ValId(v as u64)).collect();
     let mut network = Network::new(
         keypair,
         node_id,
@@ -97,11 +102,19 @@ pub(crate) async fn run(
         participants.clone(),
         client.clone(),
         validator_set,
-        test_params.clone(),
+        params,
     );
+
+    client
+        .signal_and_wait(BARRIER_TOPOLOGY_READY, test_instance_count)
+        .await?;
 
     // Set up the listening address
     network.start_libp2p().await;
+
+    client
+        .signal_and_wait(BARRIER_LIBP2P_READY, test_instance_count)
+        .await?;
     // Dial the designated outbound peers
     network.dial_peers(outbound_peers).await;
 
@@ -112,7 +125,7 @@ pub(crate) async fn run(
         )
         .await?;
 
-    network.run_sim().await;
+    network.run_sim(run_duration).await;
 
     client.record_success().await?;
     Ok(())
@@ -144,27 +157,25 @@ pub(crate) struct Network {
     swarm: Swarm<Gossipsub>,
     node_id: usize,
     instance_info: InstanceInfo,
-    test_params: TestParams,
     participants: HashMap<usize, InstanceInfo>,
     client: Client,
     score_interval: Interval,
-    validator_set: HashSet<u64>,
+    messages_gen: Generator,
 }
 
 impl Network {
-    #[allow(clippy::too_many_arguments)]
     fn new(
         keypair: Keypair,
         node_id: usize,
         instance_info: InstanceInfo,
         participants: HashMap<usize, InstanceInfo>,
         client: Client,
-        validator_set: HashSet<u64>,
-        test_params: TestParams,
+        validator_set: HashSet<ValId>,
+        params: Params,
     ) -> Self {
         let gossipsub = {
             let gossipsub_config = GossipsubConfigBuilder::default()
-                .prune_backoff(Duration::from_secs(PRUNE_BACKOFF))
+                .prune_backoff(Duration::from_secs(60))
                 .history_length(12)
                 .build()
                 .expect("Valid configuration");
@@ -202,6 +213,26 @@ impl Network {
             validator_set.len()
         );
 
+        let genesis_slot = 0;
+        let genesis_duration = Duration::ZERO;
+        let slot_duration = Duration::from_secs(6);
+        let slots_per_epoch = 2;
+        let sync_subnet_size = 2;
+        let sync_committee_subnets = 2;
+        let target_aggregators = 14;
+        let attestation_subnets = 4;
+
+        let messages_gen = Generator::builder()
+            .slot_clock(genesis_slot, genesis_duration, slot_duration)
+            .slots_per_epoch(slots_per_epoch)
+            .sync_subnet_size(sync_subnet_size)
+            .sync_committee_subnets(sync_committee_subnets)
+            .total_validators(params.total_validators() as u64)
+            .target_aggregators(target_aggregators)
+            .attestation_subnets(attestation_subnets)
+            .build(validator_set)
+            .expect("need to adjust these params");
+
         Network {
             swarm,
             node_id,
@@ -209,8 +240,7 @@ impl Network {
             participants,
             client,
             score_interval: interval(Duration::from_secs(1)),
-            test_params,
-            validator_set,
+            messages_gen,
         }
     }
 
@@ -259,8 +289,8 @@ impl Network {
         info!("[{}] dialed {} peers", self.node_id, dialed_peers);
     }
 
-    async fn run_sim(&mut self) {
-        let deadline = tokio::time::sleep(self.test_params.run);
+    async fn run_sim(&mut self, run_duration: Duration) {
+        let deadline = tokio::time::sleep(run_duration);
         futures::pin_mut!(deadline);
         loop {
             tokio::select! {
@@ -268,11 +298,31 @@ impl Network {
                     // Sim complete
                     break;
                 }
+                Some(m) = self.messages_gen.next() => {
+                    let payload = m.payload();
+                    match m {
+                        Message::BeaconBlock { proposer: ValId(v) } => {
+                            // publish
+                        },
+                        Message::AggregateAndProofAttestation { aggregator: ValId(v), subnet: Subnet(s) } => {
+                            // publish
+                        },
+                        Message::Attestation { attester: ValId(v), subnet: Subnet(s) } => {
+                            // publish
+                        },
+                        Message::SignedContributionAndProof { validator: ValId(v), subnet: Subnet(s) } => {
+                            // publish
+                        },
+                        Message::SyncCommitteeMessage { validator: ValId(v), subnet: Subnet(s) } => {
+                            // publish
+                        },
+                    }
+
+                }
                 // Record peer scores
                 _ = self.score_interval.tick() => {
                     // self.record_peer_scores().await;
                 }
-                // Publish messages TODO: here
                 event = self.swarm.select_next_some() => {
                     debug!("SwarmEvent: {:?}", event);
                 }

@@ -8,12 +8,7 @@ use libp2p::{Multiaddr, PeerId};
 use serde::{Deserialize, Serialize};
 use testground::client::Client;
 
-use gen_topology::Network as Topology;
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::BufReader;
-const CONFIG_FILE_KEY: &str = "config_file";
-const NULL_CONFIG_FILE: &str = "null";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -36,21 +31,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         multiaddr
     };
 
-    // Read the network configuration file
-    let config_file = client
-        .run_parameters()
-        .test_instance_params
-        .get(CONFIG_FILE_KEY)
-        .ok_or("missing configuration file")?
-        .to_owned();
-    if config_file == NULL_CONFIG_FILE {
-        return Err("missing configuration file".into());
-    }
-
-    let file = File::open(config_file)?;
-    let reader = BufReader::new(file);
-    let topology: Topology = serde_json::from_reader(reader)?;
-
     // The network definition starts at 0 and the testground sequences start at 1, so adjust
     // accordingly.
     let node_id = client.global_seq() as usize - 1;
@@ -65,15 +45,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .collect::<HashMap<usize, InstanceInfo>>()
     };
 
-    node_run::run(
-        client,
-        node_id,
-        instance_info,
-        participants,
-        topology,
-        local_key,
-    )
-    .await?;
+    node_run::run(client, node_id, instance_info, participants, local_key).await?;
 
     Ok(())
 }

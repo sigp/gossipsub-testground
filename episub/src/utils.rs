@@ -1,16 +1,12 @@
-use libp2p::futures::FutureExt;
-use libp2p::futures::{Stream, StreamExt};
+use libp2p::futures::StreamExt;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::borrow::Cow;
-use std::fmt::Debug;
 use testground::client::Client;
-use tracing::{debug, info};
 
 // States for `barrier()`
-pub(crate) const BARRIER_TOPOLOGY_READY: &str = "Started libp2p, dialed outboud peers";
-pub(crate) const BARRIER_WARMUP: &str = "Warmup";
-pub(crate) const BARRIER_DONE: &str = "Done";
+pub(crate) const BARRIER_LIBP2P_READY: &str = "Started libp2p";
+pub(crate) const BARRIER_TOPOLOGY_READY: &str = "Topology generated";
 
 /// Publish info and collect it from the participants. The return value includes one published by
 /// myself.
@@ -39,32 +35,4 @@ pub(crate) async fn publish_and_collect<T: Serialize + DeserializeOwned>(
     }
 
     Ok(vec)
-}
-
-/// Sets a barrier on the supplied state that fires when it reaches all participants.
-pub(crate) async fn barrier_and_drive_swarm<
-    T: StreamExt + Unpin + libp2p::futures::stream::FusedStream,
->(
-    client: &Client,
-    swarm: &mut T,
-    state: impl Into<Cow<'static, str>> + Copy,
-) -> Result<(), Box<dyn std::error::Error>>
-where
-    <T as Stream>::Item: Debug,
-{
-    info!(
-        "Signal and wait for all peers to signal being done with \"{}\".",
-        state.into(),
-    );
-    swarm
-        .take_until(
-            client
-                .signal_and_wait(state, client.run_parameters().test_instance_count)
-                .boxed_local(),
-        )
-        .map(|event| debug!("Event: {:?}", event))
-        .collect::<Vec<()>>()
-        .await;
-
-    Ok(())
 }
