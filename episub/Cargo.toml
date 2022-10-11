@@ -18,3 +18,4 @@ tracing = "0.1.35"
 tracing-subscriber = { version = "0.3.14", features = ["env-filter"] }
 # This is ridiculous
 gen_topology = { git = "https://github.com/sigp/gossipsub-testground", branch = "episub" }
+futures = "0.3.24"

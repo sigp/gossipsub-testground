@@ -1,6 +1,7 @@
-use crate::utils::{BARRIER_DONE, BARRIER_STARTED_LIBP2P, BARRIER_WARMUP};
+use crate::utils::{BARRIER_DONE, BARRIER_TOPOLOGY_READY, BARRIER_WARMUP};
 use crate::InstanceInfo;
 use chrono::Local;
+use gen_topology::Network as Topology;
 use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::upgrade::{SelectUpgrade, Version};
 use libp2p::dns::TokioDnsConfig;
@@ -19,12 +20,12 @@ use libp2p::yamux::YamuxConfig;
 use libp2p::PeerId;
 use libp2p::Transport;
 use libp2p::{Multiaddr, Swarm};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 use testground::client::Client;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::{interval, Interval};
-use tracing::debug;
+use tracing::{debug, info};
 
 /// The backoff time for pruned peers.
 pub(crate) const PRUNE_BACKOFF: u64 = 60;
@@ -57,8 +58,10 @@ impl TestParams {
 
 pub(crate) async fn run(
     client: Client,
+    node_id: usize,
     instance_info: InstanceInfo,
     participants: HashMap<usize, InstanceInfo>,
+    topology: Topology,
     keypair: Keypair,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let run_id = &client.run_parameters().test_run;
@@ -71,34 +74,45 @@ pub(crate) async fn run(
     // let mut registry: Registry<Box<dyn EncodeMetric>> = Registry::default();
     // registry.sub_registry_with_prefix("gossipsub");
 
-    let network_send = spawn_network(
-        // &mut registry,
-        keypair.clone(),
-        instance_info.clone(),
-        participants,
+    let keypair = keypair.clone();
+    let node_id = node_id;
+    let instance_info = instance_info.clone();
+    let client = client.clone();
+    let test_params = &test_params;
+
+    let (params, outbound_peers, validator_assignments): (
+        gen_topology::Params,
+        std::collections::BTreeMap<usize, Vec<usize>>,
+        std::collections::BTreeMap<usize, std::collections::BTreeSet<usize>>,
+    ) = topology.destructure();
+    let validator_set = validator_assignments
+        .get(&node_id)
+        .cloned()
+        .unwrap_or_default();
+    let validator_set: HashSet<u64> = validator_set.into_iter().map(|v| v as u64).collect();
+    let mut network = Network::new(
+        keypair,
+        node_id,
+        instance_info,
+        participants.clone(),
         client.clone(),
-        &test_params,
-    )
-    .await?;
+        validator_set,
+        test_params.clone(),
+    );
+
+    // Set up the listening address
+    network.start_libp2p().await;
+    // Dial the designated outbound peers
+    network.dial_peers(outbound_peers).await;
 
     client
         .signal_and_wait(
-            BARRIER_STARTED_LIBP2P,
+            BARRIER_TOPOLOGY_READY,
             client.run_parameters().test_instance_count,
         )
         .await?;
 
-    // Subscribe to a topic and wait for `warmup` time to expire TODO: subscriptions?
-    tokio::time::sleep(test_params.warmup).await;
-
-    client
-        .signal_and_wait(BARRIER_WARMUP, client.run_parameters().test_instance_count)
-        .await?;
-
-    // Publish messages
-    // TODO
-
-    // Record metrics TODO
+    network.run_sim().await;
 
     client.record_success().await?;
     Ok(())
@@ -126,38 +140,27 @@ fn build_transport(keypair: &Keypair) -> libp2p::core::transport::Boxed<(PeerId,
         .boxed()
 }
 
-#[derive(Debug)]
-enum HonestMessage {
-    Subscribe(IdentTopic),
-    StartPublishing,
-    StopPublishing,
-}
-
-enum PublishState {
-    Awaiting,
-    Started,
-    Stopped,
-}
-
-pub(crate) struct HonestNetwork {
+pub(crate) struct Network {
     swarm: Swarm<Gossipsub>,
+    node_id: usize,
     instance_info: InstanceInfo,
+    test_params: TestParams,
     participants: HashMap<usize, InstanceInfo>,
     client: Client,
     score_interval: Interval,
-    publish_state: PublishState,
-    recv: UnboundedReceiver<HonestMessage>,
+    validator_set: HashSet<u64>,
 }
 
-impl HonestNetwork {
+impl Network {
     #[allow(clippy::too_many_arguments)]
     fn new(
         keypair: Keypair,
+        node_id: usize,
         instance_info: InstanceInfo,
         participants: HashMap<usize, InstanceInfo>,
         client: Client,
+        validator_set: HashSet<u64>,
         test_params: TestParams,
-        recv: UnboundedReceiver<HonestMessage>,
     ) -> Self {
         let gossipsub = {
             let gossipsub_config = GossipsubConfigBuilder::default()
@@ -193,18 +196,25 @@ impl HonestNetwork {
         }))
         .build();
 
-        HonestNetwork {
+        info!(
+            "[{}] running with {} validators",
+            node_id,
+            validator_set.len()
+        );
+
+        Network {
             swarm,
+            node_id,
             instance_info,
             participants,
             client,
             score_interval: interval(Duration::from_secs(1)),
-            publish_state: PublishState::Awaiting,
-            recv,
+            test_params,
+            validator_set,
         }
     }
 
-    async fn start(&mut self) {
+    async fn start_libp2p(&mut self) {
         self.swarm
             .listen_on(self.instance_info.multiaddr.clone())
             .expect("Swarm starts listening");
@@ -217,65 +227,56 @@ impl HonestNetwork {
         };
     }
 
-    fn dial(&mut self, addr: Multiaddr) -> Result<(), DialError> {
-        self.swarm.dial(addr)
+    pub async fn dial_peers(
+        &mut self,
+        outbound_peers: std::collections::BTreeMap<usize, Vec<usize>>,
+    ) {
+        let mut dialed_peers = 0;
+        if let Some(outbound_peers) = outbound_peers.get(&self.node_id) {
+            for peer_node_id in outbound_peers {
+                let InstanceInfo { peer_id, multiaddr } = self
+                    .participants
+                    .get(peer_node_id)
+                    .expect("All outbound peers are participants in the network")
+                    .clone();
+                info!(
+                    "[{}] dialing {} on {}",
+                    self.node_id, peer_node_id, multiaddr
+                );
+                if let Err(e) = self.swarm.dial(
+                    libp2p::swarm::dial_opts::DialOpts::peer_id(peer_id)
+                        .addresses(vec![multiaddr])
+                        .build(),
+                ) {
+                    panic!(
+                        "[{}] Dialing -> {} failed {}",
+                        self.node_id, peer_node_id, e
+                    );
+                }
+                dialed_peers += 1;
+            }
+        }
+        info!("[{}] dialed {} peers", self.node_id, dialed_peers);
     }
 
-    fn spawn(mut self) {
-        let fut = async move {
-            loop {
-                tokio::select! {
-                    // Record peer scores
-                    _ = self.score_interval.tick() => {
-                        // self.record_peer_scores().await;
-                    }
-                    // Publish messages TODO: here
-                    event = self.swarm.select_next_some() => {
-                        debug!("SwarmEvent: {:?}", event);
-                    }
-                    Some(message) = self.recv.recv() => {
-                        match message {
-                            HonestMessage::Subscribe(topic) => {
-                                if let Err(e) = self.swarm.behaviour_mut().subscribe(&topic) {
-                                    self.client.record_message(format!("Failed to subscribe: {}", e));
-                                }
-                            }
-                            HonestMessage::StartPublishing => {
-                                self.publish_state = PublishState::Started;
-                            }
-                            HonestMessage::StopPublishing => {
-                                self.publish_state = PublishState::Stopped;
-                            }
-                        }
-                    }
+    async fn run_sim(&mut self) {
+        let deadline = tokio::time::sleep(self.test_params.run);
+        futures::pin_mut!(deadline);
+        loop {
+            tokio::select! {
+                _ = deadline.as_mut() => {
+                    // Sim complete
+                    break;
+                }
+                // Record peer scores
+                _ = self.score_interval.tick() => {
+                    // self.record_peer_scores().await;
+                }
+                // Publish messages TODO: here
+                event = self.swarm.select_next_some() => {
+                    debug!("SwarmEvent: {:?}", event);
                 }
             }
-        };
-
-        tokio::runtime::Handle::current().spawn(fut);
+        }
     }
-}
-
-async fn spawn_network(
-    keypair: Keypair,
-    instance_info: InstanceInfo,
-    participants: HashMap<usize, InstanceInfo>,
-    client: Client,
-    test_params: &TestParams,
-) -> Result<UnboundedSender<HonestMessage>, Box<dyn std::error::Error>> {
-    let (send, recv) = tokio::sync::mpsc::unbounded_channel();
-
-    let mut honest_network = HonestNetwork::new(
-        keypair,
-        instance_info,
-        participants,
-        client.clone(),
-        test_params.clone(),
-        recv,
-    );
-    honest_network.start().await;
-
-    honest_network.spawn();
-
-    Ok(send)
 }

@@ -24,10 +24,11 @@ impl Params {
         seed: u64,
         total_validators: usize,
         total_nodes_with_vals: usize,
-        total_nodes: usize,
+        total_nodes_without_vals: usize,
         min_peers_per_node: usize,
         max_peers_per_node_inclusive: usize,
     ) -> Result<Self, &'static str> {
+        let total_nodes = total_nodes_with_vals + total_nodes_without_vals;
         if total_nodes_with_vals > total_nodes {
             return Err("bad number of nodes with validators");
         }

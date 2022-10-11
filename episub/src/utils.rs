@@ -8,7 +8,7 @@ use testground::client::Client;
 use tracing::{debug, info};
 
 // States for `barrier()`
-pub(crate) const BARRIER_STARTED_LIBP2P: &str = "Started libp2p";
+pub(crate) const BARRIER_TOPOLOGY_READY: &str = "Started libp2p, dialed outboud peers";
 pub(crate) const BARRIER_WARMUP: &str = "Warmup";
 pub(crate) const BARRIER_DONE: &str = "Done";
 

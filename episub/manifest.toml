@@ -1,4 +1,4 @@
-name = "emulation"
+name = "episub"
 
 [defaults]
 builder = "docker:generic"
