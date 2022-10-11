@@ -260,4 +260,19 @@ impl Network {
     pub fn params(&self) -> &Params {
         &self.params
     }
+
+    pub fn destructure(
+        self,
+    ) -> (
+        Params,
+        BTreeMap<NodeId, Vec<NodeId>>,
+        BTreeMap<NodeId, BTreeSet<ValId>>,
+    ) {
+        let Network {
+            params,
+            validator_assignments,
+            outbound_peers,
+        } = self;
+        (params, outbound_peers, validator_assignments)
+    }
 }
