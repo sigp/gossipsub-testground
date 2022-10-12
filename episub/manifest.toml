@@ -3,6 +3,7 @@ name = "episub"
 [defaults]
 builder = "docker:generic"
 runner = "local:docker"
+disable_metrics = false
 
 [builders."docker:generic"]
 enabled = true

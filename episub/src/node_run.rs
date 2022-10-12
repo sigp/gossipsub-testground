@@ -5,6 +5,7 @@ use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::upgrade::{SelectUpgrade, Version};
 use libp2p::dns::TokioDnsConfig;
 use libp2p::futures::StreamExt;
+use libp2p::gossipsub::metrics::Config;
 use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
 use libp2p::gossipsub::{
     Gossipsub, GossipsubConfigBuilder, IdentTopic, IdentityTransform, MessageAuthenticity,
@@ -21,6 +22,8 @@ use libp2p::Swarm;
 use libp2p::Transport;
 use npg::slot_generator::{Subnet, ValId};
 use npg::{Generator, Message};
+use prometheus_client::encoding::proto::EncodeMetric;
+use prometheus_client::registry::Registry;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
@@ -127,7 +130,11 @@ pub(crate) async fn run(
         .unwrap_or_default();
     let validator_set: HashSet<ValId> =
         validator_set.into_iter().map(|v| ValId(v as u64)).collect();
+
+    let mut registry: Registry<Box<dyn EncodeMetric>> = Registry::default();
+    registry.sub_registry_with_prefix("gossipsub");
     let mut network = Network::new(
+        &mut registry,
         keypair,
         node_id,
         instance_info,
@@ -200,6 +207,7 @@ pub(crate) struct Network {
 
 impl Network {
     fn new(
+        registry: &mut Registry<Box<dyn EncodeMetric>>,
         keypair: Keypair,
         node_id: usize,
         instance_info: InstanceInfo,
@@ -218,7 +226,7 @@ impl Network {
             let mut gs = Gossipsub::new_with_subscription_filter_and_transform(
                 MessageAuthenticity::Signed(keypair.clone()),
                 gossipsub_config,
-                None,
+                Some((registry, Config::default())),
                 AllowAllSubscriptionFilter {},
                 IdentityTransform {},
             )
@@ -334,7 +342,9 @@ impl Network {
                     break;
                 }
                 Some(m) = self.messages_gen.next() => {
-                    let payload = m.payload();
+                    let raw_payload = m.payload();
+                    let payload = String::from_utf8_lossy(&raw_payload);
+                    info!("{payload}");
                     let (topic, val) = match m {
                         Message::BeaconBlock { proposer: ValId(v) } => {
                             (Topic::Blocks, v)
@@ -352,7 +362,7 @@ impl Network {
                             (Topic::SyncMessages(s), v)
                         },
                     };
-                    if let Err(e) = self.publish(topic.clone(), val, payload) {
+                    if let Err(e) = self.publish(topic.clone(), val, &payload) {
                         error!("Failed to publish message {e} to topic {topic:?}");
                     }
 
@@ -372,7 +382,7 @@ impl Network {
         &mut self,
         topic: Topic,
         validator: u64,
-        payload: Vec<u8>,
+        payload: &str,
     ) -> Result<libp2p::gossipsub::MessageId, libp2p::gossipsub::error::PublishError> {
         let ident_topic: IdentTopic = topic.into();
         // simple tuples as messages
