@@ -1,5 +1,9 @@
-use crate::utils::{BARRIER_LIBP2P_READY, BARRIER_TOPOLOGY_READY};
+use crate::utils::{
+    queries_for_counter, queries_for_gauge, queries_for_histogram, record_instance_info,
+    BARRIER_LIBP2P_READY, BARRIER_TOPOLOGY_READY,
+};
 use crate::InstanceInfo;
+use chrono::{DateTime, Utc};
 use gen_topology::Params;
 use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::upgrade::{SelectUpgrade, Version};
@@ -26,7 +30,7 @@ use prometheus_client::encoding::proto::EncodeMetric;
 use prometheus_client::registry::Registry;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use testground::client::Client;
 use tokio::time::{interval, Interval};
 use tracing::{debug, error, info};
@@ -109,8 +113,6 @@ pub(crate) async fn run(
     participants: HashMap<usize, InstanceInfo>,
     keypair: Keypair,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let run_id = &client.run_parameters().test_run;
-
     let test_instance_count = client.run_parameters().test_instance_count;
     let (run_duration, params) = parse_params(
         test_instance_count as usize,
@@ -131,10 +133,18 @@ pub(crate) async fn run(
     let validator_set: HashSet<ValId> =
         validator_set.into_iter().map(|v| ValId(v as u64)).collect();
 
+    record_instance_info(
+        &client,
+        node_id,
+        &instance_info,
+        &client.run_parameters().test_run,
+    )
+    .await?;
+
     let mut registry: Registry<Box<dyn EncodeMetric>> = Registry::default();
     registry.sub_registry_with_prefix("gossipsub");
     let mut network = Network::new(
-        &mut registry,
+        registry,
         keypair,
         node_id,
         instance_info,
@@ -199,15 +209,18 @@ pub(crate) struct Network {
     swarm: Swarm<Gossipsub>,
     node_id: usize,
     instance_info: InstanceInfo,
+    registry: Registry<Box<dyn EncodeMetric>>,
     participants: HashMap<usize, InstanceInfo>,
     client: Client,
-    score_interval: Interval,
+    start_time: DateTime<Utc>,
+    local_start_time: Instant,
+    metrics_interval: Interval,
     messages_gen: Generator,
 }
 
 impl Network {
     fn new(
-        registry: &mut Registry<Box<dyn EncodeMetric>>,
+        mut registry: Registry<Box<dyn EncodeMetric>>,
         keypair: Keypair,
         node_id: usize,
         instance_info: InstanceInfo,
@@ -226,7 +239,7 @@ impl Network {
             let mut gs = Gossipsub::new_with_subscription_filter_and_transform(
                 MessageAuthenticity::Signed(keypair.clone()),
                 gossipsub_config,
-                Some((registry, Config::default())),
+                Some((&mut registry, Config::default())),
                 AllowAllSubscriptionFilter {},
                 IdentityTransform {},
             )
@@ -274,14 +287,23 @@ impl Network {
             .build(validator_set)
             .expect("need to adjust these params");
 
+        let start_time: DateTime<Utc> =
+            DateTime::parse_from_rfc3339(&client.run_parameters().test_start_time)
+                .expect("Correct time date format from testground")
+                .into();
+        let local_start_time = Instant::now();
+
         Network {
             swarm,
             node_id,
             instance_info,
             participants,
             client,
-            score_interval: interval(Duration::from_secs(1)),
+            metrics_interval: interval(Duration::from_secs(5)),
             messages_gen,
+            start_time,
+            local_start_time,
+            registry,
         }
     }
 
@@ -368,12 +390,133 @@ impl Network {
 
                 }
                 // Record peer scores
-                _ = self.score_interval.tick() => {
-                    // self.record_peer_scores().await;
+                _ = self.metrics_interval.tick() => {
+                    self.record_metrics().await;
                 }
                 event = self.swarm.select_next_some() => {
                     debug!("SwarmEvent: {:?}", event);
                 }
+            }
+        }
+    }
+
+    async fn record_metrics(&self) {
+        let run_id = &self.client.run_parameters().test_run;
+
+        // Encode the metrics to an instance of the OpenMetrics protobuf format.
+        // https://github.com/OpenObservability/OpenMetrics/blob/main/proto/openmetrics_data_model.proto
+        let metric_set = prometheus_client::encoding::proto::encode(&self.registry);
+
+        let mut queries = vec![];
+
+        let elapsed = chrono::Duration::from_std(self.local_start_time.elapsed())
+            .expect("Durations are small");
+        let current = self.start_time + elapsed;
+
+        for family in metric_set.metric_families.iter() {
+            let q = match family.name.as_str() {
+                // ///////////////////////////////////
+                // Metrics per known topic
+                // ///////////////////////////////////
+                "topic_subscription_status" => queries_for_gauge(
+                    &current,
+                    family,
+                    self.node_id,
+                    &self.instance_info,
+                    run_id,
+                    "status",
+                ),
+                "topic_peers_counts" => queries_for_gauge(
+                    &current,
+                    family,
+                    self.node_id,
+                    &self.instance_info,
+                    run_id,
+                    "count",
+                ),
+                "invalid_messages_per_topic"
+                | "accepted_messages_per_topic"
+                | "ignored_messages_per_topic"
+                | "rejected_messages_per_topic" => {
+                    queries_for_counter(&current, family, self.node_id, &self.instance_info, run_id)
+                }
+                // ///////////////////////////////////
+                // Metrics regarding mesh state
+                // ///////////////////////////////////
+                "mesh_peer_counts" => queries_for_gauge(
+                    &current,
+                    family,
+                    self.node_id,
+                    &self.instance_info,
+                    run_id,
+                    "count",
+                ),
+                "mesh_peer_inclusion_events" => {
+                    queries_for_counter(&current, family, self.node_id, &self.instance_info, run_id)
+                }
+                "mesh_peer_churn_events" => {
+                    queries_for_counter(&current, family, self.node_id, &self.instance_info, run_id)
+                }
+                // ///////////////////////////////////
+                // Metrics regarding messages sent/received
+                // ///////////////////////////////////
+                "topic_msg_sent_counts"
+                | "topic_msg_published"
+                | "topic_msg_sent_bytes"
+                | "topic_msg_recv_counts_unfiltered"
+                | "topic_msg_recv_counts"
+                | "topic_msg_recv_bytes" => {
+                    queries_for_counter(&current, family, self.node_id, &self.instance_info, run_id)
+                }
+                // ///////////////////////////////////
+                // Metrics related to scoring
+                // ///////////////////////////////////
+                "score_per_mesh" => queries_for_histogram(
+                    &current,
+                    family,
+                    self.node_id,
+                    &self.instance_info,
+                    run_id,
+                ),
+                "scoring_penalties" => {
+                    queries_for_counter(&current, family, self.node_id, &self.instance_info, run_id)
+                }
+                // ///////////////////////////////////
+                // General Metrics
+                // ///////////////////////////////////
+                "peers_per_protocol" => queries_for_gauge(
+                    &current,
+                    family,
+                    self.node_id,
+                    &self.instance_info,
+                    run_id,
+                    "peers",
+                ),
+                "heartbeat_duration" => queries_for_histogram(
+                    &current,
+                    family,
+                    self.node_id,
+                    &self.instance_info,
+                    run_id,
+                ),
+                // ///////////////////////////////////
+                // Performance metrics
+                // ///////////////////////////////////
+                "topic_iwant_msgs" => {
+                    queries_for_counter(&current, family, self.node_id, &self.instance_info, run_id)
+                }
+                "memcache_misses" => {
+                    queries_for_counter(&current, family, self.node_id, &self.instance_info, run_id)
+                }
+                _ => unreachable!(),
+            };
+
+            queries.extend(q);
+        }
+
+        for query in queries {
+            if let Err(e) = self.client.record_metric(query).await {
+                error!("Failed to record metrics: {:?}", e);
             }
         }
     }
