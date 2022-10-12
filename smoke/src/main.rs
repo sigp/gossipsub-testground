@@ -23,10 +23,10 @@ use rand::seq::SliceRandom;
 use rand::SeedableRng;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde_json::Value;
 use std::borrow::Cow;
 use std::collections::HashSet;
 use testground::client::Client;
-use testground::RunParameters;
 use tracing::{debug, info, warn};
 
 #[tokio::main]
@@ -35,8 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tracing_subscriber::fmt().with_env_filter(env_filter).init();
     }
 
-    let (client, run_parameters) = Client::new().await?;
-    client.wait_network_initialized().await?;
+    let client = Client::new_and_init().await?;
 
     let local_key = Keypair::generate_ed25519();
     let local_peer_id = PeerId::from(local_key.public());
@@ -53,7 +52,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Build a Gossipsub network behaviour.
         let gossipsub_config = GossipsubConfigBuilder::default()
             .history_length(
-                run_parameters
+                client
+                    .run_parameters()
                     .test_instance_params
                     .get("gossipsub_history_length")
                     .ok_or("gossipsub_history_length is not specified")?
@@ -79,7 +79,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let multiaddr = {
         let mut multiaddr = Multiaddr::from(
-            run_parameters
+            client
+                .run_parameters()
                 .data_network_ip()?
                 .expect("Should have an IP address for the data network"),
         );
@@ -105,7 +106,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ////////////////////////////////////////////////////////////////////////
     let peer_addr = {
         // Collect addresses of test case participants.
-        let mut others = publish_and_collect(&client, &run_parameters, multiaddr.to_string())
+        let mut others = publish_and_collect(&client, multiaddr.to_string())
             .await?
             .iter()
             .filter(|&addr| addr != &multiaddr.to_string())
@@ -113,7 +114,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .collect::<Vec<_>>();
 
         // Select a peer to connect.
-        let mut rnd = rand::rngs::StdRng::seed_from_u64(run_parameters.test_instance_count);
+        let mut rnd =
+            rand::rngs::StdRng::seed_from_u64(client.run_parameters().test_instance_count);
         others.shuffle(&mut rnd);
         others.pop().unwrap()
     };
@@ -204,7 +206,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     swarm.behaviour_mut().publish(topic, "message".as_bytes())?;
 
     // Wait until all messages published by participants have been received.
-    if event_message.len() < (run_parameters.test_instance_count - 1) as usize {
+    if event_message.len() < (client.run_parameters().test_instance_count - 1) as usize {
         loop {
             match swarm.select_next_some().await {
                 SwarmEvent::Behaviour(gossipsub_event) => match gossipsub_event {
@@ -228,7 +230,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             return Ok(());
                         }
 
-                        if event_message.len() == (run_parameters.test_instance_count - 1) as usize
+                        if event_message.len()
+                            == (client.run_parameters().test_instance_count - 1) as usize
                         {
                             break;
                         }
@@ -282,21 +285,28 @@ fn build_transport(keypair: &Keypair) -> libp2p::core::transport::Boxed<(PeerId,
 // myself.
 async fn publish_and_collect<T: Serialize + DeserializeOwned>(
     client: &Client,
-    run_parameters: &RunParameters,
     info: T,
 ) -> Result<Vec<T>, Box<dyn std::error::Error>> {
     const TOPIC: &str = "publish_and_collect";
 
-    client.publish(TOPIC, serde_json::to_string(&info)?).await?;
+    client
+        .publish(
+            TOPIC,
+            Cow::Owned(Value::String(serde_json::to_string(&info)?)),
+        )
+        .await?;
 
-    let mut stream = client.subscribe(TOPIC).await;
+    let mut stream = client.subscribe(TOPIC, u16::MAX.into()).await;
 
     let mut vec: Vec<T> = vec![];
 
-    for _ in 0..run_parameters.test_instance_count {
+    for _ in 0..client.run_parameters().test_instance_count {
         match stream.next().await {
             Some(Ok(other)) => {
-                let info: T = serde_json::from_str(&other)?;
+                let info: T = match other {
+                    Value::String(str) => serde_json::from_str(&str)?,
+                    _ => unreachable!(),
+                };
                 vec.push(info);
             }
             Some(Err(e)) => return Err(Box::new(e)),
@@ -321,7 +331,11 @@ async fn barrier_and_drive_swarm(
     );
 
     let events = swarm
-        .take_until(client.signal_and_wait(state, 3).boxed_local()) // TODO: fix the hard-coded `target: 3` at the time of upgradeing testground sdk.
+        .take_until(
+            client
+                .signal_and_wait(state, client.run_parameters().test_instance_count)
+                .boxed_local(),
+        )
         .collect::<Vec<_>>()
         .await;
 
