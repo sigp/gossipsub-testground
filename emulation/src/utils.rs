@@ -49,7 +49,6 @@ pub(crate) async fn publish_and_collect<T: Serialize + DeserializeOwned>(
     for _ in 0..client.run_parameters().test_instance_count {
         match stream.next().await {
             Some(Ok(other)) => {
-                // let info: T = serde_json::from_str(&other)?;
                 let info: T = match other {
                     Value::String(str) => serde_json::from_str(&str)?,
                     _ => unreachable!(),
