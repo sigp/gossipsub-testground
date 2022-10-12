@@ -770,7 +770,7 @@ dependencies = [
  "chrono",
  "delay_map",
  "futures",
- "gen_topology",
+ "gen_topology 0.1.0 (git+https://github.com/sigp/gossipsub-testground?branch=episub)",
  "libp2p 0.48.0",
  "npg",
  "serde",
@@ -1048,11 +1048,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "gen_topology"
+version = "0.1.0"
+source = "git+https://github.com/sigp/gossipsub-testground?branch=episub#8a654ca201e64abc2609a7995ea445c67e759c76"
+dependencies = [
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "serde",
+]
+
+[[package]]
 name = "gen_topology_files"
 version = "0.1.0"
 dependencies = [
  "clap 4.0.13",
- "gen_topology",
+ "gen_topology 0.1.0",
  "serde_json",
 ]
 

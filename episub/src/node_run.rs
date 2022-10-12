@@ -7,8 +7,8 @@ use libp2p::dns::TokioDnsConfig;
 use libp2p::futures::StreamExt;
 use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
 use libp2p::gossipsub::{
-    Gossipsub, GossipsubConfigBuilder, IdentityTransform, MessageAuthenticity, PeerScoreParams,
-    PeerScoreThresholds,
+    Gossipsub, GossipsubConfigBuilder, IdentTopic, IdentityTransform, MessageAuthenticity,
+    PeerScoreParams, PeerScoreThresholds, Topic as GossipTopic,
 };
 use libp2p::identity::Keypair;
 use libp2p::mplex::MplexConfig;
@@ -21,11 +21,38 @@ use libp2p::Swarm;
 use libp2p::Transport;
 use npg::slot_generator::{Subnet, ValId};
 use npg::{Generator, Message};
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 use testground::client::Client;
 use tokio::time::{interval, Interval};
-use tracing::{debug, info};
+use tracing::{debug, error, info};
+
+const ATTESTATION_SUBNETS: u64 = 4;
+const SYNC_SUBNETS: u64 = 4;
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+enum Topic {
+    Blocks,
+    Attestations(u64),
+    Aggregates(u64),
+    SyncMessages(u64),
+    SignedContributionAndProof(u64),
+}
+
+impl From<Topic> for IdentTopic {
+    fn from(t: Topic) -> Self {
+        let rep = serde_json::to_string(&t).expect("json serialization of topics never fails");
+        GossipTopic::new(rep)
+    }
+}
+
+impl From<IdentTopic> for Topic {
+    fn from(t: IdentTopic) -> Self {
+        let repr = t.hash().into_string();
+        serde_json::from_str(&repr).expect("json deserialization of topics never fails")
+    }
+}
 
 pub(crate) fn parse_params(
     instance_count: usize,
@@ -43,7 +70,8 @@ pub(crate) fn parse_params(
     let total_validators = instance_params
         .get("total_validators")
         .ok_or("`total_validators` not specified")?
-        .parse::<usize>()?;
+        .parse::<usize>()
+        .map_err(|e| format!("Error reading total_validators {}", e))?;
     let min_peers_per_node = instance_params
         .get("min_peers_per_node")
         .ok_or("`min_peers_per_node` not specified")?
@@ -63,7 +91,7 @@ pub(crate) fn parse_params(
         seed,
         total_validators,
         total_nodes_with_vals,
-        instance_count,
+        total_nodes_without_vals,
         min_peers_per_node,
         max_peers_per_node_inclusive,
     )?;
@@ -89,6 +117,10 @@ pub(crate) async fn run(
     let (params, outbound_peers, validator_assignments) =
         gen_topology::Network::generate(params)?.destructure();
 
+    info!(
+        "Running with params {params:?} and {} participants",
+        participants.len()
+    );
     let validator_set = validator_assignments
         .get(&node_id)
         .cloned()
@@ -125,6 +157,9 @@ pub(crate) async fn run(
         )
         .await?;
 
+    if let Err(e) = network.subscribe_topics() {
+        error!("[{}] Failed to subscribe to topics {e}", network.node_id);
+    };
     network.run_sim(run_duration).await;
 
     client.record_success().await?;
@@ -218,18 +253,16 @@ impl Network {
         let slot_duration = Duration::from_secs(6);
         let slots_per_epoch = 2;
         let sync_subnet_size = 2;
-        let sync_committee_subnets = 2;
         let target_aggregators = 14;
-        let attestation_subnets = 4;
 
         let messages_gen = Generator::builder()
             .slot_clock(genesis_slot, genesis_duration, slot_duration)
             .slots_per_epoch(slots_per_epoch)
             .sync_subnet_size(sync_subnet_size)
-            .sync_committee_subnets(sync_committee_subnets)
+            .sync_committee_subnets(SYNC_SUBNETS)
             .total_validators(params.total_validators() as u64)
             .target_aggregators(target_aggregators)
-            .attestation_subnets(attestation_subnets)
+            .attestation_subnets(ATTESTATION_SUBNETS)
             .build(validator_set)
             .expect("need to adjust these params");
 
@@ -267,7 +300,9 @@ impl Network {
                 let InstanceInfo { peer_id, multiaddr } = self
                     .participants
                     .get(peer_node_id)
-                    .expect("All outbound peers are participants in the network")
+                    .unwrap_or_else(|| {
+                        panic!("[{}] All outbound peers are participants of the network {peer_node_id} {:?}", self.node_id,self.participants.keys().collect::<Vec<_>>())
+                    })
                     .clone();
                 info!(
                     "[{}] dialing {} on {}",
@@ -300,22 +335,25 @@ impl Network {
                 }
                 Some(m) = self.messages_gen.next() => {
                     let payload = m.payload();
-                    match m {
+                    let (topic, val) = match m {
                         Message::BeaconBlock { proposer: ValId(v) } => {
-                            // publish
+                            (Topic::Blocks, v)
                         },
                         Message::AggregateAndProofAttestation { aggregator: ValId(v), subnet: Subnet(s) } => {
-                            // publish
+                            (Topic::Aggregates(s), v)
                         },
                         Message::Attestation { attester: ValId(v), subnet: Subnet(s) } => {
-                            // publish
+                            (Topic::Attestations(s), v)
                         },
                         Message::SignedContributionAndProof { validator: ValId(v), subnet: Subnet(s) } => {
-                            // publish
+                            (Topic::SignedContributionAndProof(s), v)
                         },
                         Message::SyncCommitteeMessage { validator: ValId(v), subnet: Subnet(s) } => {
-                            // publish
+                            (Topic::SyncMessages(s), v)
                         },
+                    };
+                    if let Err(e) = self.publish(topic.clone(), val, payload) {
+                        error!("Failed to publish message {e} to topic {topic:?}");
                     }
 
                 }
@@ -328,5 +366,39 @@ impl Network {
                 }
             }
         }
+    }
+
+    fn publish(
+        &mut self,
+        topic: Topic,
+        validator: u64,
+        payload: Vec<u8>,
+    ) -> Result<libp2p::gossipsub::MessageId, libp2p::gossipsub::error::PublishError> {
+        let ident_topic: IdentTopic = topic.into();
+        // simple tuples as messages
+        let msg =
+            serde_json::to_vec(&(validator, payload)).expect("json serialization never fails");
+        self.swarm.behaviour_mut().publish(ident_topic, msg)
+    }
+
+    pub fn subscribe_topics(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        // blocks, attestations and aggregates, syncc messages and aggregates
+        let blocks_topic: IdentTopic =
+            GossipTopic::new(serde_json::to_string(&Topic::Blocks).unwrap());
+        self.swarm.behaviour_mut().subscribe(&blocks_topic)?;
+        for subnet_n in 0..ATTESTATION_SUBNETS {
+            let attestation_subnet: IdentTopic = Topic::Attestations(subnet_n).into();
+            let aggregate_subnet: IdentTopic = Topic::Aggregates(subnet_n).into();
+            self.swarm.behaviour_mut().subscribe(&attestation_subnet)?;
+            self.swarm.behaviour_mut().subscribe(&aggregate_subnet)?;
+        }
+
+        for subnet_n in 0..SYNC_SUBNETS {
+            let sync_subnet: IdentTopic = Topic::SyncMessages(subnet_n).into();
+            let sync_aggregates: IdentTopic = Topic::SignedContributionAndProof(subnet_n).into();
+            self.swarm.behaviour_mut().subscribe(&sync_subnet)?;
+            self.swarm.behaviour_mut().subscribe(&sync_aggregates)?;
+        }
+        Ok(())
     }
 }

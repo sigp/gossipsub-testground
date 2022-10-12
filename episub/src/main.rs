@@ -7,6 +7,7 @@ use libp2p::multiaddr::Protocol;
 use libp2p::{Multiaddr, PeerId};
 use serde::{Deserialize, Serialize};
 use testground::client::Client;
+use tracing::info;
 
 use std::collections::HashMap;
 
@@ -39,6 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let participants = {
         let infos =
             publish_and_collect("node_info", &client, (node_id, instance_info.clone())).await?;
+        info!("Found {}", infos.len());
         infos
             .into_iter()
             .filter(|(other_node_id, _)| *other_node_id != node_id)

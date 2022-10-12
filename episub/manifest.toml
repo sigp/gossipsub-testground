@@ -14,7 +14,9 @@ enabled = true
 name = "episub"
 instances = { min = 3, max = 100, default = 3 }
   [testcases.params]
-  ## honest node config
-  config_file = { type = "str", desc = "Path containing the network configuration file" }
-  warmup = { type = "int", desc = "Time to wait for nodes to establish connections before beginning publishing", default=5, unit="sec" }
+  seed = { type = "int", desc = "Seed to use for the rng", default = 40 }
+  no_val_percentage = { type = "int", desc = "% of nodes without vals", default = 60 }
+  total_validators = { type = "int", desc = "number of validators", default = 200 }
+  min_peers_per_node = { type = "int", desc = "minimum number of peers to connect to", default = 2 }
+  max_peers_per_node_inclusive = { type = "int", desc = "maximum number of peers to connect to", default = 3 }
   run = { type = "int", desc = "Time to run the emulation", default=120, unit="sec" }
