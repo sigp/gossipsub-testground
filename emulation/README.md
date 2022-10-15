@@ -14,7 +14,7 @@ testground run composition -f emulation/compositions/emulation.toml --wait
 
 ## What the emulation does
 
-Note: Attackers connect to a single publisher (victim).
+Note: Attackers connect to a single publisher (victim). [`Publisher1` is the victim](https://github.com/ackintosh/gossipsub-testground/blob/0d715d79e0a75300e30fdacf97c7d9961fd6f5af/emulation/src/attacker.rs#L76) in this test plan.
 
 ```mermaid
 sequenceDiagram
@@ -49,39 +49,29 @@ sequenceDiagram
     Note over Publishers,Lukers: Record metrics.
 ```
 
-## Metrics / Scores
+## Dashboards
 
-- Open Grafana: http://localhost:3000
-- admin/admin by default
+Please see the root [README](https://github.com/sigp/gossipsub-testground/blob/main/README.md) for how to run Grafana.
 
-### Datasource settings
+### Gossipsub Metrics
 
-- URL http://testground-influxdb:8086
-- Database testground
+The metrics of gossipsub are recorded once the emulation has been completed. [All of the metrics on libp2p-gossipsub](https://github.com/ackintosh/gossipsub-testground/blob/test-plan-emulation/emulation/src/honest.rs#L235-L275) are available in this dashboard.
 
-<img width="800" alt="image" src="https://user-images.githubusercontent.com/1885716/186311134-8980bb82-3e59-469d-a752-8c4442257862.png">
+Variables for this dashboard:
 
-### Gossipsub metrics
+- `run_id`: The run_id for the test run you want to see.
+- `topic`: The gossipsub topic, currently it's fixed to `emulate`.
+- `instance_name`: Some panels in this dashboard need an instance name to be specified. (e.g. score_per_mesh histogram)
 
-The metrics of gossipsub are recorded once the emulation has been completed. All of the metrics available on libp2p-gossipsub are recorded.
+<img width="1675" alt="image" src="https://user-images.githubusercontent.com/1885716/194744972-2d6e5f42-48c7-4c89-8ada-5ab992599046.png">
 
-```sql
-SELECT * FROM "topic_msg_sent_counts" WHERE $timeFilter 
-```
-
-<img width="800" alt="image" src="https://user-images.githubusercontent.com/1885716/187597882-4ff2d68b-88d4-4f51-ac32-87fe8d85d536.png">
-
-
-### Scores
+### Peer Scores
 
 The peer scores are recorded periodically (every second) while the emulation is running.
 
-```sql
-SELECT * FROM "scores" WHERE $timeFilter and instance_name = 'Publisher1' and run_id = 'cc7gl2k3r49i9pbqr9ng'
-```
+Variables for this dashboard:
 
-You can identify the score to get by [`instance_name`, `instance_peer_id`, or `run_id`](https://github.com/ackintosh/gossipsub-testground/blob/test-plan-emulation/emulation/src/honest.rs#L408-L410).
+- `run_id`: The run_id for the test run you want to see.
+- `instance_name`: It's default to `All`, you can select specific instances.
 
-Note: [`Publisher1` is a victim in this test plan](https://github.com/ackintosh/gossipsub-testground/blob/0d715d79e0a75300e30fdacf97c7d9961fd6f5af/emulation/src/attacker.rs#L76).
-
-<img width="800" alt="image" src="https://user-images.githubusercontent.com/1885716/187617292-81e387f0-04c5-4e93-9e30-f8fbc6eadf3b.png">
+<img width="1673" alt="image" src="https://user-images.githubusercontent.com/1885716/194745649-323aee65-8b2b-439a-9c5f-c97863a844fd.png">
