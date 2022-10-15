@@ -82,7 +82,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
       },
       "description": "Status of our subscription to this topic.",
       "fieldConfig": {
@@ -146,7 +146,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "key": "Q-ab2a9456-9f5b-4dee-9b76-154831acc232-0",
           "query": "SELECT \"instance_name\" as \"name\", \"instance_peer_id\" as \"peer_id\", \"hash\" as \"topic\", \"status\" FROM \"topic_subscription_status\"  WHERE \"run_id\" = '${run_id:text}'\n",
@@ -184,7 +184,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
       },
       "description": "Number of peers subscribed to each topic.",
       "fieldConfig": {
@@ -259,7 +259,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "key": "Q-ca4644a6-9228-4cb6-bd54-b14df147e561-0",
           "query": "SELECT \"count\", \"instance_name\" FROM \"topic_peers_counts\" WHERE \"run_id\" = '${run_id:text}' AND \"hash\" = '${topic:text}'",
@@ -287,7 +287,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
       },
       "description": "The number of invalid messages received for a given topic.",
       "fieldConfig": {
@@ -362,7 +362,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "key": "Q-91b4aad5-e7df-41e7-a3d0-2e8e5731a39c-0",
           "query": "SELECT instance_name, count FROM \"invalid_messages_per_topic\" WHERE \"run_id\" = '${run_id:text}' AND \"hash\" = '${topic:text}'",
@@ -390,7 +390,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
       },
       "description": "The number of messages accepted by the application (validation result).",
       "fieldConfig": {
@@ -465,7 +465,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "key": "Q-c0469ecc-e90a-48a0-80eb-cc65984f6140-0",
           "query": "SELECT instance_name, count FROM \"accepted_messages_per_topic\" WHERE \"run_id\" = '${run_id:text}' AND \"hash\" = '${topic:text}'",
@@ -493,7 +493,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
       },
       "description": "The number of messages ignored by the application (validation result).",
       "fieldConfig": {
@@ -568,7 +568,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "key": "Q-45f5849e-8f5f-44e0-8795-4bc9903a73cd-0",
           "query": "SELECT instance_name, count FROM \"ignored_messages_per_topic\" WHERE \"run_id\" = '${run_id:text}' AND \"hash\" = '${topic:text}'",
@@ -596,7 +596,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
       },
       "description": "The number of messages rejected by the application (validation result).",
       "fieldConfig": {
@@ -671,7 +671,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "key": "Q-c78efe7b-40f2-4188-b228-408cd26d31e1-0",
           "query": "SELECT instance_name, count FROM \"rejected_messages_per_topic\" WHERE \"run_id\" = '${run_id:text}' AND \"hash\" = '${topic:text}'",
@@ -712,7 +712,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
       },
       "description": "Number of times we include peers in a topic mesh for different reasons.",
       "fieldConfig": {
@@ -765,7 +765,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "key": "Q-3af22ab7-731e-4312-8db6-31e9284ac16c-0",
           "query": "SELECT \"instance_name\" AS \"name\", \"instance_peer_id\" AS \"peer_id\", \"reason\",  \"count\" FROM \"mesh_peer_inclusion_events\" WHERE \"run_id\" = '${run_id:text}' AND \"hash\" = '${topic:text}'",
@@ -803,7 +803,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
       },
       "description": "Number of times we remove peers in a topic mesh for different reasons.",
       "fieldConfig": {
@@ -853,7 +853,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "key": "Q-d1585664-ae12-46cc-90f8-af9f1188e788-0",
           "query": "SELECT \"instance_name\" AS \"name\", \"instance_peer_id\" AS \"peer_id\", \"reason\", \"count\" FROM \"mesh_peer_churn_events\" WHERE \"run_id\" = '${run_id:text}' AND \"hash\" = '${topic:text}'",
@@ -891,7 +891,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
       },
       "description": "Number of peers in our mesh.",
       "fieldConfig": {
@@ -966,7 +966,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "key": "Q-a4f2e0a0-f302-4fdd-bf7e-2be67b935dbc-0",
           "query": "SELECT \"count\", \"instance_name\" FROM \"mesh_peer_counts\" WHERE \"run_id\" = '${run_id:text}' AND \"hash\" = '${topic:text}'",
@@ -1007,7 +1007,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
       },
       "description": "Number of gossip messages sent to each topic.",
       "fieldConfig": {
@@ -1081,7 +1081,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "key": "Q-09b6b84c-4d9f-430b-b2fe-2dfe19f60382-0",
           "query": "SELECT \"instance_name\", \"count\" FROM \"topic_msg_sent_counts\" WHERE \"run_id\" = '${run_id:text}' AND \"hash\" = '${topic:text}'",
@@ -1109,7 +1109,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
       },
       "description": "Bytes from gossip messages sent to each topic.",
       "fieldConfig": {
@@ -1183,7 +1183,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "key": "Q-66b5fd5a-27bc-40c6-b809-d035383eb824-0",
           "query": "SELECT \"instance_name\", \"count\" FROM \"topic_msg_sent_bytes\" WHERE \"run_id\" = '${run_id:text}' AND \"hash\" = '${topic:text}'",
@@ -1211,7 +1211,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
       },
       "description": "Number of gossipsub messages published to each topic.",
       "fieldConfig": {
@@ -1284,7 +1284,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "key": "Q-48919adc-f660-40bb-96c9-c99f9169a124-0",
           "query": "SELECT \"instance_name\", \"count\" FROM \"topic_msg_published\" WHERE \"run_id\" = '${run_id:text}' AND \"hash\" = '${topic:text}'",
@@ -1326,7 +1326,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
       },
       "description": "Number of gossipsub messages received on each topic (after filtering duplicates).",
       "fieldConfig": {
@@ -1400,7 +1400,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "key": "Q-bb78c295-c669-4e1a-8d48-fe413942d04d-0",
           "query": "SELECT \"instance_name\", \"count\" FROM \"topic_msg_recv_counts\" WHERE \"run_id\" = '${run_id:text}' AND \"hash\" = '${topic:text}'",
@@ -1428,7 +1428,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
       },
       "description": "Number of gossipsub messages received on each topic (without filtering duplicates).",
       "fieldConfig": {
@@ -1502,7 +1502,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "key": "Q-c8cd7c2c-dc13-47c7-ba3c-fd62c34d99d9-0",
           "query": "SELECT \"instance_name\", \"count\" FROM \"topic_msg_recv_counts_unfiltered\" WHERE \"run_id\" = '${run_id:text}' AND \"hash\" = '${topic:text}'",
@@ -1530,7 +1530,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
       },
       "description": "Bytes received from gossip messages for each topic.",
       "fieldConfig": {
@@ -1604,7 +1604,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "key": "Q-46222aa6-7788-46f9-8397-2de9eb592b8a-0",
           "query": "SELECT \"instance_name\", \"count\" FROM \"topic_msg_recv_bytes\" WHERE \"run_id\" = '${run_id:text}' AND \"hash\" = '${topic:text}'",
@@ -1645,7 +1645,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
       },
       "description": "Histogram of the scores for each mesh topic.",
       "fieldConfig": {
@@ -1729,7 +1729,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "key": "Q-c70f300e-325f-47d4-ae7b-5305fad0c6c9-0",
           "query": "SELECT count AS \"mesh\", upper_bound FROM \"score_per_mesh\" WHERE \"run_id\" = '${run_id:text}' AND \"hash\" = '${topic:text}' AND \"instance_name\" = '${instance_name}'",
@@ -1744,7 +1744,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
       },
       "description": "A counter of the kind of penalties being applied to peers.",
       "fieldConfig": {
@@ -1793,7 +1793,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "key": "Q-212dc3b4-9b65-4a8d-8e2a-938c01f5d2f1-0",
           "query": "SELECT instance_name AS \"name\", instance_peer_id AS \"peer_id\", penalty, count FROM \"scoring_penalties\" WHERE \"run_id\" = '${run_id:text}' ",
@@ -1844,7 +1844,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
       },
       "description": "The number of peers that are connected to each protocol.",
       "fieldConfig": {
@@ -1920,7 +1920,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "key": "Q-3f2fe27a-ed4c-47f8-b0ee-82fb70640a75-0",
           "query": "SELECT instance_name AS \"name\", peers FROM \"peers_per_protocol\" WHERE \"run_id\" = '${run_id:text}' AND protocol = '${protocol:text}'",
@@ -1948,7 +1948,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
       },
       "description": "The time it takes to complete one iteration of the heartbeat.",
       "fieldConfig": {
@@ -2033,7 +2033,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "key": "Q-14c8bf6d-ebd1-4e56-af29-5cbfed1c41a6-0",
           "query": "SELECT upper_bound, count FROM \"heartbeat_duration\" WHERE run_id = '${run_id:text}' AND instance_name = '${instance_name:text}'",
@@ -2061,7 +2061,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
       },
       "fieldConfig": {
         "defaults": {
@@ -2135,7 +2135,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "key": "Q-b46b1ee0-3bcf-4fbb-a53c-dc569620dbf4-0",
           "query": "SELECT instance_name AS \"name\", count FROM \"memcache_misses\" WHERE \"run_id\" = '${run_id:text}' ",
@@ -2163,7 +2163,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
       },
       "description": "The number of times we have decided that an IWANT control message is required for this topic.",
       "fieldConfig": {
@@ -2237,7 +2237,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "key": "Q-3452fcf4-f135-4a06-bfbd-99113d875113-0",
           "query": "SELECT instance_name, count FROM \"topic_iwant_msgs\" WHERE \"run_id\" = '${run_id:text}' AND \"hash\" = '${topic:text}'",
@@ -2310,7 +2310,7 @@
         "current": {},
         "datasource": {
           "type": "influxdb",
-          "uid": "${DS_INFLUXDB}"
+          "uid": "ds_influxdb"
         },
         "definition": "SELECT instance_name FROM \"participants\" WHERE \"run_id\" = '${run_id:text}' ",
         "hide": 0,

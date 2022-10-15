@@ -63,7 +63,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
       },
       "description": "Peer scores from ${instance} perspective.",
       "fieldConfig": {
@@ -144,7 +144,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "key": "Q-6535cb9e-575c-4fab-a755-06776b267426-0",
           "query": "SELECT * FROM \"scores\" WHERE run_id = '${run_id:text}' AND instance_name = '${instance_name:text}'",
@@ -186,7 +186,7 @@
         "current": {},
         "datasource": {
           "type": "influxdb",
-          "uid": "${DS_INFLUXDB}"
+          "uid": "ds_influxdb"
         },
         "definition": "SELECT instance_name FROM \"participants\" WHERE \"run_id\" = '${run_id:text}' ",
         "hide": 0,
