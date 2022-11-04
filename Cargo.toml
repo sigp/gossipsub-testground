@@ -3,9 +3,6 @@
 members = [
     "smoke",
     "episub",
-    
-    "utils/gen_topology",
-    "utils/gen_topology_files"
 ]
 
 [workspace.dependencies]

@@ -1,3 +1,7 @@
+#[allow(dead_code)]
+mod gen_topology;
+#[allow(dead_code)]
+mod gen_topology_files;
 mod node_run;
 mod utils;
 

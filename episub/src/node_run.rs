@@ -1,10 +1,10 @@
+use crate::gen_topology;
 use crate::utils::{
     queries_for_counter, queries_for_gauge, queries_for_histogram, record_instance_info,
     BARRIER_LIBP2P_READY, BARRIER_TOPOLOGY_READY,
 };
 use crate::InstanceInfo;
 use chrono::{DateTime, Utc};
-use gen_topology::Params;
 use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::upgrade::{SelectUpgrade, Version};
 use libp2p::dns::TokioDnsConfig;
@@ -64,7 +64,7 @@ impl From<IdentTopic> for Topic {
 pub(crate) fn parse_params(
     instance_count: usize,
     instance_params: HashMap<String, String>,
-) -> Result<(Duration, Params), Box<dyn std::error::Error>> {
+) -> Result<(Duration, gen_topology::Params), Box<dyn std::error::Error>> {
     let seed = instance_params
         .get("seed")
         .ok_or("seed is not specified.")?
@@ -94,7 +94,7 @@ pub(crate) fn parse_params(
         .ok_or("run is not specified.")?
         .parse::<u64>()?;
 
-    let params = Params::new(
+    let params = gen_topology::Params::new(
         seed,
         total_validators,
         total_nodes_with_vals,
@@ -227,7 +227,7 @@ impl Network {
         participants: HashMap<usize, InstanceInfo>,
         client: Client,
         validator_set: HashSet<ValId>,
-        params: Params,
+        params: gen_topology::Params,
     ) -> Self {
         let gossipsub = {
             let gossipsub_config = GossipsubConfigBuilder::default()
