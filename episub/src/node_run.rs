@@ -231,6 +231,7 @@ impl Network {
     ) -> Self {
         let gossipsub = {
             let gossipsub_config = GossipsubConfigBuilder::default()
+                .max_transmit_size(10 * 1_048_576) // gossip_max_size(true)
                 .prune_backoff(Duration::from_secs(60))
                 .history_length(12)
                 .build()
