@@ -1,9 +1,11 @@
 extern crate core;
 
-mod honest;
+mod beacon_node;
 mod utils;
+// mod attacker;
+mod params;
 
-use crate::utils::publish_and_collect;
+use crate::utils::{BARRIER_LIBP2P_READY, BARRIER_TOPOLOGY_READY, publish_and_collect};
 use libp2p::identity::Keypair;
 use libp2p::multiaddr::Protocol;
 use libp2p::{Multiaddr, PeerId};
@@ -20,41 +22,42 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let client = Client::new_and_init().await?;
 
-    let local_key = Keypair::generate_ed25519();
-    let peer_id = PeerId::from(local_key.public());
-    let multiaddr = {
-        let mut multiaddr = Multiaddr::from(
-            client
-                .run_parameters()
-                .data_network_ip()?
-                .expect("Should have an IP address for the data network"),
-        );
-        multiaddr.push(Protocol::Tcp(9000));
-        multiaddr
-    };
+    match client.run_parameters().test_group_id.as_str() {
+        "beacon_node" => {
+            beacon_node::run(client).await?;
+        }
+        "attacker" => {
+            println!("attacker");
+            if let Err(e) = client
+                .signal_and_wait(
+                    BARRIER_LIBP2P_READY,
+                    client.run_parameters().test_instance_count,
+                )
+                .await
+            {
+                panic!("error : BARRIER_LIBP2P_READY : {:?}", e);
+            }
 
-    // The network definition starts at 0 and the testground sequences start at 1, so adjust
-    // accordingly.
-    let node_id = client.global_seq() as usize - 1;
-    let instance_info = InstanceInfo { peer_id, multiaddr };
+            if let Err(e) = client
+                .signal_and_wait(
+                    BARRIER_TOPOLOGY_READY,
+                    client.run_parameters().test_instance_count,
+                )
+                .await
+            {
+                panic!("error : BARRIER_TOPOLOGY_READY : {:?}", e);
+            }
 
-    let participants = {
-        let infos =
-            publish_and_collect("node_info", &client, (node_id, instance_info.clone())).await?;
-        info!("Found {}", infos.len());
-        infos
-            .into_iter()
-            .filter(|(other_node_id, _)| *other_node_id != node_id)
-            .collect::<HashMap<usize, InstanceInfo>>()
-    };
-
-    honest::run(client, node_id, instance_info, participants, local_key).await?;
+            client.record_success().await?;
+        }
+        _ => unreachable!(),
+    }
 
     Ok(())
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct InstanceInfo {
-    peer_id: PeerId,
-    multiaddr: Multiaddr,
-}
+// #[derive(Clone, Debug, Serialize, Deserialize)]
+// struct InstanceInfo {
+//     peer_id: PeerId,
+//     multiaddr: Multiaddr,
+// }

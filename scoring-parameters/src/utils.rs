@@ -1,5 +1,4 @@
-use crate::honest::SLOTS_PER_EPOCH;
-use crate::InstanceInfo;
+use crate::beacon_node::BeaconNodeInfo;
 use chrono::{DateTime, Local, Utc};
 use libp2p::futures::StreamExt;
 use prometheus_client::encoding::proto::openmetrics_data_model::counter_value;
@@ -28,16 +27,16 @@ pub(crate) async fn publish_and_collect<T: Serialize + DeserializeOwned>(
     topic: &'static str,
     client: &Client,
     info: T,
+    count: usize,
 ) -> Result<Vec<T>, Box<dyn std::error::Error>> {
-    let instance_count = client.run_parameters().test_instance_count as usize;
     let serialized = Cow::Owned(serde_json::to_value(&info)?);
     client.publish(topic, serialized).await?;
 
-    let mut stream = client.subscribe(topic, instance_count * 2).await;
+    let mut stream = client.subscribe(topic, count * 2).await;
 
-    let mut vec: Vec<T> = Vec::with_capacity(instance_count);
+    let mut vec: Vec<T> = Vec::with_capacity(count);
 
-    for _ in 0..instance_count {
+    for _ in 0..count {
         match stream.next().await {
             Some(Ok(other)) => {
                 let info: T = serde_json::from_value(other)?;
@@ -55,14 +54,14 @@ pub(crate) async fn publish_and_collect<T: Serialize + DeserializeOwned>(
 pub(crate) fn queries_for_counter(
     datetime: &DateTime<Utc>,
     family: &MetricFamily,
-    instance_info: &InstanceInfo,
+    beacon_node_info: &BeaconNodeInfo,
     run_id: &str,
 ) -> Vec<WriteQuery> {
     let mut queries = vec![];
 
     for metric in family.metrics.iter() {
         let mut query = WriteQuery::new((*datetime).into(), family.name.clone())
-            .add_tag(TAG_INSTANCE_PEER_ID, instance_info.peer_id.to_string())
+            .add_tag(TAG_INSTANCE_PEER_ID, beacon_node_info.peer_id().to_string())
             .add_tag(TAG_RUN_ID, run_id.to_owned())
             .add_field(
                 "count",

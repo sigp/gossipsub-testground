@@ -1,8 +1,9 @@
+use crate::params::parse_topology_params;
 use crate::utils::{
     queries_for_counter, BARRIER_LIBP2P_READY, BARRIER_TOPOLOGY_READY, TAG_INSTANCE_PEER_ID,
     TAG_RUN_ID,
 };
-use crate::InstanceInfo;
+use crate::publish_and_collect;
 use chrono::TimeZone;
 use chrono::{DateTime, Local, Utc};
 use gen_topology::Params;
@@ -22,7 +23,7 @@ use libp2p::noise::NoiseConfig;
 use libp2p::swarm::{SwarmBuilder, SwarmEvent};
 use libp2p::tcp::{GenTcpConfig, TokioTcpTransport};
 use libp2p::yamux::YamuxConfig;
-use libp2p::Transport;
+use libp2p::{Multiaddr, Transport};
 use libp2p::{PeerId, Swarm};
 use npg::slot_generator::Subnet;
 use npg::slot_generator::ValId;
@@ -34,6 +35,7 @@ use slot_clock::SlotClock;
 use slot_clock::SystemTimeSlotClock;
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
+use libp2p::multiaddr::Protocol;
 use testground::client::Client;
 use testground::{Timestamp, WriteQuery};
 use tokio::time::{interval, Interval};
@@ -74,36 +76,82 @@ impl From<&str> for Topic {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub(crate) struct BeaconNodeInfo {
+    peer_id: PeerId,
+    multiaddr: Multiaddr,
+    validators: Vec<u64>,
+}
+
+impl BeaconNodeInfo {
+    pub(crate) fn peer_id(&self) -> &PeerId {
+        &self.peer_id
+    }
+}
+
 pub(crate) async fn run(
     client: Client,
-    node_id: usize,
-    instance_info: InstanceInfo,
-    participants: HashMap<usize, InstanceInfo>,
-    keypair: Keypair,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // The network definition starts at 0 and the testground sequences start at 1, so adjust
+    // accordingly.
+    let node_id = client.group_seq() as usize - 1;
+    let keypair = Keypair::generate_ed25519();
+    let multiaddr = {
+        let mut multiaddr = Multiaddr::from(
+            client
+                .run_parameters()
+                .data_network_ip()?
+                .expect("Should have an IP address for the data network"),
+        );
+        multiaddr.push(Protocol::Tcp(9000));
+        multiaddr
+    };
+
     // /////////////////////////////////////////////////////////////////////////////////////////////
     // Parse parameters and generate network topology
     // /////////////////////////////////////////////////////////////////////////////////////////////
-    let test_instance_count = client.run_parameters().test_instance_count;
-    let (run_duration, params) = parse_params(
-        test_instance_count as usize,
+    let (run_duration, params) = parse_topology_params(
+        client.run_parameters().test_group_instance_count as usize, // NOTE: `test_group_instance_count`
         client.run_parameters().test_instance_params,
     )?;
 
-    let (params, outbound_peers, validator_assignments) =
-        gen_topology::Network::generate(params)?.destructure();
+    let (params, outbound_peers, validator_set) = {
+        let (params, outbound_peers, validator_assignments) =
+            gen_topology::Network::generate(params)?.destructure();
+
+        let validator_set: HashSet<ValId> = validator_assignments
+            .get(&node_id)
+            .cloned()
+            .unwrap_or_default()
+            .into_iter().map(|v| ValId(v as u64)).collect();
+
+        (
+            params,
+            outbound_peers
+                .get(&node_id)
+                .map_or(vec![], |node_ids| node_ids.clone()),
+            validator_set
+        )
+    };
+
+    let beacon_node_info = BeaconNodeInfo {
+        peer_id: PeerId::from(keypair.public()),
+        multiaddr: multiaddr,
+        validators: validator_set.iter().map(|v| v.0).collect::<Vec<_>>(),
+    };
+
+    let participants = {
+        let infos = publish_and_collect("beacon_node_info", &client, (node_id, beacon_node_info.clone()), client.run_parameters().test_group_instance_count as usize).await?;
+        infos
+            .into_iter()
+            .filter(|(other_node_id, _)| *other_node_id != node_id)
+            .collect::<HashMap<usize, BeaconNodeInfo>>()
+    };
 
     info!(
         "Running with params {params:?} and {} participants",
         participants.len()
     );
-
-    let validator_set = validator_assignments
-        .get(&node_id)
-        .cloned()
-        .unwrap_or_default();
-    let validator_set: HashSet<ValId> =
-        validator_set.into_iter().map(|v| ValId(v as u64)).collect();
 
     // /////////////////////////////////////////////////////////////////////////////////////////////
     // Start libp2p and dial the designated outbound peers
@@ -114,7 +162,7 @@ pub(crate) async fn run(
         &mut registry,
         keypair,
         node_id,
-        instance_info.clone(),
+        beacon_node_info.clone(),
         participants.clone(),
         client.clone(),
         validator_set,
@@ -125,17 +173,23 @@ pub(crate) async fn run(
     network.start_libp2p().await;
 
     if let Err(e) = client
-        .signal_and_wait(BARRIER_LIBP2P_READY, test_instance_count)
+        .signal_and_wait(
+            BARRIER_LIBP2P_READY,
+            client.run_parameters().test_instance_count,
+        )
         .await
     {
         panic!("error : BARRIER_LIBP2P_READY : {:?}", e);
     }
 
     // Dial the designated outbound peers
-    network.dial_peers(outbound_peers).await;
+    network.dial_peers(&outbound_peers).await;
 
     if let Err(e) = client
-        .signal_and_wait(BARRIER_TOPOLOGY_READY, test_instance_count)
+        .signal_and_wait(
+            BARRIER_TOPOLOGY_READY,
+            client.run_parameters().test_instance_count,
+        )
         .await
     {
         panic!("error : BARRIER_TOPOLOGY_READY : {:?}", e);
@@ -173,7 +227,7 @@ pub(crate) async fn run(
             // Metrics related to scoring
             // ///////////////////////////////////
             "scoring_penalties" => {
-                queries_for_counter(&test_start_time, family, &instance_info, run_id)
+                queries_for_counter(&test_start_time, family, &beacon_node_info, run_id)
             }
             _ => continue,
         };
@@ -188,51 +242,6 @@ pub(crate) async fn run(
 
     client.record_success().await?;
     Ok(())
-}
-
-fn parse_params(
-    instance_count: usize,
-    instance_params: HashMap<String, String>,
-) -> Result<(Duration, Params), Box<dyn std::error::Error>> {
-    let seed = instance_params
-        .get("seed")
-        .ok_or("seed is not specified.")?
-        .parse::<u64>()?;
-    let no_val_percentage = instance_params
-        .get("no_val_percentage")
-        .ok_or("`no_val_percentage` is not specified")?
-        .parse::<usize>()?
-        .min(100);
-    let total_validators = instance_params
-        .get("total_validators")
-        .ok_or("`total_validators` not specified")?
-        .parse::<usize>()
-        .map_err(|e| format!("Error reading total_validators {}", e))?;
-    let min_peers_per_node = instance_params
-        .get("min_peers_per_node")
-        .ok_or("`min_peers_per_node` not specified")?
-        .parse::<usize>()?;
-    let max_peers_per_node_inclusive = instance_params
-        .get("max_peers_per_node_inclusive")
-        .ok_or("`max_peers_per_node_inclusive` not specified")?
-        .parse::<usize>()?;
-    let total_nodes_without_vals = instance_count * no_val_percentage / 100;
-    let total_nodes_with_vals = instance_count - total_nodes_without_vals;
-    let run = instance_params
-        .get("run")
-        .ok_or("run is not specified.")?
-        .parse::<u64>()?;
-
-    let params = Params::new(
-        seed,
-        total_validators,
-        total_nodes_with_vals,
-        total_nodes_without_vals,
-        min_peers_per_node,
-        max_peers_per_node_inclusive,
-    )?;
-
-    Ok((Duration::from_secs(run), params))
 }
 
 /// Set up an encrypted TCP transport over the Mplex and Yamux protocols.
@@ -260,8 +269,8 @@ fn build_transport(keypair: &Keypair) -> libp2p::core::transport::Boxed<(PeerId,
 pub(crate) struct Network {
     swarm: Swarm<Gossipsub>,
     node_id: usize,
-    instance_info: InstanceInfo,
-    participants: HashMap<usize, InstanceInfo>,
+    beacon_node_info: BeaconNodeInfo,
+    participants: HashMap<usize, BeaconNodeInfo>,
     client: Client,
     score_interval: Interval,
     messages_gen: Generator,
@@ -274,8 +283,8 @@ impl Network {
         registry: &mut Registry<Box<dyn EncodeMetric>>,
         keypair: Keypair,
         node_id: usize,
-        instance_info: InstanceInfo,
-        participants: HashMap<usize, InstanceInfo>,
+        beacon_node_info: BeaconNodeInfo,
+        participants: HashMap<usize, BeaconNodeInfo>,
         client: Client,
         validator_set: HashSet<ValId>,
         params: Params,
@@ -341,7 +350,7 @@ impl Network {
         Network {
             swarm,
             node_id,
-            instance_info,
+            beacon_node_info,
             participants,
             client,
             score_interval: interval(Duration::from_secs(1)),
@@ -357,12 +366,12 @@ impl Network {
 
     async fn start_libp2p(&mut self) {
         self.swarm
-            .listen_on(self.instance_info.multiaddr.clone())
+            .listen_on(self.beacon_node_info.multiaddr.clone())
             .expect("Swarm starts listening");
 
         match self.swarm.next().await.unwrap() {
             SwarmEvent::NewListenAddr { address, .. } => {
-                assert_eq!(address, self.instance_info.multiaddr)
+                assert_eq!(address, self.beacon_node_info.multiaddr)
             }
             e => panic!("Unexpected event {:?}", e),
         };
@@ -370,37 +379,37 @@ impl Network {
 
     pub async fn dial_peers(
         &mut self,
-        outbound_peers: std::collections::BTreeMap<usize, Vec<usize>>,
+        outbound_peers: &Vec<usize>,
     ) {
         let mut dialed_peers = 0;
-        if let Some(outbound_peers) = outbound_peers.get(&self.node_id) {
-            for peer_node_id in outbound_peers {
-                let InstanceInfo { peer_id, multiaddr } = self
-                    .participants
-                    .get(peer_node_id)
-                    .unwrap_or_else(|| {
-                        panic!("[{}] All outbound peers are participants of the network {peer_node_id} {:?}", self.node_id,self.participants.keys().collect::<Vec<_>>())
-                    })
-                    .clone();
 
-                info!(
+        for peer_node_id in outbound_peers {
+            let BeaconNodeInfo { peer_id, multiaddr, .. } = self
+                .participants
+                .get(peer_node_id)
+                .unwrap_or_else(|| {
+                    panic!("[{}] All outbound peers are participants of the network {peer_node_id} {:?}", self.node_id,self.participants.keys().collect::<Vec<_>>())
+                })
+                .clone();
+
+            info!(
                     "[{}] dialing {} on {}",
                     self.node_id, peer_node_id, multiaddr
                 );
 
-                if let Err(e) = self.swarm.dial(
-                    libp2p::swarm::dial_opts::DialOpts::peer_id(peer_id)
-                        .addresses(vec![multiaddr])
-                        .build(),
-                ) {
-                    panic!(
-                        "[{}] Dialing -> {} failed {}",
-                        self.node_id, peer_node_id, e
-                    );
-                }
-                dialed_peers += 1;
+            if let Err(e) = self.swarm.dial(
+                libp2p::swarm::dial_opts::DialOpts::peer_id(peer_id)
+                    .addresses(vec![multiaddr])
+                    .build(),
+            ) {
+                panic!(
+                    "[{}] Dialing -> {} failed {}",
+                    self.node_id, peer_node_id, e
+                );
             }
+            dialed_peers += 1;
         }
+
         info!("[{}] dialed {} peers", self.node_id, dialed_peers);
     }
 
@@ -550,7 +559,7 @@ impl Network {
             };
 
             let query = WriteQuery::new(timestamp, "beacon_block")
-                .add_tag(TAG_INSTANCE_PEER_ID, self.instance_info.peer_id.to_string())
+                .add_tag(TAG_INSTANCE_PEER_ID, self.beacon_node_info.peer_id.to_string())
                 .add_tag(TAG_RUN_ID, run_id.to_owned())
                 .add_tag("epoch", epoch.as_u64())
                 .add_field("count", slots.len() as u64);
