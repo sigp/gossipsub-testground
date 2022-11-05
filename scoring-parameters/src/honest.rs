@@ -1,9 +1,10 @@
 use crate::utils::{
-    queries_for_counter, queries_for_received_beacon_blocks, BARRIER_LIBP2P_READY,
-    BARRIER_TOPOLOGY_READY,
+    queries_for_counter, BARRIER_LIBP2P_READY, BARRIER_TOPOLOGY_READY, TAG_INSTANCE_PEER_ID,
+    TAG_RUN_ID,
 };
 use crate::InstanceInfo;
-use chrono::{DateTime, Utc};
+use chrono::TimeZone;
+use chrono::{DateTime, Local, Utc};
 use gen_topology::Params;
 use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::upgrade::{SelectUpgrade, Version};
@@ -29,9 +30,12 @@ use npg::{Generator, Message};
 use prometheus_client::encoding::proto::EncodeMetric;
 use prometheus_client::registry::Registry;
 use serde::{Deserialize, Serialize};
+use slot_clock::SlotClock;
+use slot_clock::SystemTimeSlotClock;
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 use testground::client::Client;
+use testground::{Timestamp, WriteQuery};
 use tokio::time::{interval, Interval};
 use tracing::{debug, error, info, warn};
 use types::{Epoch, Slot};
@@ -39,7 +43,7 @@ use types::{Epoch, Slot};
 const ATTESTATION_SUBNETS: u64 = 4;
 const SYNC_SUBNETS: u64 = 4;
 
-const SLOTS_PER_EPOCH: u64 = 2;
+pub(crate) const SLOTS_PER_EPOCH: u64 = 2;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 enum Topic {
@@ -262,6 +266,7 @@ pub(crate) struct Network {
     score_interval: Interval,
     messages_gen: Generator,
     received_beacon_blocks: HashMap<Epoch, HashSet<Slot>>,
+    slot_clock: SystemTimeSlotClock,
 }
 
 impl Network {
@@ -342,6 +347,11 @@ impl Network {
             score_interval: interval(Duration::from_secs(1)),
             messages_gen,
             received_beacon_blocks: HashMap::new(),
+            slot_clock: SystemTimeSlotClock::new(
+                Slot::new(genesis_slot as u64),
+                genesis_duration,
+                slot_duration,
+            ),
         }
     }
 
@@ -479,17 +489,7 @@ impl Network {
             "Done simulation: received blocks: {:?}",
             self.received_beacon_blocks
         );
-        let queries = queries_for_received_beacon_blocks(
-            &self.instance_info,
-            &self.received_beacon_blocks,
-            &self.client.run_parameters().test_run,
-        );
-
-        for query in queries {
-            if let Err(e) = self.client.record_metric(query).await {
-                error!("Failed to record received_beacon_blocks: {e:?}");
-            }
-        }
+        self.record_received_beacon_blocks().await;
     }
 
     fn publish(
@@ -531,6 +531,36 @@ impl Network {
                 }
             }
             other => println!("GossipsubEvent: {:?}", other),
+        }
+    }
+
+    /// Record the number of BeaconBlock messages received per epoch.
+    async fn record_received_beacon_blocks(&self) {
+        let mut queries = vec![];
+        let run_id = self.client.run_parameters().test_run;
+
+        for (epoch, slots) in self.received_beacon_blocks.iter() {
+            let timestamp: Timestamp = {
+                let duration = self
+                    .slot_clock
+                    .start_of(epoch.start_slot(SLOTS_PER_EPOCH))
+                    .unwrap();
+
+                Local.timestamp(duration.as_secs() as i64, 0).into()
+            };
+
+            let query = WriteQuery::new(timestamp, "beacon_block")
+                .add_tag(TAG_INSTANCE_PEER_ID, self.instance_info.peer_id.to_string())
+                .add_tag(TAG_RUN_ID, run_id.to_owned())
+                .add_tag("epoch", epoch.as_u64())
+                .add_field("count", slots.len() as u64);
+            queries.push(query);
+        }
+
+        for query in queries {
+            if let Err(e) = self.client.record_metric(query).await {
+                error!("Failed to record received_beacon_blocks: {e:?}");
+            }
         }
     }
 }

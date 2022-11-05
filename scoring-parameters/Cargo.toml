@@ -18,8 +18,8 @@ tokio = { version = "1.21.2", features = ["macros"] }
 tracing = "0.1.35"
 tracing-subscriber = { version = "0.3.14", features = ["env-filter"] }
 types = { git = "https://github.com/divagant-martian/lighthouse", branch = "sizes" }
-
-gen_topology = { git = "https://github.com/sigp/gossipsub-testground", branch = "episub" }
+slot_clock = { git = "https://github.com/divagant-martian/lighthouse", branch = "sizes" }
+gen_topology = { git = "https://github.com/sigp/gossipsub-testground", rev = "4084d26b9210bc932f4aaa45f9506ecfe5f2bb04" }
 
 [patch]
 [patch.crates-io]

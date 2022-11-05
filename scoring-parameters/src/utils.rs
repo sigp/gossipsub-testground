@@ -1,3 +1,4 @@
+use crate::honest::SLOTS_PER_EPOCH;
 use crate::InstanceInfo;
 use chrono::{DateTime, Local, Utc};
 use libp2p::futures::StreamExt;
@@ -18,8 +19,8 @@ pub(crate) const BARRIER_LIBP2P_READY: &str = "Started libp2p";
 pub(crate) const BARRIER_TOPOLOGY_READY: &str = "Topology generated";
 
 // Tags for InfluxDB
-const TAG_INSTANCE_PEER_ID: &str = "instance_peer_id";
-const TAG_RUN_ID: &str = "run_id";
+pub(crate) const TAG_INSTANCE_PEER_ID: &str = "instance_peer_id";
+pub(crate) const TAG_RUN_ID: &str = "run_id";
 
 /// Publish info and collect it from the participants. The return value includes one published by
 /// myself.
@@ -91,24 +92,4 @@ fn get_counter_value(metric: &Metric) -> (Option<u64>, Option<f64>) {
         },
         _ => unreachable!(),
     }
-}
-
-/// Create InfluxDB queries for received BeaconBlock messages.
-pub(crate) fn queries_for_received_beacon_blocks(
-    instance_info: &InstanceInfo,
-    received_blocks: &HashMap<Epoch, HashSet<Slot>>,
-    run_id: &str,
-) -> Vec<WriteQuery> {
-    let mut queries = vec![];
-
-    for (epoch, slots) in received_blocks.iter() {
-        let query = WriteQuery::new(Local::now().into(), "beacon_block")
-            .add_tag(TAG_INSTANCE_PEER_ID, instance_info.peer_id.to_string())
-            .add_tag(TAG_RUN_ID, run_id.to_owned())
-            .add_tag("epoch", epoch.as_u64())
-            .add_field("count", slots.len() as u64);
-        queries.push(query);
-    }
-
-    queries
 }
