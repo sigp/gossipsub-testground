@@ -1,5 +1,5 @@
 use crate::beacon_node::BeaconNodeInfo;
-use chrono::{DateTime, Local, Utc};
+use chrono::{DateTime, Utc};
 use libp2p::futures::StreamExt;
 use prometheus_client::encoding::proto::openmetrics_data_model::counter_value;
 use prometheus_client::encoding::proto::openmetrics_data_model::metric_point;
@@ -8,10 +8,8 @@ use prometheus_client::encoding::proto::openmetrics_data_model::MetricFamily;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::borrow::Cow;
-use std::collections::{HashMap, HashSet};
 use testground::client::Client;
 use testground::WriteQuery;
-use types::{Epoch, Slot};
 
 // States for `barrier()`
 pub(crate) const BARRIER_LIBP2P_READY: &str = "Started libp2p";

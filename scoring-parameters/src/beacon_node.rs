@@ -1,9 +1,9 @@
 use crate::params::parse_topology_params;
+use crate::publish_and_collect;
 use crate::utils::{
     queries_for_counter, BARRIER_LIBP2P_READY, BARRIER_TOPOLOGY_READY, TAG_INSTANCE_PEER_ID,
     TAG_RUN_ID,
 };
-use crate::publish_and_collect;
 use chrono::TimeZone;
 use chrono::{DateTime, Local, Utc};
 use gen_topology::Params;
@@ -19,6 +19,7 @@ use libp2p::gossipsub::{
 };
 use libp2p::identity::Keypair;
 use libp2p::mplex::MplexConfig;
+use libp2p::multiaddr::Protocol;
 use libp2p::noise::NoiseConfig;
 use libp2p::swarm::{SwarmBuilder, SwarmEvent};
 use libp2p::tcp::{GenTcpConfig, TokioTcpTransport};
@@ -35,7 +36,6 @@ use slot_clock::SlotClock;
 use slot_clock::SystemTimeSlotClock;
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
-use libp2p::multiaddr::Protocol;
 use testground::client::Client;
 use testground::{Timestamp, WriteQuery};
 use tokio::time::{interval, Interval};
@@ -46,6 +46,9 @@ const ATTESTATION_SUBNETS: u64 = 4;
 const SYNC_SUBNETS: u64 = 4;
 
 pub(crate) const SLOTS_PER_EPOCH: u64 = 2;
+
+/// The backoff time for pruned peers.
+pub(crate) const PRUNE_BACKOFF: u64 = 60;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 enum Topic {
@@ -87,11 +90,17 @@ impl BeaconNodeInfo {
     pub(crate) fn peer_id(&self) -> &PeerId {
         &self.peer_id
     }
+
+    pub(crate) fn multiaddr(&self) -> &Multiaddr {
+        &self.multiaddr
+    }
+
+    pub(crate) fn validators(&self) -> &Vec<u64> {
+        &self.validators
+    }
 }
 
-pub(crate) async fn run(
-    client: Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>> {
     // The network definition starts at 0 and the testground sequences start at 1, so adjust
     // accordingly.
     let node_id = client.group_seq() as usize - 1;
@@ -123,14 +132,16 @@ pub(crate) async fn run(
             .get(&node_id)
             .cloned()
             .unwrap_or_default()
-            .into_iter().map(|v| ValId(v as u64)).collect();
+            .into_iter()
+            .map(|v| ValId(v as u64))
+            .collect();
 
         (
             params,
             outbound_peers
                 .get(&node_id)
                 .map_or(vec![], |node_ids| node_ids.clone()),
-            validator_set
+            validator_set,
         )
     };
 
@@ -141,7 +152,13 @@ pub(crate) async fn run(
     };
 
     let participants = {
-        let infos = publish_and_collect("beacon_node_info", &client, (node_id, beacon_node_info.clone()), client.run_parameters().test_group_instance_count as usize).await?;
+        let infos = publish_and_collect(
+            "beacon_node_info",
+            &client,
+            (node_id, beacon_node_info.clone()),
+            client.run_parameters().test_group_instance_count as usize,
+        )
+        .await?;
         infos
             .into_iter()
             .filter(|(other_node_id, _)| *other_node_id != node_id)
@@ -292,7 +309,7 @@ impl Network {
         let gossipsub = {
             let gossipsub_config = GossipsubConfigBuilder::default()
                 .max_transmit_size(10 * 1_048_576) // 10M
-                .prune_backoff(Duration::from_secs(60))
+                .prune_backoff(Duration::from_secs(PRUNE_BACKOFF))
                 .history_length(12)
                 .build()
                 .expect("Valid configuration");
@@ -377,10 +394,7 @@ impl Network {
         };
     }
 
-    pub async fn dial_peers(
-        &mut self,
-        outbound_peers: &Vec<usize>,
-    ) {
+    pub async fn dial_peers(&mut self, outbound_peers: &Vec<usize>) {
         let mut dialed_peers = 0;
 
         for peer_node_id in outbound_peers {
@@ -393,9 +407,9 @@ impl Network {
                 .clone();
 
             info!(
-                    "[{}] dialing {} on {}",
-                    self.node_id, peer_node_id, multiaddr
-                );
+                "[{}] dialing {} on {}",
+                self.node_id, peer_node_id, multiaddr
+            );
 
             if let Err(e) = self.swarm.dial(
                 libp2p::swarm::dial_opts::DialOpts::peer_id(peer_id)
@@ -559,7 +573,10 @@ impl Network {
             };
 
             let query = WriteQuery::new(timestamp, "beacon_block")
-                .add_tag(TAG_INSTANCE_PEER_ID, self.beacon_node_info.peer_id.to_string())
+                .add_tag(
+                    TAG_INSTANCE_PEER_ID,
+                    self.beacon_node_info.peer_id.to_string(),
+                )
                 .add_tag(TAG_RUN_ID, run_id.to_owned())
                 .add_tag("epoch", epoch.as_u64())
                 .add_field("count", slots.len() as u64);
