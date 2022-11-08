@@ -1,6 +1,6 @@
 # This Dockerfile is for the `docker:generic` builder.
 # See https://docs.testground.ai/builder-library/docker-generic for details about the builder.
-FROM rust:1.65-bullseye as builder
+FROM rust:1.64-bullseye as builder
 WORKDIR /usr/src/test-plan
 
 # * `prost-build`, a dependency of `libp2p-gossipsub`, requires cmake.
@@ -33,6 +33,7 @@ RUN cd ./plan/ && cargo build --release
 
 FROM debian:bullseye-slim
 COPY --from=builder /usr/src/test-plan/plan/target/release/episub /usr/local/bin/episub
+COPY --from=builder /usr/src/test-plan/plan/16instances.json /home/16instances.json
 
 # Configure Logging
 ENV RUST_LOG=libp2p_gossipsub=debug,episub=debug
