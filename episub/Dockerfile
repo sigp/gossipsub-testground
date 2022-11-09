@@ -15,6 +15,8 @@ ARG PLAN_PATH
 # but with more complex workspaces, it's not enough.
 RUN mkdir -p ./plan/${PLAN_PATH}/src/
 
+RUN apt-get update && apt-get -y upgrade && apt-get install -y protobuf-compiler
+
 # This is a placeholder main function to build only the dependencies.
 RUN echo "fn main() { println!(\"If you see this message, you may want to clean up the target directory or the Docker build cache.\") }" > ./plan/${PLAN_PATH}/src/main.rs
 
@@ -32,7 +34,6 @@ COPY ./plan/Cargo.toml ./plan/
 
 # This will build a "simple" main, used to cache dependencies between runs.
 
-RUN apt-get update && apt-get -y upgrade && apt-get install -y protobuf-compiler
 RUN cd ./plan/${PLAN_PATH} && cargo build --release -p episub
 
 # == end of docker layer caching with rust ==
@@ -45,5 +46,7 @@ RUN cd ./plan/${PLAN_PATH}/ && cargo build --release -p episub
 
 FROM debian:bullseye-slim
 COPY --from=builder /usr/src/test-plan/plan/target/release/episub /usr/local/bin/episub
+
+ENV RUST_LOG=libp2p_gossipsub=debug,episub=debug
 
 ENTRYPOINT ["episub"]

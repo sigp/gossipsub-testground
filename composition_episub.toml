@@ -12,4 +12,9 @@ name = "episub_sim"
 
 [[groups]]
   id = "main-instances"
-  instances = { count = 2 }
+  instances = { count = 16 }
+
+  [groups.run]
+  # Check the plan (./episub/manifest.toml) to understand the meaning of each param
+  test_params = { seed = "40", no_val_percentage = "60", total_validators = "200", min_peers_per_node = "2", max_peers_per_node_inclusive = "3", run = "120" }
+
