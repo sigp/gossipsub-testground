@@ -1,5 +1,6 @@
 use crate::beacon_node::BeaconNodeInfo;
 use crate::beacon_node::PRUNE_BACKOFF;
+use crate::utils::BARRIER_SIMULATION_COMPLETED;
 use crate::{BARRIER_LIBP2P_READY, BARRIER_TOPOLOGY_READY};
 use delay_map::HashSetDelay;
 use libp2p_testground::core::connection::ConnectionId;
@@ -15,7 +16,7 @@ use libp2p_testground::gossipsub::types::{
     GossipsubControlAction, GossipsubSubscription, GossipsubSubscriptionAction, PeerInfo,
 };
 use libp2p_testground::gossipsub::{
-    rpc_proto, GossipsubConfig, GossipsubEvent, GossipsubRpc, TopicHash,
+    rpc_proto, GossipsubConfig, GossipsubConfigBuilder, GossipsubEvent, GossipsubRpc, TopicHash,
 };
 use libp2p_testground::identity::Keypair;
 use libp2p_testground::mplex::MplexConfig;
@@ -52,6 +53,9 @@ pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>
     // Start libp2p
     // ////////////////////////////////////////////////////////////////////////
     let keypair = Keypair::generate_ed25519();
+    let peer_id = PeerId::from(keypair.public());
+    info!("Attacker: peer_id: {}", peer_id);
+
     let mut swarm = build_swarm(keypair);
     let multiaddr = {
         let mut multiaddr = Multiaddr::from(
@@ -70,20 +74,22 @@ pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>
         e => panic!("Unexpected event {:?}", e),
     }
 
-    let (victim_node_id, beacon_nodes) = collect_beacon_node_info(&client).await?;
+    let (target_node_id, beacon_nodes) = collect_beacon_node_info(&client).await?;
     barrier_and_drive_swarm(&client, &mut swarm, BARRIER_LIBP2P_READY).await?;
 
     // /////////////////////////////////////////////////////////////////////////////////////////////
     // Setup discovery
     // /////////////////////////////////////////////////////////////////////////////////////////////
-    let victim = beacon_nodes
-        .get(&victim_node_id)
-        .expect("victim node_id should be in the beacon_nodes.");
-    println!("beacon_nodes: {:?}", beacon_nodes);
-    println!("victim: {:?}", victim);
+    let target = beacon_nodes
+        .get(&target_node_id)
+        .expect("The target_node_id should be in the beacon_nodes.");
 
-    swarm.dial(victim.multiaddr().clone())?;
+    info!("Censor target : {:?}", target);
+
+    swarm.dial(target.multiaddr().clone())?;
     barrier_and_drive_swarm(&client, &mut swarm, BARRIER_TOPOLOGY_READY).await?;
+
+    barrier_and_drive_swarm(&client, &mut swarm, BARRIER_SIMULATION_COMPLETED).await?;
 
     client.record_success().await?;
     Ok(())
@@ -137,7 +143,8 @@ async fn collect_beacon_node_info(
     let mut beacon_nodes = HashMap::new();
 
     let mut num_vals = 0;
-    let mut victim_node_id = 0;
+    // Censor target node
+    let mut target_node_id = 0;
 
     for _ in 0..num_beacon_node {
         match stream.next().await {
@@ -146,7 +153,7 @@ async fn collect_beacon_node_info(
 
                 if info.validators().len() > num_vals {
                     num_vals = info.validators().len();
-                    victim_node_id = node_id;
+                    target_node_id = node_id;
                 }
 
                 beacon_nodes.insert(node_id, info);
@@ -156,7 +163,7 @@ async fn collect_beacon_node_info(
         }
     }
 
-    Ok((victim_node_id, beacon_nodes))
+    Ok((target_node_id, beacon_nodes))
 }
 
 /// Sets a barrier on the supplied state that fires when it reaches all participants.
@@ -200,7 +207,11 @@ pub struct MaliciousBehaviour {
 impl MaliciousBehaviour {
     fn new() -> Self {
         MaliciousBehaviour {
-            config: GossipsubConfig::default(),
+            config: GossipsubConfigBuilder::default()
+                .max_transmit_size(10 * 1_048_576) // 10M
+                .history_length(12)
+                .build()
+                .expect("Valid configuration"),
             events: VecDeque::new(),
             regraft: HashSetDelay::new(Duration::from_secs(PRUNE_BACKOFF + PRUNE_BACKOFF_DELAY)),
         }
@@ -213,9 +224,8 @@ impl MaliciousBehaviour {
         propagation_source: &PeerId,
     ) {
         debug!(
-            "Handling subscriptions: {:?}, from source: {}",
-            subscriptions,
-            propagation_source.to_string()
+            "Received subscriptions from {}. {:?}",
+            propagation_source, subscriptions,
         );
 
         let mut topics_to_graft = Vec::new();
@@ -229,6 +239,11 @@ impl MaliciousBehaviour {
         }
 
         if !topics_to_graft.is_empty() {
+            debug!(
+                "Sending GRAFT to {}. topics: {:?}",
+                propagation_source, topics_to_graft
+            );
+
             if let Err(error) = self.send_message(
                 *propagation_source,
                 GossipsubRpc {
@@ -252,6 +267,8 @@ impl MaliciousBehaviour {
         peer_id: &PeerId,
         prune_data: Vec<(TopicHash, Vec<PeerInfo>, Option<u64>)>,
     ) {
+        debug!("Received PRUNE message from {}.", peer_id);
+
         for prune in prune_data {
             if let Some(backoff) = prune.2 {
                 // If a backoff is specified by the peer obey it.
@@ -462,8 +479,21 @@ impl NetworkBehaviour for MaliciousBehaviour {
                         } => prune_msgs.push((topic_hash, peers, backoff)),
                     }
                 }
+
                 if !prune_msgs.is_empty() {
                     self.handle_prune(&propagation_source, prune_msgs);
+                }
+
+                if !rpc.messages.is_empty() {
+                    let topics = rpc
+                        .messages
+                        .iter()
+                        .map(|msg| &msg.topic)
+                        .collect::<Vec<_>>();
+                    debug!(
+                        "Censoring messages from {}. topics: {:?}",
+                        propagation_source, topics
+                    );
                 }
             }
             HandlerEvent::PeerKind(_) => {}
@@ -485,6 +515,11 @@ impl NetworkBehaviour for MaliciousBehaviour {
         loop {
             match self.regraft.poll_next_unpin(cx) {
                 Poll::Ready(Some(Ok((peer_id, topic_hash)))) => {
+                    debug!(
+                        "Sending GRAFT to {} in the context of regraft. topic_hash: {}",
+                        peer_id, topic_hash
+                    );
+
                     if let Err(error) = self.send_message(
                         peer_id,
                         GossipsubRpc {

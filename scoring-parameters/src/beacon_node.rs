@@ -1,8 +1,8 @@
 use crate::params::parse_topology_params;
 use crate::publish_and_collect;
 use crate::utils::{
-    queries_for_counter, BARRIER_LIBP2P_READY, BARRIER_TOPOLOGY_READY, TAG_INSTANCE_PEER_ID,
-    TAG_RUN_ID,
+    queries_for_counter, BARRIER_LIBP2P_READY, BARRIER_SIMULATION_COMPLETED,
+    BARRIER_TOPOLOGY_READY, TAG_INSTANCE_PEER_ID, TAG_RUN_ID,
 };
 use chrono::TimeZone;
 use chrono::{DateTime, Local, Utc};
@@ -151,6 +151,8 @@ pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>
         validators: validator_set.iter().map(|v| v.0).collect::<Vec<_>>(),
     };
 
+    info!("BeaconNodeInfo: {:?}", beacon_node_info);
+
     let participants = {
         let infos = publish_and_collect(
             "beacon_node_info",
@@ -221,6 +223,16 @@ pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>
     // Run simulation
     // /////////////////////////////////////////////////////////////////////////////////////////////
     network.run_sim(run_duration).await;
+
+    if let Err(e) = client
+        .signal_and_wait(
+            BARRIER_SIMULATION_COMPLETED,
+            client.run_parameters().test_instance_count,
+        )
+        .await
+    {
+        panic!("error : BARRIER_SIMULATION_COMPLETED : {:?}", e);
+    }
 
     // /////////////////////////////////////////////////////////////////////////////////////////////
     // Record metrics

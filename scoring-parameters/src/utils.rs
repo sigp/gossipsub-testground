@@ -14,6 +14,7 @@ use testground::WriteQuery;
 // States for `barrier()`
 pub(crate) const BARRIER_LIBP2P_READY: &str = "Started libp2p";
 pub(crate) const BARRIER_TOPOLOGY_READY: &str = "Topology generated";
+pub(crate) const BARRIER_SIMULATION_COMPLETED: &str = "Simulation completed";
 
 // Tags for InfluxDB
 pub(crate) const TAG_INSTANCE_PEER_ID: &str = "instance_peer_id";

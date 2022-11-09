@@ -35,6 +35,6 @@ FROM debian:bullseye-slim
 COPY --from=builder /usr/src/test-plan/plan/target/release/scoring-parameters /usr/local/bin/scoring-parameters
 
 # Configure Logging
-ENV RUST_LOG=scoring_parameters=info
+ENV RUST_LOG=libp2p_gossipsub=debug,scoring_parameters=info,scoring_parameters::attacker=debug
 
 ENTRYPOINT ["scoring-parameters"]
