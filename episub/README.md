@@ -14,3 +14,8 @@ Check the test params in the manifest.toml Those can be passed as `--test-param 
 Example:
 
 `testground run single --plan=gossipsub-testground/episub --testcase=episub --builder=docker:generic --runner=local:docker --instances=16 --test-param seed=300`
+
+New one, still need to figure out the test params
+`testground run composition -f ./composition_episub.toml --wait`
+
+Go to `http://localhost:3000` and log in with `admin`, `admin` to get metrics

@@ -18,19 +18,6 @@ testground = "0.4.0"
 tokio = { version = "1.21.2", features = ["macros"] }
 tracing = "0.1.35"
 tracing-subscriber = { version = "0.3.14", features = ["env-filter"] }
-# This is ridiculous
-gen_topology = { git = "https://github.com/sigp/gossipsub-testground", branch = "episub" }
-# gen_topology = { path = "../utils/gen_topology" }
+gen_topology = { path = "../utils/gen_topology" }
 futures = "0.3.24"
 npg = { git = "https://github.com/sigp/eth-npg", rev = "0005322440f3f65a8c1f1d0f267a47c19b3320a1" }
-
-[patch]
-[patch.crates-io]
-types = { git = "https://github.com/divagant-martian/lighthouse", rev = "22fda6cae62c858bd3b1c057700406a7bb358c97" }
-eth2_ssz = { git = "https://github.com/divagant-martian/lighthouse", rev = "22fda6cae62c858bd3b1c057700406a7bb358c97" }
-eth2_ssz_types = { git = "https://github.com/divagant-martian/lighthouse", rev = "22fda6cae62c858bd3b1c057700406a7bb358c97" }
-eth2_serde_utils = { git = "https://github.com/divagant-martian/lighthouse", rev = "22fda6cae62c858bd3b1c057700406a7bb358c97" }
-tree_hash = { git = "https://github.com/divagant-martian/lighthouse", rev = "22fda6cae62c858bd3b1c057700406a7bb358c97" }
-eth2_hashing = { git = "https://github.com/divagant-martian/lighthouse", rev = "22fda6cae62c858bd3b1c057700406a7bb358c97" }
-eth2_ssz_derive = { git = "https://github.com/divagant-martian/lighthouse", rev = "22fda6cae62c858bd3b1c057700406a7bb358c97" }
-tree_hash_derive = { git = "https://github.com/divagant-martian/lighthouse", rev = "22fda6cae62c858bd3b1c057700406a7bb358c97" }

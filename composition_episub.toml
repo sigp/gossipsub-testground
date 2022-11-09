@@ -1,0 +1,15 @@
+[metadata]
+name = "episub_sim"
+
+[global]
+  builder = "docker:generic"
+  plan = "gossipsub-testground"
+  case = "episub"
+  runner = "local:docker"
+
+  [global.build_config]
+    path = "episub/"
+
+[[groups]]
+  id = "main-instances"
+  instances = { count = 2 }
