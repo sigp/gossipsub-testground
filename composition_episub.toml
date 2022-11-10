@@ -12,7 +12,7 @@ name = "episub_sim"
 
 [[groups]]
   id = "main-instances"
-  instances = { count = 16 }
+  instances = { count = 5 }
 
   [groups.run]
   # Check the plan (./episub/manifest.toml) to understand the meaning of each param
