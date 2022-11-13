@@ -15,7 +15,8 @@ use libp2p::gossipsub::metrics::Config;
 use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
 use libp2p::gossipsub::{
     Gossipsub, GossipsubConfigBuilder, GossipsubEvent, IdentTopic, IdentityTransform,
-    MessageAuthenticity, PeerScoreParams, PeerScoreThresholds, Topic as GossipTopic,
+    MessageAuthenticity, PeerScoreParams, PeerScoreThresholds, Topic as GossipTopic, TopicHash,
+    TopicScoreParams,
 };
 use libp2p::identity::Keypair;
 use libp2p::mplex::MplexConfig;
@@ -34,6 +35,7 @@ use prometheus_client::registry::Registry;
 use serde::{Deserialize, Serialize};
 use slot_clock::SlotClock;
 use slot_clock::SystemTimeSlotClock;
+use std::cmp::max;
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 use testground::client::Client;
@@ -45,7 +47,10 @@ use types::{Epoch, Slot};
 const ATTESTATION_SUBNETS: u64 = 4;
 const SYNC_SUBNETS: u64 = 4;
 
-pub(crate) const SLOTS_PER_EPOCH: u64 = 2;
+const SLOT: u64 = 12;
+const SLOTS_PER_EPOCH: u64 = 32;
+
+const BEACON_BLOCK_WEIGHT: f64 = 0.5;
 
 /// The backoff time for pruned peers.
 pub(crate) const PRUNE_BACKOFF: u64 = 60;
@@ -147,7 +152,7 @@ pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>
 
     let beacon_node_info = BeaconNodeInfo {
         peer_id: PeerId::from(keypair.public()),
-        multiaddr: multiaddr,
+        multiaddr,
         validators: validator_set.iter().map(|v| v.0).collect::<Vec<_>>(),
     };
 
@@ -308,6 +313,7 @@ pub(crate) struct Network {
 }
 
 impl Network {
+    #[allow(clippy::too_many_arguments)]
     fn new(
         registry: &mut Registry<Box<dyn EncodeMetric>>,
         keypair: Keypair,
@@ -318,6 +324,8 @@ impl Network {
         validator_set: HashSet<ValId>,
         params: Params,
     ) -> Self {
+        let slot_duration = Duration::from_secs(SLOT);
+
         let gossipsub = {
             let gossipsub_config = GossipsubConfigBuilder::default()
                 .max_transmit_size(10 * 1_048_576) // 10M
@@ -328,7 +336,7 @@ impl Network {
 
             let mut gs = Gossipsub::new_with_subscription_filter_and_transform(
                 MessageAuthenticity::Signed(keypair.clone()),
-                gossipsub_config,
+                gossipsub_config.clone(),
                 Some((registry, Config::default())),
                 AllowAllSubscriptionFilter {},
                 IdentityTransform {},
@@ -336,9 +344,11 @@ impl Network {
             .expect("Valid configuration");
 
             // Setup the scoring system.
-            let peer_score_params = PeerScoreParams::default();
-            gs.with_peer_score(peer_score_params, PeerScoreThresholds::default())
-                .expect("Valid score params and thresholds");
+            gs.with_peer_score(
+                peer_score_params(slot_duration, gossipsub_config.mesh_n()),
+                PeerScoreThresholds::default(),
+            )
+            .expect("Valid score params and thresholds");
 
             gs
         };
@@ -361,7 +371,6 @@ impl Network {
 
         let genesis_slot = 0;
         let genesis_duration = Duration::ZERO;
-        let slot_duration = Duration::from_secs(6);
         let sync_subnet_size = 2;
         let target_aggregators = 14;
 
@@ -510,11 +519,9 @@ impl Network {
                     // self.record_peer_scores().await;
                 }
                 event = self.swarm.select_next_some() => {
-                    debug!("SwarmEvent: {:?}", event);
-
                     match event {
                         SwarmEvent::Behaviour(gossipsub_event) => self.handle_gossipsub_event(gossipsub_event),
-                        _ => {}
+                        _ => debug!("SwarmEvent: {:?}", event),
                     }
                 }
             }
@@ -562,7 +569,7 @@ impl Network {
                             warn!("The BeaconBlock message on slot {slot} is already received.")
                         }
                     }
-                    _ => {}
+                    _ => todo!(),
                 }
             }
             other => println!("GossipsubEvent: {:?}", other),
@@ -601,4 +608,125 @@ impl Network {
             }
         }
     }
+}
+
+fn peer_score_params(slot_duration: Duration, mesh_n: usize) -> PeerScoreParams {
+    let mut params = PeerScoreParams::default();
+
+    let get_hash = |topic: Topic| -> TopicHash {
+        let ident_topic: IdentTopic = topic.into();
+        ident_topic.hash()
+    };
+
+    params.topics.insert(
+        get_hash(Topic::Blocks),
+        beacon_block_param(slot_duration, mesh_n),
+    );
+
+    params
+}
+
+fn beacon_block_param(slot_duration: Duration, mesh_n: usize) -> TopicScoreParams {
+    let expected_message_rate = 1.0;
+    let mesh_message_deliveries_window = 2;
+    let epoch = slot_duration * SLOTS_PER_EPOCH as u32;
+    let decay_interval = max(Duration::from_secs(1), slot_duration);
+    let decay_to_zero: f64 = 0.01;
+
+    let mut param = TopicScoreParams::default();
+    param.topic_weight = BEACON_BLOCK_WEIGHT;
+
+    // ////////////////////////////////////////////////////////////////////////
+    //  P1: time in the mesh
+    // ////////////////////////////////////////////////////////////////////////
+    // 12s
+    param.time_in_mesh_quantum = slot_duration;
+    // 300.0
+    param.time_in_mesh_cap = 3600.0 / param.time_in_mesh_quantum.as_secs_f64();
+    // 0.03333333333333333
+    param.time_in_mesh_weight = 10.0 / param.time_in_mesh_cap;
+
+    // ////////////////////////////////////////////////////////////////////////
+    //  P2: first message deliveries
+    // ////////////////////////////////////////////////////////////////////////
+    // 0.9928302477768374
+    param.first_message_deliveries_decay = {
+        let first_message_decay_time = epoch * 20;
+        score_parameter_decay(first_message_decay_time, decay_interval, decay_to_zero)
+    };
+    // 46.491611280019605
+    param.first_message_deliveries_cap = decay_convergence(
+        param.first_message_deliveries_decay,
+        2.0 * expected_message_rate / mesh_n as f64,
+    );
+    // 0.8603702667795156
+    param.first_message_deliveries_weight = 40.0 / param.first_message_deliveries_cap;
+
+    // ////////////////////////////////////////////////////////////////////////
+    //  P3: mesh message deliveries
+    // ////////////////////////////////////////////////////////////////////////
+    // -0.5
+    param.mesh_message_deliveries_weight = -param.topic_weight;
+    // 0.9716279515771061
+    param.mesh_message_deliveries_decay = {
+        let decay_slots = SLOTS_PER_EPOCH * 5;
+        let decay_time = slot_duration * decay_slots as u32;
+        score_parameter_decay(decay_time, decay_interval, decay_to_zero)
+    };
+    // 0.6849191409056553
+    param.mesh_message_deliveries_threshold = threshold(
+        param.mesh_message_deliveries_decay,
+        expected_message_rate / 50.0,
+    );
+    // 2.054757422716966
+    param.mesh_message_deliveries_cap = {
+        let cap_factor = 3.0;
+        if cap_factor * param.mesh_message_deliveries_threshold < 2.0 {
+            2.0
+        } else {
+            cap_factor * param.mesh_message_deliveries_threshold
+        }
+    };
+    // 384s
+    param.mesh_message_deliveries_activation = epoch;
+    // 2s
+    param.mesh_message_deliveries_window = Duration::from_secs(mesh_message_deliveries_window);
+
+    // ////////////////////////////////////////////////////////////////////////
+    //  P3b: sticky mesh propagation failures
+    // ////////////////////////////////////////////////////////////////////////
+    // -0.5
+    param.mesh_failure_penalty_weight = param.mesh_message_deliveries_weight;
+    // 0.9716279515771061
+    param.mesh_failure_penalty_decay = param.mesh_message_deliveries_decay;
+
+    // ////////////////////////////////////////////////////////////////////////
+    //  P4: invalid messages
+    // ////////////////////////////////////////////////////////////////////////
+    // -214.99999999999994
+    param.invalid_message_deliveries_weight = -214.99999999999994;
+    // 0.9971259067705325
+    param.invalid_message_deliveries_decay =
+        score_parameter_decay(epoch * 50, decay_interval, decay_to_zero);
+
+    println!("beacon_block_param: {:?}", param);
+
+    param
+}
+
+fn score_parameter_decay(
+    decay_time: Duration,
+    decay_interval: Duration,
+    decay_to_zero: f64,
+) -> f64 {
+    let ticks = decay_time.as_secs_f64() / decay_interval.as_secs_f64();
+    decay_to_zero.powf(1.0 / ticks)
+}
+
+fn decay_convergence(decay: f64, rate: f64) -> f64 {
+    rate / (1.0 - decay)
+}
+
+fn threshold(decay: f64, rate: f64) -> f64 {
+    decay_convergence(decay, rate) * decay
 }
