@@ -1,0 +1,18 @@
+services:
+  grafana:
+    image: grafana/grafana:9.2.0
+    ports:
+      - 13000:3000
+    volumes:
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ./grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+      - ./grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
+      - ./scoring/dashboards:/var/lib/grafana/dashboards/scoring
+
+networks:
+  # Connect containers to `testground-control` to access Testground-supplied containers.
+  # https://docs.testground.ai/runner-library/local-docker/system-overview#testground-supplied-containers
+  default:
+    name: testground-control
+    external: true
+
