@@ -75,6 +75,11 @@ pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>
     }
 
     let (target_node_id, beacon_nodes) = collect_beacon_node_info(&client).await?;
+
+    client
+        .publish("attacker_info", Cow::Owned(serde_json::to_value(&peer_id)?))
+        .await?;
+
     barrier_and_drive_swarm(&client, &mut swarm, BARRIER_LIBP2P_READY).await?;
 
     // /////////////////////////////////////////////////////////////////////////////////////////////

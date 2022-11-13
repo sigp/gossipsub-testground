@@ -1,7 +1,7 @@
 [workspace]
 
 members = [
-    "scoring-parameters",
+    "scoring",
 ]
 
 # When doing `testground run`, the plan directory (e.g. smoke) is copied to the testground working

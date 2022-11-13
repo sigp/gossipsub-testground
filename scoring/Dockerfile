@@ -32,9 +32,9 @@ RUN touch ./plan/src/main.rs
 RUN cd ./plan/ && cargo build --release
 
 FROM debian:bullseye-slim
-COPY --from=builder /usr/src/test-plan/plan/target/release/scoring-parameters /usr/local/bin/scoring-parameters
+COPY --from=builder /usr/src/test-plan/plan/target/release/scoring /usr/local/bin/scoring
 
 # Configure Logging
-ENV RUST_LOG=libp2p_gossipsub=debug,scoring_parameters=info,scoring_parameters::attacker=debug
+ENV RUST_LOG=libp2p_gossipsub=debug,scoring=info,scoring::attacker=debug
 
-ENTRYPOINT ["scoring-parameters"]
+ENTRYPOINT ["scoring"]

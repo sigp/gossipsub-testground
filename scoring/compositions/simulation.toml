@@ -3,9 +3,9 @@ name = "censoring"
 author = "Akihito Nakano"
 
 [global]
-plan = "gossipsub-testground/scoring-parameters"
-case = "scoring-parameters"
-total_instances = 5
+plan = "gossipsub-testground/scoring"
+case = "scoring"
+total_instances = 10
 builder = "docker:generic"
 runner = "local:docker"
 disable_metrics = false
@@ -13,13 +13,13 @@ disable_metrics = false
 [[groups]]
 id = "beacon_node"
   [groups.instances]
-  count = 4
+  count = 5
   [groups.run]
     [groups.run.test_params]
 
 [[groups]]
 id = "attacker"
   [groups.instances]
-  count = 1
+  count = 5
   [groups.run]
     [groups.run.test_params]

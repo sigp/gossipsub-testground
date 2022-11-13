@@ -19,7 +19,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = match client.run_parameters().test_group_id.as_str() {
         "beacon_node" => beacon_node::run(client.clone()).await,
         "attacker" => attacker::run(client.clone()).await,
-        _ => unreachable!(),
+        _ => unreachable!("Invalid group id"),
     };
 
     if let Err(e) = result {

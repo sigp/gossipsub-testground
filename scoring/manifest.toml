@@ -1,4 +1,4 @@
-name = "scoring-parameters"
+name = "scoring"
 
 [defaults]
 builder = "docker:generic"
@@ -12,7 +12,7 @@ enabled = true
 enabled = true
 
 [[testcases]]
-name = "scoring-parameters"
+name = "scoring"
 instances = { min = 3, max = 100, default = 3 }
   [testcases.params]
   seed = { type = "int", desc = "Seed to use for the rng", default = 40 }
@@ -20,4 +20,4 @@ instances = { min = 3, max = 100, default = 3 }
   total_validators = { type = "int", desc = "number of validators", default = 200 }
   min_peers_per_node = { type = "int", desc = "minimum number of peers to connect to", default = 2 }
   max_peers_per_node_inclusive = { type = "int", desc = "maximum number of peers to connect to", default = 3 }
-  run = { type = "int", desc = "Time to run the emulation", default=20, unit="sec" }
+  run = { type = "int", desc = "Time to run the emulation", default=200, unit="sec" }

@@ -172,6 +172,9 @@ pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>
             .collect::<HashMap<usize, BeaconNodeInfo>>()
     };
 
+    let attackers = collect_attacker_info(&client).await?;
+    println!("attackers: {attackers:?}");
+
     info!(
         "Running with params {params:?} and {} participants",
         participants.len()
@@ -188,6 +191,7 @@ pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>
         node_id,
         beacon_node_info.clone(),
         participants.clone(),
+        attackers,
         client.clone(),
         validator_set,
         params,
@@ -300,11 +304,34 @@ fn build_transport(keypair: &Keypair) -> libp2p::core::transport::Boxed<(PeerId,
         .boxed()
 }
 
+async fn collect_attacker_info(client: &Client) -> Result<Vec<PeerId>, Box<dyn std::error::Error>> {
+    let num_attacker = (client.run_parameters().test_instance_count
+        - client.run_parameters().test_group_instance_count) as usize;
+
+    let mut stream = client.subscribe("attacker_info", num_attacker * 2).await;
+
+    let mut attackers = vec![];
+
+    for _ in 0..num_attacker {
+        match stream.next().await {
+            Some(Ok(value)) => {
+                let peer_id: PeerId = serde_json::from_value(value)?;
+                attackers.push(peer_id);
+            }
+            Some(Err(e)) => return Err(Box::new(e)),
+            None => unreachable!(),
+        }
+    }
+
+    Ok(attackers)
+}
+
 pub(crate) struct Network {
     swarm: Swarm<Gossipsub>,
     node_id: usize,
     beacon_node_info: BeaconNodeInfo,
     participants: HashMap<usize, BeaconNodeInfo>,
+    attackers: Vec<PeerId>,
     client: Client,
     score_interval: Interval,
     messages_gen: Generator,
@@ -320,6 +347,7 @@ impl Network {
         node_id: usize,
         beacon_node_info: BeaconNodeInfo,
         participants: HashMap<usize, BeaconNodeInfo>,
+        attackers: Vec<PeerId>,
         client: Client,
         validator_set: HashSet<ValId>,
         params: Params,
@@ -390,8 +418,9 @@ impl Network {
             node_id,
             beacon_node_info,
             participants,
+            attackers,
             client,
-            score_interval: interval(Duration::from_secs(1)),
+            score_interval: interval(Duration::from_secs(3)),
             messages_gen,
             received_beacon_blocks: HashMap::new(),
             slot_clock: SystemTimeSlotClock::new(
@@ -516,7 +545,7 @@ impl Network {
                 }
                 // Record peer scores
                 _ = self.score_interval.tick() => {
-                    // self.record_peer_scores().await;
+                    self.record_peer_scores().await;
                 }
                 event = self.swarm.select_next_some() => {
                     match event {
@@ -580,6 +609,7 @@ impl Network {
     async fn record_received_beacon_blocks(&self) {
         let mut queries = vec![];
         let run_id = self.client.run_parameters().test_run;
+        let measurement = format!("{}_beacon_block", env!("CARGO_PKG_NAME"));
 
         for (epoch, slots) in self.received_beacon_blocks.iter() {
             let timestamp: Timestamp = {
@@ -591,7 +621,7 @@ impl Network {
                 Local.timestamp(duration.as_secs() as i64, 0).into()
             };
 
-            let query = WriteQuery::new(timestamp, "beacon_block")
+            let query = WriteQuery::new(timestamp, &measurement)
                 .add_tag(
                     TAG_INSTANCE_PEER_ID,
                     self.beacon_node_info.peer_id.to_string(),
@@ -605,6 +635,35 @@ impl Network {
         for query in queries {
             if let Err(e) = self.client.record_metric(query).await {
                 error!("Failed to record received_beacon_blocks: {e:?}");
+            }
+        }
+    }
+
+    async fn record_peer_scores(&mut self) {
+        let gossipsub = self.swarm.behaviour_mut();
+        let scores = gossipsub
+            .all_peers()
+            .filter_map(|(peer, _)| gossipsub.peer_score(peer).map(|score| (peer, score)))
+            .collect::<Vec<_>>();
+
+        if !scores.is_empty() {
+            let measurement = format!("{}_scores", env!("CARGO_PKG_NAME"));
+
+            let mut query = WriteQuery::new(Local::now().into(), measurement)
+                .add_tag("peer_id", self.beacon_node_info.peer_id.to_string())
+                .add_tag("run_id", self.client.run_parameters().test_run);
+
+            for (peer, score) in scores {
+                let field = if self.attackers.contains(peer) {
+                    format!("attacker_{}", peer.to_string())
+                } else {
+                    peer.to_string()
+                };
+                query = query.add_field(field, score);
+            }
+
+            if let Err(e) = self.client.record_metric(query).await {
+                warn!("Failed to record score: {e:?}");
             }
         }
     }
