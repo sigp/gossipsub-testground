@@ -262,9 +262,68 @@ pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>
     for family in metric_set.metric_families.iter() {
         let q = match family.name.as_str() {
             // ///////////////////////////////////
+            // Metrics per known topic
+            // ///////////////////////////////////
+            // "topic_subscription_status" => {
+            //     queries_for_gauge(&test_start_time, family, &instance_info, run_id, "status")
+            // }
+            // "topic_peers_counts" => {
+            //     queries_for_gauge(&test_start_time, family, &instance_info, run_id, "count")
+            // }
+            "invalid_messages_per_topic"
+            | "accepted_messages_per_topic"
+            | "ignored_messages_per_topic"
+            | "rejected_messages_per_topic" => {
+                queries_for_counter(&test_start_time, family, &beacon_node_info, run_id)
+            }
+            // ///////////////////////////////////
+            // Metrics regarding mesh state
+            // ///////////////////////////////////
+            // "mesh_peer_counts" => {
+            //     queries_for_gauge(&test_start_time, family, &instance_info, run_id, "count")
+            // }
+            "mesh_peer_inclusion_events" => {
+                queries_for_counter(&test_start_time, family, &beacon_node_info, run_id)
+            }
+            "mesh_peer_churn_events" => {
+                queries_for_counter(&test_start_time, family, &beacon_node_info, run_id)
+            }
+            // ///////////////////////////////////
+            // Metrics regarding messages sent/received
+            // ///////////////////////////////////
+            "topic_msg_sent_counts"
+            | "topic_msg_published"
+            | "topic_msg_sent_bytes"
+            | "topic_msg_recv_counts_unfiltered"
+            | "topic_msg_recv_counts"
+            | "topic_msg_recv_bytes" => {
+                queries_for_counter(&test_start_time, family, &beacon_node_info, run_id)
+            }
+            // ///////////////////////////////////
             // Metrics related to scoring
             // ///////////////////////////////////
+            // "score_per_mesh" => {
+            //     queries_for_histogram(&test_start_time, family, &instance_info, run_id)
+            // }
             "scoring_penalties" => {
+                queries_for_counter(&test_start_time, family, &beacon_node_info, run_id)
+            }
+            // ///////////////////////////////////
+            // General Metrics
+            // ///////////////////////////////////
+            // "peers_per_protocol" => {
+            //     queries_for_gauge(&test_start_time, family, &instance_info, run_id, "peers")
+            // }
+            // "heartbeat_duration" => {
+            //     queries_for_histogram(&test_start_time, family, &instance_info, run_id)
+            // }
+            // ///////////////////////////////////
+            // Performance metrics
+            // ///////////////////////////////////
+            "topic_iwant_msgs" => {
+                queries_for_counter(&test_start_time, family, &beacon_node_info, run_id)
+            }
+            "memcache_misses" => {
                 queries_for_counter(&test_start_time, family, &beacon_node_info, run_id)
             }
             _ => continue,

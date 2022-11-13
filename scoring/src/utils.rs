@@ -56,10 +56,11 @@ pub(crate) fn queries_for_counter(
     beacon_node_info: &BeaconNodeInfo,
     run_id: &str,
 ) -> Vec<WriteQuery> {
+    let measurement = format!("{}_{}", env!("CARGO_PKG_NAME"), family.name);
     let mut queries = vec![];
 
     for metric in family.metrics.iter() {
-        let mut query = WriteQuery::new((*datetime).into(), family.name.clone())
+        let mut query = WriteQuery::new((*datetime).into(), &measurement)
             .add_tag(TAG_INSTANCE_PEER_ID, beacon_node_info.peer_id().to_string())
             .add_tag(TAG_RUN_ID, run_id.to_owned())
             .add_field(
