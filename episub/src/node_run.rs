@@ -141,8 +141,7 @@ pub(crate) async fn run(
     )
     .await?;
 
-    let mut registry: Registry<Box<dyn EncodeMetric>> = Registry::default();
-    registry.sub_registry_with_prefix("gossipsub");
+    let registry: Registry<Box<dyn EncodeMetric>> = Registry::default();
     let mut network = Network::new(
         registry,
         keypair,
@@ -283,7 +282,7 @@ impl Network {
 
         let genesis_slot = 0;
         let genesis_duration = Duration::ZERO;
-        let slot_duration = Duration::from_secs(6);
+        let slot_duration = Duration::from_secs(12);
         let slots_per_epoch = 2;
         let sync_subnet_size = 2;
         let target_aggregators = 14;
@@ -378,10 +377,10 @@ impl Network {
                 Some(m) = self.messages_gen.next() => {
                     let raw_payload = m.payload();
                     let payload = String::from_utf8_lossy(&raw_payload);
-                    info!("{payload}");
                     let (topic, val) = match m {
                         Message::BeaconBlock { proposer: ValId(v) } => {
                             (Topic::Blocks, v)
+
                         },
                         Message::AggregateAndProofAttestation { aggregator: ValId(v), subnet: Subnet(s) } => {
                             (Topic::Aggregates(s), v)

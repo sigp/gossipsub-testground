@@ -26,6 +26,7 @@ FROM debian:bullseye-slim
 
 COPY --from=builder /test-plan/target/release/episub /usr/local/bin/episub
 
-ENV RUST_LOG=libp2p_gossipsub=debug,episub=debug
+# ENV RUST_LOG=libp2p_gossipsub=debug,episub=debug
+ENV RUST_LOG=episub=info
 
 ENTRYPOINT ["episub"]
