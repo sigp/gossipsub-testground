@@ -206,15 +206,26 @@ fn build_transport(keypair: &Keypair) -> libp2p::core::transport::Boxed<(PeerId,
 }
 
 pub(crate) struct Network {
+    /// Libp2p2 swarm.
     swarm: Swarm<Gossipsub>,
+    /// Node id for this node, local to the test run.
     node_id: usize,
+    /// This nodes contact info.
     instance_info: InstanceInfo,
+    /// Metrics registry.
     registry: Registry<Box<dyn EncodeMetric>>,
+    /// Information of every other participant in the network, indexed by their (local to the test
+    /// run) node_id.
     participants: HashMap<usize, InstanceInfo>,
+    /// Testground client.
     client: Client,
+    /// Chronos time reported by testground as the start of the test run.
     start_time: DateTime<Utc>,
+    /// Instant in which the simmulation starts running, according to the local time.
     local_start_time: Instant,
+    /// How often metrics are recorded.
     metrics_interval: Interval,
+    /// Generator of messages per slot.
     messages_gen: Generator,
 }
 

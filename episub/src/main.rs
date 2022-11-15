@@ -35,6 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // The network definition starts at 0 and the testground sequences start at 1, so adjust
     // accordingly.
     let node_id = client.global_seq() as usize - 1;
+    info!("THIS IS MY NUMBER {node_id}");
     let instance_info = InstanceInfo { peer_id, multiaddr };
 
     let participants = {
