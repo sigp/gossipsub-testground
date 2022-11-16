@@ -1,35 +1,4 @@
 {
-  "__inputs": [
-    {
-      "name": "DS_INFLUXDB",
-      "label": "InfluxDB",
-      "description": "",
-      "type": "datasource",
-      "pluginId": "influxdb",
-      "pluginName": "InfluxDB"
-    }
-  ],
-  "__elements": {},
-  "__requires": [
-    {
-      "type": "grafana",
-      "id": "grafana",
-      "name": "Grafana",
-      "version": "9.2.0"
-    },
-    {
-      "type": "datasource",
-      "id": "influxdb",
-      "name": "InfluxDB",
-      "version": "1.0.0"
-    },
-    {
-      "type": "panel",
-      "id": "timeseries",
-      "name": "Time series",
-      "version": ""
-    }
-  ],
   "annotations": {
     "list": [
       {
@@ -55,7 +24,6 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": null,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -210,32 +178,7 @@
             ]
           }
         },
-        "overrides": [
-          {
-            "__systemRef": "hideSeriesFrom",
-            "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": [
-                  "attacker_12D3KooWF3bhby6N2afHBsTCUJEyVeic419zADXbkami8x9y73eQ"
-                ],
-                "prefix": "All except:",
-                "readOnly": true
-              }
-            },
-            "properties": [
-              {
-                "id": "custom.hideFrom",
-                "value": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": true
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
         "h": 8,
@@ -282,6 +225,160 @@
         }
       ],
       "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 15
+      },
+      "id": 6,
+      "panels": [],
+      "title": "Metrics regarding messages sent/received",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ds_influxdb"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "alias": "Blocks",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ds_influxdb"
+          },
+          "query": "SELECT count from scoring_topic_msg_sent_counts WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '\\\\\"Blocks\\\\\"'",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series"
+        },
+        {
+          "alias": "Attestations_0",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ds_influxdb"
+          },
+          "hide": false,
+          "query": "SELECT count from scoring_topic_msg_sent_counts WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Attestations\\\\\":0}'",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series"
+        },
+        {
+          "alias": "Attestations_1",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ds_influxdb"
+          },
+          "hide": false,
+          "query": "SELECT count from scoring_topic_msg_sent_counts WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Attestations\\\\\":1}'",
+          "rawQuery": true,
+          "refId": "C",
+          "resultFormat": "time_series"
+        },
+        {
+          "alias": "Attestations_2",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ds_influxdb"
+          },
+          "hide": false,
+          "query": "SELECT count from scoring_topic_msg_sent_counts WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Attestations\\\\\":2}'",
+          "rawQuery": true,
+          "refId": "D",
+          "resultFormat": "time_series"
+        },
+        {
+          "alias": "Attestations_3",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ds_influxdb"
+          },
+          "hide": false,
+          "query": "SELECT count from scoring_topic_msg_sent_counts WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Attestations\\\\\":3}'",
+          "rawQuery": true,
+          "refId": "E",
+          "resultFormat": "time_series"
+        }
+      ],
+      "title": "topic_msg_sent_counts",
+      "type": "timeseries"
     }
   ],
   "refresh": false,
@@ -293,51 +390,51 @@
       {
         "current": {
           "selected": false,
-          "text": "",
-          "value": ""
+          "text": "cdqmjsr4lvk27aeseplg",
+          "value": "cdqmjsr4lvk27aeseplg"
         },
         "hide": 0,
         "name": "run_id",
         "options": [
           {
             "selected": true,
-            "text": "",
-            "value": ""
+            "text": "cdqmjsr4lvk27aeseplg",
+            "value": "cdqmjsr4lvk27aeseplg"
           }
         ],
-        "query": "",
+        "query": "cdqmjsr4lvk27aeseplg",
         "skipUrlSync": false,
         "type": "textbox"
       },
       {
         "current": {
           "selected": false,
-          "text": "",
-          "value": ""
+          "text": "12D3KooWKJacm1X86aVHB9x2kgEvweku7v7poSUqwgYSWw5aG6J9",
+          "value": "12D3KooWKJacm1X86aVHB9x2kgEvweku7v7poSUqwgYSWw5aG6J9"
         },
         "hide": 0,
         "name": "peer_id",
         "options": [
           {
             "selected": true,
-            "text": "",
-            "value": ""
+            "text": "12D3KooWKJacm1X86aVHB9x2kgEvweku7v7poSUqwgYSWw5aG6J9",
+            "value": "12D3KooWKJacm1X86aVHB9x2kgEvweku7v7poSUqwgYSWw5aG6J9"
           }
         ],
-        "query": "",
+        "query": "12D3KooWKJacm1X86aVHB9x2kgEvweku7v7poSUqwgYSWw5aG6J9",
         "skipUrlSync": false,
         "type": "textbox"
       }
     ]
   },
   "time": {
-    "from": "2022-11-13T07:03:39.810Z",
-    "to": "2022-11-13T07:18:14.671Z"
+    "from": "2022-11-16T22:54:12.626Z",
+    "to": "2022-11-16T22:56:24.626Z"
   },
   "timepicker": {},
   "timezone": "",
   "title": "Peer Scores",
   "uid": "trOmP_vVz",
-  "version": 5,
+  "version": 3,
   "weekStart": ""
 }

@@ -4,8 +4,8 @@ use crate::utils::{
     queries_for_counter, BARRIER_LIBP2P_READY, BARRIER_SIMULATION_COMPLETED,
     BARRIER_TOPOLOGY_READY, TAG_PEER_ID, TAG_RUN_ID,
 };
+use chrono::Local;
 use chrono::TimeZone;
-use chrono::{DateTime, Local};
 use gen_topology::Params;
 use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::upgrade::{SelectUpgrade, Version};
@@ -447,13 +447,12 @@ impl Network {
         let blocks_topic: IdentTopic = Topic::Blocks.into();
         self.swarm.behaviour_mut().subscribe(&blocks_topic)?;
 
-        // TODO
-        // for subnet_n in 0..ATTESTATION_SUBNETS {
-        //     let attestation_subnet: IdentTopic = Topic::Attestations(subnet_n).into();
-        //     let aggregate_subnet: IdentTopic = Topic::Aggregates(subnet_n).into();
-        //     self.swarm.behaviour_mut().subscribe(&attestation_subnet)?;
-        //     self.swarm.behaviour_mut().subscribe(&aggregate_subnet)?;
-        // }
+        for subnet_n in 0..ATTESTATION_SUBNETS {
+            let attestation_subnet: IdentTopic = Topic::Attestations(subnet_n).into();
+            let aggregate_subnet: IdentTopic = Topic::Aggregates(subnet_n).into();
+            self.swarm.behaviour_mut().subscribe(&attestation_subnet)?;
+            self.swarm.behaviour_mut().subscribe(&aggregate_subnet)?;
+        }
 
         // TODO
         // for subnet_n in 0..SYNC_SUBNETS {
@@ -493,9 +492,9 @@ impl Network {
                             // TODO
                             continue;
                         },
-                        Message::Attestation { attester: ValId(_v), subnet: Subnet(_s) } => {
-                            // TODO
-                            continue;
+                        Message::Attestation { attester: ValId(v), subnet: Subnet(s) } => {
+                            let msg = serde_json::to_vec(&(v, payload)).expect("json serialization never fails");
+                            (Topic::Attestations(s), msg)
                         },
                         Message::SignedContributionAndProof { validator: ValId(_v), subnet: Subnet(_s) } => {
                             // TODO
@@ -567,6 +566,12 @@ impl Network {
                         {
                             warn!("The BeaconBlock message on slot {slot} is already received.")
                         }
+                    }
+                    Topic::Attestations(subnet_id) => {
+                        let (validator, _payload): (u64, String) =
+                            serde_json::from_slice(&message.data).unwrap();
+                        // TODO
+                        println!("Topic::Attestations ... {subnet_id}, {validator}");
                     }
                     _ => todo!(),
                 }
