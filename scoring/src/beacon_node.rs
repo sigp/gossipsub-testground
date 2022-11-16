@@ -2,10 +2,10 @@ use crate::params::parse_topology_params;
 use crate::publish_and_collect;
 use crate::utils::{
     queries_for_counter, BARRIER_LIBP2P_READY, BARRIER_SIMULATION_COMPLETED,
-    BARRIER_TOPOLOGY_READY, TAG_INSTANCE_PEER_ID, TAG_RUN_ID,
+    BARRIER_TOPOLOGY_READY, TAG_PEER_ID, TAG_RUN_ID,
 };
 use chrono::TimeZone;
-use chrono::{DateTime, Local, Utc};
+use chrono::{DateTime, Local};
 use gen_topology::Params;
 use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::upgrade::{SelectUpgrade, Version};
@@ -231,7 +231,7 @@ pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>
     // /////////////////////////////////////////////////////////////////////////////////////////////
     // Run simulation
     // /////////////////////////////////////////////////////////////////////////////////////////////
-    network.run_sim(run_duration).await;
+    network.run_sim(run_duration, &registry).await;
 
     if let Err(e) = client
         .signal_and_wait(
@@ -241,100 +241,6 @@ pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>
         .await
     {
         panic!("error : BARRIER_SIMULATION_COMPLETED : {:?}", e);
-    }
-
-    // /////////////////////////////////////////////////////////////////////////////////////////////
-    // Record metrics
-    // /////////////////////////////////////////////////////////////////////////////////////////////
-    // Encode the metrics to an instance of the OpenMetrics protobuf format.
-    // https://github.com/OpenObservability/OpenMetrics/blob/main/proto/openmetrics_data_model.proto
-    let metric_set = prometheus_client::encoding::proto::encode(&registry);
-
-    // The `test_start_time` is used as the timestamp of metrics instead of local time of each
-    // instance so the timestamps between metrics of each instance are aligned.
-    // This is helpful when we want to sort the metrics by something not timestamp
-    // (e.g. instance_name).
-    let test_start_time: DateTime<Utc> =
-        DateTime::parse_from_rfc3339(&client.run_parameters().test_start_time)?.into();
-
-    let run_id = &client.run_parameters().test_run;
-    let mut queries = vec![];
-    for family in metric_set.metric_families.iter() {
-        let q = match family.name.as_str() {
-            // ///////////////////////////////////
-            // Metrics per known topic
-            // ///////////////////////////////////
-            // "topic_subscription_status" => {
-            //     queries_for_gauge(&test_start_time, family, &instance_info, run_id, "status")
-            // }
-            // "topic_peers_counts" => {
-            //     queries_for_gauge(&test_start_time, family, &instance_info, run_id, "count")
-            // }
-            "invalid_messages_per_topic"
-            | "accepted_messages_per_topic"
-            | "ignored_messages_per_topic"
-            | "rejected_messages_per_topic" => {
-                queries_for_counter(&test_start_time, family, &beacon_node_info, run_id)
-            }
-            // ///////////////////////////////////
-            // Metrics regarding mesh state
-            // ///////////////////////////////////
-            // "mesh_peer_counts" => {
-            //     queries_for_gauge(&test_start_time, family, &instance_info, run_id, "count")
-            // }
-            "mesh_peer_inclusion_events" => {
-                queries_for_counter(&test_start_time, family, &beacon_node_info, run_id)
-            }
-            "mesh_peer_churn_events" => {
-                queries_for_counter(&test_start_time, family, &beacon_node_info, run_id)
-            }
-            // ///////////////////////////////////
-            // Metrics regarding messages sent/received
-            // ///////////////////////////////////
-            "topic_msg_sent_counts"
-            | "topic_msg_published"
-            | "topic_msg_sent_bytes"
-            | "topic_msg_recv_counts_unfiltered"
-            | "topic_msg_recv_counts"
-            | "topic_msg_recv_bytes" => {
-                queries_for_counter(&test_start_time, family, &beacon_node_info, run_id)
-            }
-            // ///////////////////////////////////
-            // Metrics related to scoring
-            // ///////////////////////////////////
-            // "score_per_mesh" => {
-            //     queries_for_histogram(&test_start_time, family, &instance_info, run_id)
-            // }
-            "scoring_penalties" => {
-                queries_for_counter(&test_start_time, family, &beacon_node_info, run_id)
-            }
-            // ///////////////////////////////////
-            // General Metrics
-            // ///////////////////////////////////
-            // "peers_per_protocol" => {
-            //     queries_for_gauge(&test_start_time, family, &instance_info, run_id, "peers")
-            // }
-            // "heartbeat_duration" => {
-            //     queries_for_histogram(&test_start_time, family, &instance_info, run_id)
-            // }
-            // ///////////////////////////////////
-            // Performance metrics
-            // ///////////////////////////////////
-            "topic_iwant_msgs" => {
-                queries_for_counter(&test_start_time, family, &beacon_node_info, run_id)
-            }
-            "memcache_misses" => {
-                queries_for_counter(&test_start_time, family, &beacon_node_info, run_id)
-            }
-            _ => continue,
-        };
-        queries.extend(q);
-    }
-
-    for query in queries {
-        if let Err(e) = client.record_metric(query).await {
-            error!("Failed to record metrics: {e:?}");
-        }
     }
 
     client.record_success().await?;
@@ -560,7 +466,11 @@ impl Network {
         Ok(())
     }
 
-    async fn run_sim(&mut self, run_duration: Duration) {
+    async fn run_sim(
+        &mut self,
+        run_duration: Duration,
+        registry: &Registry<Box<dyn EncodeMetric>>,
+    ) {
         let deadline = tokio::time::sleep(run_duration);
 
         futures::pin_mut!(deadline);
@@ -605,6 +515,7 @@ impl Network {
                 // Record peer scores
                 _ = self.score_interval.tick() => {
                     self.record_peer_scores().await;
+                    self.record_metrics(registry).await;
                 }
                 event = self.swarm.select_next_some() => {
                     match event {
@@ -681,10 +592,7 @@ impl Network {
             };
 
             let query = WriteQuery::new(timestamp, &measurement)
-                .add_tag(
-                    TAG_INSTANCE_PEER_ID,
-                    self.beacon_node_info.peer_id.to_string(),
-                )
+                .add_tag(TAG_PEER_ID, self.beacon_node_info.peer_id.to_string())
                 .add_tag(TAG_RUN_ID, run_id.to_owned())
                 .add_tag("epoch", epoch.as_u64())
                 .add_field("count", slots.len() as u64);
@@ -698,6 +606,7 @@ impl Network {
         }
     }
 
+    /// Record peer scores
     async fn record_peer_scores(&mut self) {
         let gossipsub = self.swarm.behaviour_mut();
         let scores = gossipsub
@@ -709,8 +618,8 @@ impl Network {
             let measurement = format!("{}_scores", env!("CARGO_PKG_NAME"));
 
             let mut query = WriteQuery::new(Local::now().into(), measurement)
-                .add_tag("peer_id", self.beacon_node_info.peer_id.to_string())
-                .add_tag("run_id", self.client.run_parameters().test_run);
+                .add_tag(TAG_PEER_ID, self.beacon_node_info.peer_id.to_string())
+                .add_tag(TAG_RUN_ID, self.client.run_parameters().test_run);
 
             for (peer, score) in scores {
                 let field = if self.attackers.contains(peer) {
@@ -723,6 +632,99 @@ impl Network {
 
             if let Err(e) = self.client.record_metric(query).await {
                 warn!("Failed to record score: {e:?}");
+            }
+        }
+    }
+
+    /// Record gossipsub metrics
+    async fn record_metrics(&mut self, registry: &Registry<Box<dyn EncodeMetric>>) {
+        let metric_set = prometheus_client::encoding::proto::encode(&registry);
+
+        let now = Local::now();
+        let run_id = self.client.run_parameters().test_run;
+        let mut queries = vec![];
+
+        for family in metric_set.metric_families.iter() {
+            let q = match family.name.as_str() {
+                // ///////////////////////////////////
+                // Metrics per known topic
+                // ///////////////////////////////////
+                "topic_subscription_status" => {
+                    continue;
+                }
+                "topic_peers_counts" => {
+                    // TODO
+                    continue;
+                    // queries_for_gauge(&test_start_time, family, &instance_info, run_id, "count")
+                }
+                "invalid_messages_per_topic"
+                | "accepted_messages_per_topic"
+                | "ignored_messages_per_topic"
+                | "rejected_messages_per_topic" => {
+                    queries_for_counter(&now, family, &self.beacon_node_info, &run_id)
+                }
+                // ///////////////////////////////////
+                // Metrics regarding mesh state
+                // ///////////////////////////////////
+                "mesh_peer_counts" => {
+                    // TODO
+                    continue;
+                    // queries_for_gauge(&test_start_time, family, &instance_info, run_id, "count")
+                }
+                "mesh_peer_inclusion_events" => {
+                    queries_for_counter(&now, family, &self.beacon_node_info, &run_id)
+                }
+                "mesh_peer_churn_events" => {
+                    queries_for_counter(&now, family, &self.beacon_node_info, &run_id)
+                }
+                // ///////////////////////////////////
+                // Metrics regarding messages sent/received
+                // ///////////////////////////////////
+                "topic_msg_sent_counts"
+                | "topic_msg_published"
+                | "topic_msg_sent_bytes"
+                | "topic_msg_recv_counts_unfiltered"
+                | "topic_msg_recv_counts"
+                | "topic_msg_recv_bytes" => {
+                    queries_for_counter(&now, family, &self.beacon_node_info, &run_id)
+                }
+                // ///////////////////////////////////
+                // Metrics related to scoring
+                // ///////////////////////////////////
+                "score_per_mesh" => {
+                    // TODO
+                    continue;
+                    // queries_for_histogram(&test_start_time, family, &instance_info, run_id)
+                }
+                "scoring_penalties" => {
+                    queries_for_counter(&now, family, &self.beacon_node_info, &run_id)
+                }
+                // ///////////////////////////////////
+                // General Metrics
+                // ///////////////////////////////////
+                "peers_per_protocol" => {
+                    continue;
+                }
+                "heartbeat_duration" => {
+                    continue;
+                }
+                // ///////////////////////////////////
+                // Performance metrics
+                // ///////////////////////////////////
+                "topic_iwant_msgs" => {
+                    queries_for_counter(&now, family, &self.beacon_node_info, &run_id)
+                }
+                "memcache_misses" => {
+                    queries_for_counter(&now, family, &self.beacon_node_info, &run_id)
+                }
+                _ => unreachable!(),
+            };
+            queries.extend(q);
+        }
+
+        for q in queries {
+            if let Err(e) = self.client.record_metric(q).await {
+                error!("Failed to record metrics: {e:?}");
             }
         }
     }

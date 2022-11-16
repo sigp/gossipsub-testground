@@ -1,5 +1,5 @@
 use crate::beacon_node::BeaconNodeInfo;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Local};
 use libp2p::futures::StreamExt;
 use prometheus_client::encoding::proto::openmetrics_data_model::counter_value;
 use prometheus_client::encoding::proto::openmetrics_data_model::metric_point;
@@ -17,7 +17,7 @@ pub(crate) const BARRIER_TOPOLOGY_READY: &str = "Topology generated";
 pub(crate) const BARRIER_SIMULATION_COMPLETED: &str = "Simulation completed";
 
 // Tags for InfluxDB
-pub(crate) const TAG_INSTANCE_PEER_ID: &str = "instance_peer_id";
+pub(crate) const TAG_PEER_ID: &str = "peer_id";
 pub(crate) const TAG_RUN_ID: &str = "run_id";
 
 /// Publish info and collect it from the participants. The return value includes one published by
@@ -51,7 +51,7 @@ pub(crate) async fn publish_and_collect<T: Serialize + DeserializeOwned>(
 
 /// Create InfluxDB queries for Counter metrics.
 pub(crate) fn queries_for_counter(
-    datetime: &DateTime<Utc>,
+    datetime: &DateTime<Local>,
     family: &MetricFamily,
     beacon_node_info: &BeaconNodeInfo,
     run_id: &str,
@@ -61,7 +61,7 @@ pub(crate) fn queries_for_counter(
 
     for metric in family.metrics.iter() {
         let mut query = WriteQuery::new((*datetime).into(), &measurement)
-            .add_tag(TAG_INSTANCE_PEER_ID, beacon_node_info.peer_id().to_string())
+            .add_tag(TAG_PEER_ID, beacon_node_info.peer_id().to_string())
             .add_tag(TAG_RUN_ID, run_id.to_owned())
             .add_field(
                 "count",
