@@ -7,10 +7,10 @@ providers:
    type: file
    options:
      path: /var/lib/grafana/dashboards/scoring/Messages.json
- - name: 'Peer Scores'
+ - name: 'Peer Scores and Gossipsub Metrics'
    orgId: 1
    folder: 'Scoring'
    type: file
    options:
-     path: /var/lib/grafana/dashboards/scoring/PeerScores.json
+     path: /var/lib/grafana/dashboards/scoring/PeerScoresAndGossipsubMetrics.json
 

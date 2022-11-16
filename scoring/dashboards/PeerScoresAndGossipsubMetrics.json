@@ -433,8 +433,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Peer Scores",
+  "title": "Peer Scores and Gossipsub Metrics",
   "uid": "trOmP_vVz",
-  "version": 3,
+  "version": 4,
   "weekStart": ""
 }
