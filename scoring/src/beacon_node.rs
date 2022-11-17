@@ -454,13 +454,12 @@ impl Network {
             self.swarm.behaviour_mut().subscribe(&aggregate_subnet)?;
         }
 
-        // TODO
-        // for subnet_n in 0..SYNC_SUBNETS {
-        // let sync_subnet: IdentTopic = Topic::SyncMessages(subnet_n).into();
-        // let sync_aggregates: IdentTopic = Topic::SignedContributionAndProof(subnet_n).into();
-        // self.swarm.behaviour_mut().subscribe(&sync_subnet)?;
-        // self.swarm.behaviour_mut().subscribe(&sync_aggregates)?;
-        // }
+        for subnet_n in 0..SYNC_SUBNETS {
+            let sync_subnet: IdentTopic = Topic::SyncMessages(subnet_n).into();
+            let sync_aggregates: IdentTopic = Topic::SignedContributionAndProof(subnet_n).into();
+            self.swarm.behaviour_mut().subscribe(&sync_subnet)?;
+            self.swarm.behaviour_mut().subscribe(&sync_aggregates)?;
+        }
 
         Ok(())
     }
@@ -488,21 +487,21 @@ impl Network {
                             let msg = serde_json::to_vec(&(v, slot, payload)).expect("json serialization never fails");
                             (Topic::Blocks, msg)
                         },
-                        Message::AggregateAndProofAttestation { aggregator: ValId(_v), subnet: Subnet(_s) } => {
-                            // TODO
-                            continue;
+                        Message::AggregateAndProofAttestation { aggregator: ValId(v), subnet: Subnet(s) } => {
+                            let msg = serde_json::to_vec(&(v, payload)).expect("json serialization never fails");
+                            (Topic::Aggregates(s), msg)
                         },
                         Message::Attestation { attester: ValId(v), subnet: Subnet(s) } => {
                             let msg = serde_json::to_vec(&(v, payload)).expect("json serialization never fails");
                             (Topic::Attestations(s), msg)
                         },
-                        Message::SignedContributionAndProof { validator: ValId(_v), subnet: Subnet(_s) } => {
-                            // TODO
-                            continue;
+                        Message::SignedContributionAndProof { validator: ValId(v), subnet: Subnet(s) } => {
+                            let msg = serde_json::to_vec(&(v, payload)).expect("json serialization never fails");
+                            (Topic::SignedContributionAndProof(s), msg)
                         },
-                        Message::SyncCommitteeMessage { validator: ValId(_v), subnet: Subnet(_s) } => {
-                            // TODO
-                            continue;
+                        Message::SyncCommitteeMessage { validator: ValId(v), subnet: Subnet(s) } => {
+                            let msg = serde_json::to_vec(&(v, payload)).expect("json serialization never fails");
+                            (Topic::SyncMessages(s), msg)
                         },
                     };
 
@@ -567,13 +566,30 @@ impl Network {
                             warn!("The BeaconBlock message on slot {slot} is already received.")
                         }
                     }
+                    Topic::Aggregates(subnet_id) => {
+                        let (validator, _payload): (u64, String) =
+                            serde_json::from_slice(&message.data).unwrap();
+                        // TODO
+                        println!("Topic::Aggregates ... {subnet_id}, {validator}");
+                    }
                     Topic::Attestations(subnet_id) => {
                         let (validator, _payload): (u64, String) =
                             serde_json::from_slice(&message.data).unwrap();
                         // TODO
                         println!("Topic::Attestations ... {subnet_id}, {validator}");
                     }
-                    _ => todo!(),
+                    Topic::SignedContributionAndProof(subnet_id) => {
+                        let (validator, _payload): (u64, String) =
+                            serde_json::from_slice(&message.data).unwrap();
+                        // TODO
+                        println!("Topic::SignedContributionAndProof ... {subnet_id}, {validator}");
+                    }
+                    Topic::SyncMessages(subnet_id) => {
+                        let (validator, _payload): (u64, String) =
+                            serde_json::from_slice(&message.data).unwrap();
+                        // TODO
+                        println!("Topic::SyncMessages ... {subnet_id}, {validator}");
+                    }
                 }
             }
             other => println!("GossipsubEvent: {:?}", other),
@@ -747,6 +763,9 @@ fn peer_score_params(slot_duration: Duration, mesh_n: usize) -> PeerScoreParams 
         get_hash(Topic::Blocks),
         beacon_block_param(slot_duration, mesh_n),
     );
+
+    // TODO: beacon_attestation_subnet_param
+    // TODO: beacon_aggregate_proof_param
 
     params
 }
