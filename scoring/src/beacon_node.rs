@@ -285,8 +285,6 @@ impl Network {
         validator_set: HashSet<ValId>,
         params: Params,
     ) -> Self {
-        let slot_duration = Duration::from_secs(SLOT);
-
         let gossipsub = {
             let gossipsub_config = GossipsubConfigBuilder::default()
                 .max_transmit_size(10 * 1_048_576) // 10M
@@ -333,6 +331,7 @@ impl Network {
 
         let genesis_slot = 0;
         let genesis_duration = Duration::ZERO;
+        let slot_duration = Duration::from_secs(SLOT);
         let sync_subnet_size = 2;
         let target_aggregators = 14;
 
@@ -643,9 +642,7 @@ impl Network {
                     continue;
                 }
                 "topic_peers_counts" => {
-                    // TODO
                     continue;
-                    // queries_for_gauge(&test_start_time, family, &instance_info, run_id, "count")
                 }
                 "invalid_messages_per_topic"
                 | "accepted_messages_per_topic"
@@ -657,9 +654,7 @@ impl Network {
                 // Metrics regarding mesh state
                 // ///////////////////////////////////
                 "mesh_peer_counts" => {
-                    // TODO
                     continue;
-                    // queries_for_gauge(&test_start_time, family, &instance_info, run_id, "count")
                 }
                 "mesh_peer_inclusion_events" => {
                     queries_for_counter(&now, family, &self.beacon_node_info, &run_id)
@@ -682,9 +677,7 @@ impl Network {
                 // Metrics related to scoring
                 // ///////////////////////////////////
                 "score_per_mesh" => {
-                    // TODO
                     continue;
-                    // queries_for_histogram(&test_start_time, family, &instance_info, run_id)
                 }
                 "scoring_penalties" => {
                     queries_for_counter(&now, family, &self.beacon_node_info, &run_id)
