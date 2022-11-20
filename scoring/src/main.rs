@@ -2,7 +2,8 @@ extern crate core;
 
 mod attacker;
 mod beacon_node;
-mod params;
+mod param;
+mod topic;
 mod utils;
 
 use crate::utils::{publish_and_collect, BARRIER_LIBP2P_READY, BARRIER_TOPOLOGY_READY};

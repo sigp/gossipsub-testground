@@ -15,9 +15,113 @@ enabled = true
 name = "scoring"
 instances = { min = 3, max = 100, default = 3 }
   [testcases.params]
+  # ###########################################################################
+  # Topology config
+  # ###########################################################################
   seed = { type = "int", desc = "Seed to use for the rng", default = 40 }
   no_val_percentage = { type = "int", desc = "% of nodes without vals", default = 0 }
   total_validators = { type = "int", desc = "number of validators", default = 200 }
   min_peers_per_node = { type = "int", desc = "minimum number of peers to connect to", default = 2 }
   max_peers_per_node_inclusive = { type = "int", desc = "maximum number of peers to connect to", default = 3 }
   run = { type = "int", desc = "Time to run the emulation", default=200, unit="sec" }
+
+  # ###########################################################################
+  # Peer score params
+  # ###########################################################################
+  topic_score_cap = { type = "float", default = 53.7499 }
+  decay_interval = { type = "float", unit = "sec", default = 12 }
+  decay_to_zero = { type = "float", default = 0.01 }
+  retain_score = { type = "float", unit = "sec", default = 38400 }
+  # P5: Application-specific peer scoring
+  app_specific_weight = { type = "float", default = 53.7499 }
+  # P6: IP-colocation factor.
+  ip_colocation_factor_weight = { type = "float", default = -53.7499 }
+  ip_colocation_factor_threshold = { type = "float", default = 8.0 }
+  # P7: behavioural pattern penalties.
+  behaviour_penalty_weight = { type = "float", default = -15.8793 }
+  behaviour_penalty_threshold = { type = "float", default = 6.0 }
+  behaviour_penalty_decay = { type = "float", default = 0.9857 }
+
+  # ###########################################################################
+  # Peer score thresholds
+  # ###########################################################################
+  gossip_threshold = { type = "float", default = -4000.0 }
+  publish_threshold = { type = "float", default = -8000.0 }
+  graylist_threshold = { type = "float", default = -16000.0 }
+  accept_px_threshold = { type = "float", default = 100.0 }
+  opportunistic_graft_threshold = { type = "float", default = 5.0 }
+
+  # ###########################################################################
+  # Topic score params
+  # ###########################################################################
+  # BeaconBlocks
+  bb_topic_weight = { type = "float", desc = "", default = 0.5 }
+  ## P1: time in the mesh
+  bb_time_in_mesh_weight = { type = "float", desc = "", default = 0.0333 }
+  bb_time_in_mesh_quantum = { type = "int", desc = "", unit = "slot", default = 1 }
+  bb_time_in_mesh_cap = { type = "float", desc = "", default = 300.0 }
+  ## P2: first message deliveries
+  bb_first_message_deliveries_weight = { type = "float", desc = "", default = 0.8603 }
+  bb_first_message_deliveries_decay = { type = "float", desc = "", default = 0.9928 }
+  bb_first_message_deliveries_cap = { type = "float", desc = "", default = 46.4916 }
+  ## P3: mesh message deliveries
+  bb_mesh_message_deliveries_weight = { type = "float", desc = "", default = -0.5 }
+  bb_mesh_message_deliveries_decay = { type = "float", desc = "", default = 0.9716 }
+  bb_mesh_message_deliveries_threshold = { type = "float", desc = "", default = 0.6849 }
+  bb_mesh_message_deliveries_cap = { type = "float", desc = "", default = 2.0547 }
+  bb_mesh_message_deliveries_activation = { type = "int", desc = "", unit = "epoch", default = 1 }
+  bb_mesh_message_deliveries_window = { type = "int", desc = "", unit = "sec", default = 2 }
+  ## P3b: sticky mesh propagation failures
+  bb_mesh_failure_penalty_weight = { type = "float", desc = "", default = -0.5 }
+  bb_mesh_failure_penalty_decay = { type = "float", desc = "", default = 0.9716 }
+  ## P4: invalid messages
+  bb_invalid_message_deliveries_weight = { type = "float", desc = "", default = -214.9999 }
+  bb_invalid_message_deliveries_decay = { type = "float", desc = "", default = 0.9971 }
+
+  # BeaconAggregateAndProof
+  baap_topic_weight = { type = "float", desc = "", default = 0.5 }
+  ## P1: time in the mesh
+  baap_time_in_mesh_weight = { type = "float", desc = "", default = 0.0333 }
+  baap_time_in_mesh_quantum = { type = "int", desc = "", unit = "slot", default = 1 }
+  baap_time_in_mesh_cap = { type = "float", desc = "", default = 300.0 }
+  ## P2: first message deliveries
+  baap_first_message_deliveries_weight = { type = "float", desc = "", default = 16.0842 }
+  baap_first_message_deliveries_decay = { type = "float", desc = "", default = 0.8659 }
+  baap_first_message_deliveries_cap = { type = "float", desc = "", default = 2.4869 }
+  ## P3: mesh message deliveries
+  baap_mesh_message_deliveries_weight = { type = "float", desc = "", default = -0.5 }
+  baap_mesh_message_deliveries_decay = { type = "float", desc = "", default = 0.9305 }
+  baap_mesh_message_deliveries_threshold = { type = "float", desc = "", default = 22.0559 }
+  baap_mesh_message_deliveries_cap = { type = "float", desc = "", default = 2.0 }
+  baap_mesh_message_deliveries_activation = { type = "int", desc = "", unit = "epoch", default = 1 }
+  baap_mesh_message_deliveries_window = { type = "int", desc = "", unit = "sec", default = 2 }
+  ## P3b: sticky mesh propagation failures
+  baap_mesh_failure_penalty_weight = { type = "float", desc = "", default = -0.5 }
+  baap_mesh_failure_penalty_decay = { type = "float", desc = "", default = 0.9305 }
+  ## P4: invalid messages
+  baap_invalid_message_deliveries_weight = { type = "float", desc = "", default = -214.9999 }
+  baap_invalid_message_deliveries_decay = { type = "float", desc = "", default = 0.9971 }
+
+  # Attestation
+  a_topic_weight = { type = "float", desc = "", default = 0.0156 }
+  ## P1: time in the mesh
+  a_time_in_mesh_weight = { type = "float", desc = "", default = 0.0333 }
+  a_time_in_mesh_quantum = { type = "int", desc = "", unit = "slot", default = 1 }
+  a_time_in_mesh_cap = { type = "float", desc = "", default = 300.0 }
+  ## P2: first message deliveries
+  a_first_message_deliveries_weight = { type = "float", desc = "", default = 271.3987 }
+  a_first_message_deliveries_decay = { type = "float", desc = "", default = 0.9646 }
+  a_first_message_deliveries_cap = { type = "float", desc = "", default = 0.1473 }
+  ## P3: mesh message deliveries
+  a_mesh_message_deliveries_weight = { type = "float", desc = "", default = -0.0156 }
+  a_mesh_message_deliveries_decay = { type = "float", desc = "", default = 0.9910 }
+  a_mesh_message_deliveries_threshold = { type = "float", desc = "", default = 5.6149 }
+  a_mesh_message_deliveries_cap = { type = "float", desc = "", default = 2.0 }
+  a_mesh_message_deliveries_activation = { type = "int", desc = "", unit = "epoch", default = 3 }
+  a_mesh_message_deliveries_window = { type = "int", desc = "", unit = "sec", default = 2 }
+  ## P3b: sticky mesh propagation failures
+  a_mesh_failure_penalty_weight = { type = "float", desc = "", default = -0.0156 }
+  a_mesh_failure_penalty_decay = { type = "float", desc = "", default = 0.9910 }
+  ## P4: invalid messages
+  a_invalid_message_deliveries_weight = { type = "float", desc = "", default = -6879.9999 }
+  a_invalid_message_deliveries_decay = { type = "float", desc = "", default = 0.9971 }
