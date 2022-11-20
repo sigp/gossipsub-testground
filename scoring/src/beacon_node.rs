@@ -269,6 +269,7 @@ pub(crate) struct Network {
     score_interval: Interval,
     messages_gen: Generator,
     received_beacon_blocks: HashMap<Epoch, HashSet<Slot>>,
+    received_aggregates: Vec<HashMap<Epoch, HashSet<ValId>>>,
     slot_clock: SystemTimeSlotClock,
 }
 
@@ -346,6 +347,11 @@ impl Network {
             .build(validator_set)
             .expect("need to adjust these params");
 
+        let mut received_aggregates = Vec::with_capacity(ATTESTATION_SUBNETS as usize);
+        for subnet_id in 0..ATTESTATION_SUBNETS {
+            received_aggregates.insert(subnet_id as usize, HashMap::new());
+        }
+
         Network {
             swarm,
             node_id,
@@ -356,6 +362,7 @@ impl Network {
             score_interval: interval(Duration::from_secs(3)),
             messages_gen,
             received_beacon_blocks: HashMap::new(),
+            received_aggregates,
             slot_clock: SystemTimeSlotClock::new(
                 Slot::new(genesis_slot as u64),
                 genesis_duration,
@@ -455,19 +462,19 @@ impl Network {
                             let msg = serde_json::to_vec(&(v, slot, payload)).expect("json serialization never fails");
                             (Topic::Blocks, msg)
                         },
-                        Message::AggregateAndProofAttestation { aggregator: ValId(v), subnet: Subnet(s) } => {
-                            let msg = serde_json::to_vec(&(v, payload)).expect("json serialization never fails");
+                        Message::AggregateAndProofAttestation { aggregator: ValId(v), subnet: Subnet(s), slot } => {
+                            let msg = serde_json::to_vec(&(v, slot, payload)).expect("json serialization never fails");
                             (Topic::Aggregates(s), msg)
                         },
-                        Message::Attestation { attester: ValId(v), subnet: Subnet(s) } => {
-                            let msg = serde_json::to_vec(&(v, payload)).expect("json serialization never fails");
+                        Message::Attestation { attester: ValId(v), subnet: Subnet(s), slot } => {
+                            let msg = serde_json::to_vec(&(v, slot, payload)).expect("json serialization never fails");
                             (Topic::Attestations(s), msg)
                         },
-                        Message::SignedContributionAndProof { validator: ValId(v), subnet: Subnet(s) } => {
+                        Message::SignedContributionAndProof { validator: ValId(v), subnet: Subnet(s), .. } => {
                             let msg = serde_json::to_vec(&(v, payload)).expect("json serialization never fails");
                             (Topic::SignedContributionAndProof(s), msg)
                         },
-                        Message::SyncCommitteeMessage { validator: ValId(v), subnet: Subnet(s) } => {
+                        Message::SyncCommitteeMessage { validator: ValId(v), subnet: Subnet(s), .. } => {
                             let msg = serde_json::to_vec(&(v, payload)).expect("json serialization never fails");
                             (Topic::SyncMessages(s), msg)
                         },
@@ -497,6 +504,7 @@ impl Network {
             self.received_beacon_blocks
         );
         self.record_received_beacon_blocks().await;
+        self.record_received_aggregates().await;
     }
 
     fn publish(
@@ -535,13 +543,23 @@ impl Network {
                         }
                     }
                     Topic::Aggregates(subnet_id) => {
-                        let (validator, _payload): (u64, String) =
+                        let (validator, slot, _payload): (u64, Slot, String) =
                             serde_json::from_slice(&message.data).unwrap();
-                        // TODO
-                        println!("Topic::Aggregates ... {subnet_id}, {validator}");
+                        let epoch = slot.epoch(SLOTS_PER_EPOCH);
+
+                        if !self
+                            .received_aggregates
+                            .get_mut(subnet_id as usize)
+                            .expect("subnet_id")
+                            .entry(epoch)
+                            .or_default()
+                            .insert(ValId(validator))
+                        {
+                            warn!("The Aggregate message from {validator} is already received.")
+                        }
                     }
                     Topic::Attestations(subnet_id) => {
-                        let (validator, _payload): (u64, String) =
+                        let (validator, _slot, _payload): (u64, Slot, String) =
                             serde_json::from_slice(&message.data).unwrap();
                         // TODO
                         println!("Topic::Attestations ... {subnet_id}, {validator}");
@@ -591,6 +609,45 @@ impl Network {
         for query in queries {
             if let Err(e) = self.client.record_metric(query).await {
                 error!("Failed to record received_beacon_blocks: {e:?}");
+            }
+        }
+    }
+
+    /// Record the number of AggregateAndProofAttestation messages received per epoch.
+    async fn record_received_aggregates(&self) {
+        let mut queries = vec![];
+        let run_id = self.client.run_parameters().test_run;
+
+        for subnet_id in 0..ATTESTATION_SUBNETS {
+            let measurement = format!("{}_aggregates_{}", env!("CARGO_PKG_NAME"), subnet_id);
+
+            for (epoch, vals) in self
+                .received_aggregates
+                .get(subnet_id as usize)
+                .expect("subnet_id")
+                .iter()
+            {
+                let timestamp: Timestamp = {
+                    let duration = self
+                        .slot_clock
+                        .start_of(epoch.start_slot(SLOTS_PER_EPOCH))
+                        .unwrap();
+
+                    Local.timestamp(duration.as_secs() as i64, 0).into()
+                };
+
+                let query = WriteQuery::new(timestamp, &measurement)
+                    .add_tag(TAG_PEER_ID, self.beacon_node_info.peer_id.to_string())
+                    .add_tag(TAG_RUN_ID, run_id.to_owned())
+                    .add_tag("epoch", epoch.as_u64())
+                    .add_field("count", vals.len() as u64);
+                queries.push(query);
+            }
+        }
+
+        for query in queries {
+            if let Err(e) = self.client.record_metric(query).await {
+                error!("Failed to record received_aggregates: {e:?}");
             }
         }
     }
