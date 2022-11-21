@@ -270,6 +270,7 @@ pub(crate) struct Network {
     messages_gen: Generator,
     received_beacon_blocks: HashMap<Epoch, HashSet<Slot>>,
     received_aggregates: Vec<HashMap<Epoch, HashSet<ValId>>>,
+    received_attestations: Vec<HashMap<Epoch, HashSet<ValId>>>,
     slot_clock: SystemTimeSlotClock,
 }
 
@@ -348,8 +349,10 @@ impl Network {
             .expect("need to adjust these params");
 
         let mut received_aggregates = Vec::with_capacity(ATTESTATION_SUBNETS as usize);
+        let mut received_attestations = Vec::with_capacity(ATTESTATION_SUBNETS as usize);
         for subnet_id in 0..ATTESTATION_SUBNETS {
             received_aggregates.insert(subnet_id as usize, HashMap::new());
+            received_attestations.insert(subnet_id as usize, HashMap::new());
         }
 
         Network {
@@ -363,6 +366,7 @@ impl Network {
             messages_gen,
             received_beacon_blocks: HashMap::new(),
             received_aggregates,
+            received_attestations,
             slot_clock: SystemTimeSlotClock::new(
                 Slot::new(genesis_slot as u64),
                 genesis_duration,
@@ -485,7 +489,7 @@ impl Network {
                     }
 
                 }
-                // Record peer scores
+                // Record peer scores and gossipsub metrics
                 _ = self.score_interval.tick() => {
                     self.record_peer_scores().await;
                     self.record_metrics(registry).await;
@@ -505,6 +509,7 @@ impl Network {
         );
         self.record_received_beacon_blocks().await;
         self.record_received_aggregates().await;
+        self.record_received_attestations().await;
     }
 
     fn publish(
@@ -559,10 +564,20 @@ impl Network {
                         }
                     }
                     Topic::Attestations(subnet_id) => {
-                        let (validator, _slot, _payload): (u64, Slot, String) =
+                        let (validator, slot, _payload): (u64, Slot, String) =
                             serde_json::from_slice(&message.data).unwrap();
-                        // TODO
-                        println!("Topic::Attestations ... {subnet_id}, {validator}");
+                        let epoch = slot.epoch(SLOTS_PER_EPOCH);
+
+                        if !self
+                            .received_attestations
+                            .get_mut(subnet_id as usize)
+                            .expect("subnet_id")
+                            .entry(epoch)
+                            .or_default()
+                            .insert(ValId(validator))
+                        {
+                            warn!("The Attestation message from {validator} is already received.")
+                        }
                     }
                     Topic::SignedContributionAndProof(subnet_id) => {
                         let (validator, _payload): (u64, String) =
@@ -595,7 +610,11 @@ impl Network {
                     .start_of(epoch.start_slot(SLOTS_PER_EPOCH))
                     .unwrap();
 
-                Local.timestamp(duration.as_secs() as i64, 0).into()
+                Local
+                    .timestamp_opt(duration.as_secs() as i64, 0)
+                    .single()
+                    .expect("datetime")
+                    .into()
             };
 
             let query = WriteQuery::new(timestamp, &measurement)
@@ -633,7 +652,11 @@ impl Network {
                         .start_of(epoch.start_slot(SLOTS_PER_EPOCH))
                         .unwrap();
 
-                    Local.timestamp(duration.as_secs() as i64, 0).into()
+                    Local
+                        .timestamp_opt(duration.as_secs() as i64, 0)
+                        .single()
+                        .expect("datetime")
+                        .into()
                 };
 
                 let query = WriteQuery::new(timestamp, &measurement)
@@ -648,6 +671,49 @@ impl Network {
         for query in queries {
             if let Err(e) = self.client.record_metric(query).await {
                 error!("Failed to record received_aggregates: {e:?}");
+            }
+        }
+    }
+
+    /// Record the number of Attestations messages received per epoch.
+    async fn record_received_attestations(&self) {
+        let mut queries = vec![];
+        let run_id = self.client.run_parameters().test_run;
+
+        for subnet_id in 0..ATTESTATION_SUBNETS {
+            let measurement = format!("{}_attestations_{}", env!("CARGO_PKG_NAME"), subnet_id);
+
+            for (epoch, vals) in self
+                .received_attestations
+                .get(subnet_id as usize)
+                .expect("subnet_id")
+                .iter()
+            {
+                let timestamp: Timestamp = {
+                    let duration = self
+                        .slot_clock
+                        .start_of(epoch.start_slot(SLOTS_PER_EPOCH))
+                        .unwrap();
+
+                    Local
+                        .timestamp_opt(duration.as_secs() as i64, 0)
+                        .single()
+                        .expect("datetime")
+                        .into()
+                };
+
+                let query = WriteQuery::new(timestamp, &measurement)
+                    .add_tag(TAG_PEER_ID, self.beacon_node_info.peer_id.to_string())
+                    .add_tag(TAG_RUN_ID, run_id.to_owned())
+                    .add_tag("epoch", epoch.as_u64())
+                    .add_field("count", vals.len() as u64);
+                queries.push(query);
+            }
+        }
+
+        for query in queries {
+            if let Err(e) = self.client.record_metric(query).await {
+                error!("Failed to record received_attestations: {e:?}");
             }
         }
     }
