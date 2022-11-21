@@ -20,3 +20,10 @@ testground run single \
   --instances=3 \
   --wait
 ```
+
+## Dashboards
+
+Provides Grafana GUI with preconfigured data sources and dashboards. All you have to do is running `docker-compose up` and browse to http://localhost:13000/dashboards.
+
+For details of the dashboards please see READMEs in each test plan directories.
+
