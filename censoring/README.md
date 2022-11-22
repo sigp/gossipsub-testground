@@ -7,12 +7,12 @@ parameters to mitigate censoring attacks on gossipsub networks.
 ## Running the simulation
 
 ```shell
-testground run composition -f emulation/compositions/emulation.toml --wait
+testground run composition -f censoring/compositions/censoring.toml --wait
 ```
 
-## What the emulation does
+## How the Simulation Works
 
-Note: Attackers connect to a single publisher (victim). [`Publisher1` is the victim](https://github.com/sigp/gossipsub-testground/emulation/src/attacker.rs#L76) in this test plan.
+Note: Attackers connect to a single publisher (victim). [`Publisher1` is the victim](https://github.com/sigp/gossipsub-testground/censoring/src/attacker.rs#L76) in this test plan.
 
 ```mermaid
 sequenceDiagram
@@ -53,7 +53,7 @@ Please see the root [README](https://github.com/sigp/gossipsub-testground/blob/m
 
 ### Gossipsub Metrics
 
-The metrics of gossipsub are recorded once the emulation has been completed. [All of the metrics on libp2p-gossipsub](https://github.com/sigp/gossipsub-testground/blob/emulation/src/honest.rs#L235-L275) are available in this dashboard.
+The metrics of gossipsub are recorded once the simulation has been completed. [All of the metrics on libp2p-gossipsub](https://github.com/sigp/gossipsub-testground/blob/censoring/src/honest.rs#L235-L275) are available in this dashboard.
 
 Variables for this dashboard:
 
@@ -65,7 +65,7 @@ Variables for this dashboard:
 
 ### Peer Scores
 
-The peer scores are recorded periodically (every second) while the emulation is running.
+The peer scores are recorded periodically (every second) while the simulation is running.
 
 Variables for this dashboard:
 
