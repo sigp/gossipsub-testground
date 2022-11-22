@@ -1,12 +1,14 @@
 services:
   grafana:
     image: grafana/grafana:9.2.0
+    container_name: gossipsub-testground-grafana
     ports:
       - 13000:3000
     volumes:
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
       - ./grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
       - ./grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
+      - ./censoring/dashboards:/var/lib/grafana/dashboards/censoring
       - ./scoring/dashboards:/var/lib/grafana/dashboards/scoring
 
 networks:
