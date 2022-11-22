@@ -32,7 +32,7 @@ RUN touch ./plan/src/main.rs
 RUN cd ./plan/ && cargo build --release
 
 FROM debian:bullseye-slim
-COPY --from=builder /usr/src/test-plan/plan/target/release/emulation /usr/local/bin/emulation
+COPY --from=builder /usr/src/test-plan/plan/target/release/censoring /usr/local/bin/censoring
 
 # Configure Logging
 # ENV RUST_LOG=libp2p_gossipsub=debug
