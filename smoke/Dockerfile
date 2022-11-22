@@ -3,10 +3,12 @@
 FROM rust:1.62-bullseye as builder
 WORKDIR /usr/src/test-plan
 
-# `prost-build`, a dependency of `libp2p-gossipsub`, requires cmake.
-# There is a discussion for removing cmake from their dependency.
-# https://github.com/tokio-rs/prost/pull/620
-RUN apt-get update && apt-get install -y cmake
+# * `prost-build`, a dependency of `libp2p-gossipsub`, requires cmake.
+#  There is a discussion for removing cmake from their dependency.
+#  https://github.com/tokio-rs/prost/pull/620
+# * Since `prost-build` v0.11, `protoc` is required.
+#   https://github.com/tokio-rs/prost/releases/tag/v0.11.0
+RUN apt-get update && apt-get install -y cmake && apt-get install -y protobuf-compiler
 
 # Cache dependencies between test runs,
 # See https://blog.mgattozzi.dev/caching-rust-docker-builds/
