@@ -2,5 +2,5 @@
 
 members = [
     "smoke",
-    "emulation",
+    "censoring",
 ]

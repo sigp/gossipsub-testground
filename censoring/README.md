@@ -1,38 +1,36 @@
-# emulation
+# Censoring Simulation
 
-## How to run
+This simulation creates a number of malicious nodes which do not propagate
+received messages. This simulation is aimed to help fine-tune gossipsub scoring
+parameters to mitigate censoring attacks on gossipsub networks.
+
+## Running the simulation
 
 ```shell
-# Import test plans
-git clone https://github.com/sigp/gossipsub-testground.git
-testground plan import --from ./gossipsub-testground/
-
-# Run `emulation` test plan
-cd gossipsub-testground
 testground run composition -f emulation/compositions/emulation.toml --wait
 ```
 
 ## What the emulation does
 
-Note: Attackers connect to a single publisher (victim). [`Publisher1` is the victim](https://github.com/ackintosh/gossipsub-testground/blob/0d715d79e0a75300e30fdacf97c7d9961fd6f5af/emulation/src/attacker.rs#L76) in this test plan.
+Note: Attackers connect to a single publisher (victim). [`Publisher1` is the victim](https://github.com/sigp/gossipsub-testground/emulation/src/attacker.rs#L76) in this test plan.
 
 ```mermaid
 sequenceDiagram
     participant Publishers
-    participant Lukers
+    participant Lurkers
     participant Attackers
 
     %% Discovery
-    Note over Publishers,Lukers: Setup discovery<br />Connect to some of the honest nodes (publishers + lukers)<br />randomly selected
+    Note over Publishers,Lurkers: Setup discovery<br />Connect to some of the honest nodes (publishers + lukers)<br />randomly selected
     Note over Attackers: Setup discovery<br />Connect to a single publisher
-    Publishers->>Lukers: Connect
-    Lukers->>Publishers: Connect
+    Publishers->>Lurkers: Connect
+    Lurkers->>Publishers: Connect
     Attackers->>Publishers: Connect to a single publisher (victim)
 
     %% Subscribe topics
-    Note over Publishers,Lukers: Subscribe topic(s)
-    Publishers->>Lukers: Subscribe/GRAFT
-    Lukers->>Publishers: Subscribe/GRAFT
+    Note over Publishers,Lurkers: Subscribe topic(s)
+    Publishers->>Lurkers: Subscribe/GRAFT
+    Lurkers->>Publishers: Subscribe/GRAFT
     Publishers->>Attackers: Subscribe/GRAFT
     Note over Attackers: Subscribe to the topic in the message from the publisher, <br/>and send back Subscribe/GRAFT.
     Attackers->>Publishers: Subscribe/GRAFT
@@ -40,13 +38,13 @@ sequenceDiagram
     %% Publish messages
     Note over Publishers: Periodically publish messages on all topics subscribing.
     loop Publish messages
-        Publishers->>Lukers: Message
+        Publishers->>Lurkers: Message
         Publishers->>Attackers: Message
         Note over Attackers: **Don't propagate messages**
     end
 
     %% Record metrics
-    Note over Publishers,Lukers: Record metrics.
+    Note over Publishers,Lurkers: Record metrics.
 ```
 
 ## Dashboards
@@ -55,7 +53,7 @@ Please see the root [README](https://github.com/sigp/gossipsub-testground/blob/m
 
 ### Gossipsub Metrics
 
-The metrics of gossipsub are recorded once the emulation has been completed. [All of the metrics on libp2p-gossipsub](https://github.com/ackintosh/gossipsub-testground/blob/test-plan-emulation/emulation/src/honest.rs#L235-L275) are available in this dashboard.
+The metrics of gossipsub are recorded once the emulation has been completed. [All of the metrics on libp2p-gossipsub](https://github.com/sigp/gossipsub-testground/blob/emulation/src/honest.rs#L235-L275) are available in this dashboard.
 
 Variables for this dashboard:
 
