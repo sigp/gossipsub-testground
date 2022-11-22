@@ -1,0 +1,20 @@
+services:
+  grafana:
+    image: grafana/grafana:9.2.0
+    container_name: gossipsub-testground-grafana
+    ports:
+      - 13000:3000
+    volumes:
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ./grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+      - ./grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
+      - ./censoring/dashboards:/var/lib/grafana/dashboards/censoring
+      - ./eth_consensus/dashboards:/var/lib/grafana/dashboards/eth_consensus
+
+networks:
+  # Connect containers to `testground-control` to access Testground-supplied containers.
+  # https://docs.testground.ai/runner-library/local-docker/system-overview#testground-supplied-containers
+  default:
+    name: testground-control
+    external: true
+

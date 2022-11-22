@@ -133,11 +133,13 @@ pub(crate) async fn run(
     let validator_set: HashSet<ValId> =
         validator_set.into_iter().map(|v| ValId(v as u64)).collect();
 
+    let peer_id = instance_info.peer_id.clone();
     record_instance_info(
         &client,
         node_id,
-        &instance_info,
+        &peer_id,
         &client.run_parameters().test_run,
+        true,
     )
     .await?;
 
@@ -177,6 +179,17 @@ pub(crate) async fn run(
         error!("[{}] Failed to subscribe to topics {e}", network.node_id);
     };
     network.run_sim(run_duration).await;
+
+
+    // Register the end time
+    record_instance_info(
+        &client,
+        node_id,
+        &peer_id,
+        &client.run_parameters().test_run,
+        false,
+    )
+    .await?;
 
     client.record_success().await?;
     Ok(())

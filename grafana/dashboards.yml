@@ -1,0 +1,21 @@
+apiVersion: 1
+
+providers:
+ - name: 'Gossipsub Metrics'
+   orgId: 1
+   folder: 'Censoring'
+   type: file
+   options:
+     path: /var/lib/grafana/dashboards/censoring/GossipsubMetrics.json
+ - name: 'Peer Scores'
+   orgId: 1
+   folder: 'Censoring'
+   type: file
+   options:
+     path: /var/lib/grafana/dashboards/censoring/PeerScores.json
+ - name: 'Basic Gossipsub'
+   orgId: 1
+   folder: 'Eth Consensus'
+   type: file
+   options:
+     path: /var/lib/grafana/dashboards/eth_consensus/BasicGossipsub.json

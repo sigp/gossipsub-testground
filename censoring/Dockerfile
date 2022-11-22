@@ -1,11 +1,11 @@
 # This Dockerfile is for the `docker:generic` builder.
 # See https://docs.testground.ai/builder-library/docker-generic for details about the builder.
-FROM rust:1.64-bullseye as builder
+FROM rust:1.62-bullseye as builder
 WORKDIR /usr/src/test-plan
 
 # * `prost-build`, a dependency of `libp2p-gossipsub`, requires cmake.
-#  There is a discussion for removing cmake from their dependency.
-#  https://github.com/tokio-rs/prost/pull/620
+#   There is a discussion for removing cmake from their dependency.
+#   https://github.com/tokio-rs/prost/pull/620
 # * Since `prost-build` v0.11, `protoc` is required.
 #   https://github.com/tokio-rs/prost/releases/tag/v0.11.0
 RUN apt-get update && apt-get install -y cmake && apt-get install -y protobuf-compiler
@@ -16,7 +16,6 @@ RUN apt-get update && apt-get install -y cmake && apt-get install -y protobuf-co
 RUN mkdir -p ./plan/src/
 # This is a placeholder main function to build only the dependencies.
 RUN echo "fn main() { println!(\"If you see this message, you may want to clean up the target directory or the Docker build cache.\") }" > ./plan/src/main.rs
-
 COPY ./plan/Cargo.toml ./plan/
 RUN cd ./plan/ && cargo build --release
 
@@ -33,9 +32,9 @@ RUN touch ./plan/src/main.rs
 RUN cd ./plan/ && cargo build --release
 
 FROM debian:bullseye-slim
-COPY --from=builder /usr/src/test-plan/plan/target/release/smoke /usr/local/bin/smoke
+COPY --from=builder /usr/src/test-plan/plan/target/release/censoring /usr/local/bin/censoring
 
 # Configure Logging
 # ENV RUST_LOG=libp2p_gossipsub=debug
 
-ENTRYPOINT ["smoke"]
+ENTRYPOINT ["censoring"]

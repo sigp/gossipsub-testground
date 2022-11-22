@@ -1,6 +1,7 @@
 use crate::InstanceInfo;
 use chrono::{DateTime, Local, Utc};
-use libp2p::futures::StreamExt;
+use libp2p::futures::FutureExt;
+use libp2p::futures::{Stream, StreamExt};
 use prometheus_client::encoding::proto::openmetrics_data_model::counter_value;
 use prometheus_client::encoding::proto::openmetrics_data_model::gauge_value;
 use prometheus_client::encoding::proto::openmetrics_data_model::metric_point;
@@ -9,13 +10,17 @@ use prometheus_client::encoding::proto::openmetrics_data_model::MetricFamily;
 use prometheus_client::encoding::proto::HistogramValue;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde_json::Value;
 use std::borrow::Cow;
+use std::fmt::Debug;
 use testground::client::Client;
 use testground::WriteQuery;
+use tracing::{debug, info};
 
 // States for `barrier()`
-pub(crate) const BARRIER_LIBP2P_READY: &str = "Started libp2p";
-pub(crate) const BARRIER_TOPOLOGY_READY: &str = "Topology generated";
+pub(crate) const BARRIER_STARTED_LIBP2P: &str = "Started libp2p";
+pub(crate) const BARRIER_WARMUP: &str = "Warmup";
+pub(crate) const BARRIER_DONE: &str = "Done";
 
 // Tags for InfluxDB
 const TAG_INSTANCE_PEER_ID: &str = "instance_peer_id";
@@ -25,22 +30,29 @@ const TAG_RUN_ID: &str = "run_id";
 /// Publish info and collect it from the participants. The return value includes one published by
 /// myself.
 pub(crate) async fn publish_and_collect<T: Serialize + DeserializeOwned>(
-    topic: &'static str,
     client: &Client,
     info: T,
 ) -> Result<Vec<T>, Box<dyn std::error::Error>> {
-    let instance_count = client.run_parameters().test_instance_count as usize;
-    let serialized = Cow::Owned(serde_json::to_value(&info)?);
-    client.publish(topic, serialized).await?;
+    const TOPIC: &str = "publish_and_collect";
 
-    let mut stream = client.subscribe(topic, instance_count * 2).await;
+    client
+        .publish(
+            TOPIC,
+            Cow::Owned(Value::String(serde_json::to_string(&info)?)),
+        )
+        .await?;
 
-    let mut vec: Vec<T> = Vec::with_capacity(instance_count);
+    let mut stream = client.subscribe(TOPIC, u16::MAX.into()).await;
 
-    for _ in 0..instance_count {
+    let mut vec: Vec<T> = vec![];
+
+    for _ in 0..client.run_parameters().test_instance_count {
         match stream.next().await {
             Some(Ok(other)) => {
-                let info: T = serde_json::from_value(other)?;
+                let info: T = match other {
+                    Value::String(str) => serde_json::from_str(&str)?,
+                    _ => unreachable!(),
+                };
                 vec.push(info);
             }
             Some(Err(e)) => return Err(Box::new(e)),
@@ -51,11 +63,38 @@ pub(crate) async fn publish_and_collect<T: Serialize + DeserializeOwned>(
     Ok(vec)
 }
 
+/// Sets a barrier on the supplied state that fires when it reaches all participants.
+pub(crate) async fn barrier_and_drive_swarm<
+    T: StreamExt + Unpin + libp2p::futures::stream::FusedStream,
+>(
+    client: &Client,
+    swarm: &mut T,
+    state: impl Into<Cow<'static, str>> + Copy,
+) -> Result<(), Box<dyn std::error::Error>>
+where
+    <T as Stream>::Item: Debug,
+{
+    info!(
+        "Signal and wait for all peers to signal being done with \"{}\".",
+        state.into(),
+    );
+    swarm
+        .take_until(
+            client
+                .signal_and_wait(state, client.run_parameters().test_instance_count)
+                .boxed_local(),
+        )
+        .map(|event| debug!("Event: {:?}", event))
+        .collect::<Vec<()>>()
+        .await;
+
+    Ok(())
+}
+
 /// Create InfluxDB queries for Counter metrics.
 pub(crate) fn queries_for_counter(
     datetime: &DateTime<Utc>,
     family: &MetricFamily,
-    node_id: usize,
     instance_info: &InstanceInfo,
     run_id: &str,
 ) -> Vec<WriteQuery> {
@@ -64,7 +103,7 @@ pub(crate) fn queries_for_counter(
     for metric in family.metrics.iter() {
         let mut query = WriteQuery::new((*datetime).into(), family.name.clone())
             .add_tag(TAG_INSTANCE_PEER_ID, instance_info.peer_id.to_string())
-            .add_tag(TAG_INSTANCE_NAME, node_id.to_string())
+            .add_tag(TAG_INSTANCE_NAME, instance_info.name())
             .add_tag(TAG_RUN_ID, run_id.to_owned())
             .add_field(
                 "count",
@@ -85,7 +124,6 @@ pub(crate) fn queries_for_counter(
 pub(crate) fn queries_for_gauge(
     datetime: &DateTime<Utc>,
     family: &MetricFamily,
-    node_id: usize,
     instance_info: &InstanceInfo,
     run_id: &str,
     field_name: &str,
@@ -95,7 +133,7 @@ pub(crate) fn queries_for_gauge(
     for metric in family.metrics.iter() {
         let mut query = WriteQuery::new((*datetime).into(), family.name.clone())
             .add_tag(TAG_INSTANCE_PEER_ID, instance_info.peer_id.to_string())
-            .add_tag(TAG_INSTANCE_NAME, node_id.to_string())
+            .add_tag(TAG_INSTANCE_NAME, instance_info.name())
             .add_tag(TAG_RUN_ID, run_id.to_owned())
             .add_field(
                 field_name,
@@ -116,7 +154,6 @@ pub(crate) fn queries_for_gauge(
 pub(crate) fn queries_for_histogram(
     datetime: &DateTime<Utc>,
     family: &MetricFamily,
-    node_id: usize,
     instance_info: &InstanceInfo,
     run_id: &str,
 ) -> Vec<WriteQuery> {
@@ -127,7 +164,7 @@ pub(crate) fn queries_for_histogram(
         for bucket in histogram.buckets.iter() {
             let mut query = WriteQuery::new((*datetime).into(), family.name.clone())
                 .add_tag(TAG_INSTANCE_PEER_ID, instance_info.peer_id.to_string())
-                .add_tag(TAG_INSTANCE_NAME, node_id.to_string())
+                .add_tag(TAG_INSTANCE_NAME, instance_info.name())
                 .add_tag(TAG_RUN_ID, run_id.to_owned())
                 .add_field("count", bucket.count)
                 .add_field("upper_bound", bucket.upper_bound);
@@ -186,7 +223,6 @@ fn get_histogram_value(metric: &Metric) -> HistogramValue {
 /// Record an InstanceInfo to InfluxDB. This is useful on Grafana dashboard.
 pub(crate) async fn record_instance_info(
     client: &Client,
-    node_id: usize,
     instance_info: &InstanceInfo,
     run_id: &str,
 ) -> Result<(), testground::errors::Error> {
@@ -195,7 +231,7 @@ pub(crate) async fn record_instance_info(
         // Add below as "field" not tag, because in InfluxQL, SELECT clause can't specify only tag.
         // https://docs.influxdata.com/influxdb/v1.8/query_language/explore-data/#select-clause
         // > The SELECT clause must specify at least one field when it includes a tag.
-        .add_field(TAG_INSTANCE_NAME, node_id.to_string())
+        .add_field(TAG_INSTANCE_NAME, instance_info.name())
         .add_field(TAG_INSTANCE_PEER_ID, instance_info.peer_id.to_string());
 
     client.record_metric(query).await

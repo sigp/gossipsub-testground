@@ -1,4 +1,4 @@
-name = "episub"
+name = "eth_consensus"
 
 [defaults]
 builder = "docker:generic"
@@ -12,7 +12,7 @@ enabled = true
 enabled = true
 
 [[testcases]]
-name = "episub"
+name = "eth_consensus"
 instances = { min = 3, max = 100, default = 3 }
   [testcases.params]
   seed = { type = "int", desc = "Seed to use for the rng", default = 40 }
