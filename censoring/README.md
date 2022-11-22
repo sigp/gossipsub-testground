@@ -12,7 +12,7 @@ testground run composition -f censoring/compositions/censoring.toml --wait
 
 ## How the Simulation Works
 
-Note: Attackers connect to a single publisher (victim). [`Publisher1` is the victim](https://github.com/sigp/gossipsub-testground/censoring/src/attacker.rs#L76) in this test plan.
+Note: Attackers connect to a single publisher (victim). [`Publisher1` is the victim](./src/attacker.rs#L76) in this test plan.
 
 ```mermaid
 sequenceDiagram
@@ -49,11 +49,11 @@ sequenceDiagram
 
 ## Dashboards
 
-Please see the root [README](https://github.com/sigp/gossipsub-testground/blob/main/README.md) for how to run Grafana.
+Please see the root [README](../README.md) for how to run Grafana.
 
 ### Gossipsub Metrics
 
-The metrics of gossipsub are recorded once the simulation has been completed. [All of the metrics on libp2p-gossipsub](https://github.com/sigp/gossipsub-testground/blob/censoring/src/honest.rs#L235-L275) are available in this dashboard.
+The metrics of gossipsub are recorded once the simulation has been completed. [All of the metrics on libp2p-gossipsub](./src/honest.rs#L235-L275) are available in this dashboard.
 
 Variables for this dashboard:
 
