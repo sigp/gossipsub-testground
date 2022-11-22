@@ -1,10 +1,10 @@
 [metadata]
-name = "emulation"
+name = "censoring"
 author = "Akihito Nakano"
 
 [global]
-plan = "gossipsub-testground/emulation"
-case = "emulation"
+plan = "gossipsub-testground/censoring"
+case = "censoring"
 total_instances = 15
 builder = "docker:generic"
 runner = "local:docker"

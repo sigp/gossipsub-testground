@@ -3,14 +3,14 @@ apiVersion: 1
 providers:
  - name: 'Gossipsub Metrics'
    orgId: 1
-   folder: 'Emulation'
+   folder: 'Censoring'
    type: file
    options:
-     path: /var/lib/grafana/dashboards/emulation/GossipsubMetrics.json
+     path: /var/lib/grafana/dashboards/censoring/GossipsubMetrics.json
  - name: 'Peer Scores'
    orgId: 1
-   folder: 'Emulation'
+   folder: 'Censoring'
    type: file
    options:
-     path: /var/lib/grafana/dashboards/emulation/PeerScores.json
+     path: /var/lib/grafana/dashboards/censoring/PeerScores.json
 
