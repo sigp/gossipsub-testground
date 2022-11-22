@@ -1,0 +1,16 @@
+apiVersion: 1
+
+providers:
+ - name: 'Gossipsub Metrics'
+   orgId: 1
+   folder: 'Emulation'
+   type: file
+   options:
+     path: /var/lib/grafana/dashboards/emulation/GossipsubMetrics.json
+ - name: 'Peer Scores'
+   orgId: 1
+   folder: 'Emulation'
+   type: file
+   options:
+     path: /var/lib/grafana/dashboards/emulation/PeerScores.json
+
