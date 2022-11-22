@@ -271,6 +271,8 @@ pub(crate) struct Network {
     received_beacon_blocks: HashMap<Epoch, HashSet<Slot>>,
     received_aggregates: Vec<HashMap<Epoch, HashSet<ValId>>>,
     received_attestations: Vec<HashMap<Epoch, HashSet<ValId>>>,
+    received_sync_committee_aggregates: Vec<HashMap<Epoch, HashSet<ValId>>>,
+    received_sync_committee_messages: Vec<HashMap<Epoch, HashSet<ValId>>>,
     slot_clock: SystemTimeSlotClock,
 }
 
@@ -355,6 +357,13 @@ impl Network {
             received_attestations.insert(subnet_id as usize, HashMap::new());
         }
 
+        let mut received_sync_committee_aggregates = Vec::with_capacity(SYNC_SUBNETS as usize);
+        let mut received_sync_committee_messages = Vec::with_capacity(SYNC_SUBNETS as usize);
+        for subnet_id in 0..SYNC_SUBNETS {
+            received_sync_committee_aggregates.insert(subnet_id as usize, HashMap::new());
+            received_sync_committee_messages.insert(subnet_id as usize, HashMap::new());
+        }
+
         Network {
             swarm,
             node_id,
@@ -367,6 +376,8 @@ impl Network {
             received_beacon_blocks: HashMap::new(),
             received_aggregates,
             received_attestations,
+            received_sync_committee_aggregates,
+            received_sync_committee_messages,
             slot_clock: SystemTimeSlotClock::new(
                 Slot::new(genesis_slot as u64),
                 genesis_duration,
@@ -474,12 +485,12 @@ impl Network {
                             let msg = serde_json::to_vec(&(v, slot, payload)).expect("json serialization never fails");
                             (Topic::Attestations(s), msg)
                         },
-                        Message::SignedContributionAndProof { validator: ValId(v), subnet: Subnet(s), .. } => {
-                            let msg = serde_json::to_vec(&(v, payload)).expect("json serialization never fails");
+                        Message::SignedContributionAndProof { validator: ValId(v), subnet: Subnet(s), slot } => {
+                            let msg = serde_json::to_vec(&(v, slot, payload)).expect("json serialization never fails");
                             (Topic::SignedContributionAndProof(s), msg)
                         },
-                        Message::SyncCommitteeMessage { validator: ValId(v), subnet: Subnet(s), .. } => {
-                            let msg = serde_json::to_vec(&(v, payload)).expect("json serialization never fails");
+                        Message::SyncCommitteeMessage { validator: ValId(v), subnet: Subnet(s), slot } => {
+                            let msg = serde_json::to_vec(&(v, slot, payload)).expect("json serialization never fails");
                             (Topic::SyncMessages(s), msg)
                         },
                     };
@@ -503,13 +514,32 @@ impl Network {
             }
         }
 
-        println!(
-            "Done simulation: received blocks: {:?}",
-            self.received_beacon_blocks
-        );
+        info!("The simulation has completed. Recording the results.");
         self.record_received_beacon_blocks().await;
-        self.record_received_aggregates().await;
-        self.record_received_attestations().await;
+        self.record_received_messages(
+            "aggregates",
+            ATTESTATION_SUBNETS,
+            &self.received_aggregates,
+        )
+        .await;
+        self.record_received_messages(
+            "attestations",
+            ATTESTATION_SUBNETS,
+            &self.received_attestations,
+        )
+        .await;
+        self.record_received_messages(
+            "sync_committee_aggregates",
+            SYNC_SUBNETS,
+            &self.received_sync_committee_aggregates,
+        )
+        .await;
+        self.record_received_messages(
+            "sync_committee_messages",
+            SYNC_SUBNETS,
+            &self.received_sync_committee_messages,
+        )
+        .await;
     }
 
     fn publish(
@@ -544,7 +574,7 @@ impl Network {
                             .or_default()
                             .insert(slot)
                         {
-                            warn!("The BeaconBlock message on slot {slot} is already received.")
+                            warn!("BeaconBlock message on slot {slot} is already received.")
                         }
                     }
                     Topic::Aggregates(subnet_id) => {
@@ -560,7 +590,7 @@ impl Network {
                             .or_default()
                             .insert(ValId(validator))
                         {
-                            warn!("The Aggregate message from {validator} is already received.")
+                            warn!("AggregateAndProofAttestation message from {validator} is already received.")
                         }
                     }
                     Topic::Attestations(subnet_id) => {
@@ -576,24 +606,44 @@ impl Network {
                             .or_default()
                             .insert(ValId(validator))
                         {
-                            warn!("The Attestation message from {validator} is already received.")
+                            warn!("Attestation message from {validator} is already received.")
                         }
                     }
                     Topic::SignedContributionAndProof(subnet_id) => {
-                        let (validator, _payload): (u64, String) =
+                        let (validator, slot, _payload): (u64, Slot, String) =
                             serde_json::from_slice(&message.data).unwrap();
-                        // TODO
-                        println!("Topic::SignedContributionAndProof ... {subnet_id}, {validator}");
+                        let epoch = slot.epoch(SLOTS_PER_EPOCH);
+
+                        if !self
+                            .received_sync_committee_aggregates
+                            .get_mut(subnet_id as usize)
+                            .expect("subnet_id")
+                            .entry(epoch)
+                            .or_default()
+                            .insert(ValId(validator))
+                        {
+                            warn!("SignedContributionAndProof message from {validator} is already received.")
+                        }
                     }
                     Topic::SyncMessages(subnet_id) => {
-                        let (validator, _payload): (u64, String) =
+                        let (validator, slot, _payload): (u64, Slot, String) =
                             serde_json::from_slice(&message.data).unwrap();
-                        // TODO
-                        println!("Topic::SyncMessages ... {subnet_id}, {validator}");
+                        let epoch = slot.epoch(SLOTS_PER_EPOCH);
+
+                        if !self
+                            .received_sync_committee_messages
+                            .get_mut(subnet_id as usize)
+                            .expect("subnet_id")
+                            .entry(epoch)
+                            .or_default()
+                            .insert(ValId(validator))
+                        {
+                            warn!("SyncMessage message from {validator} is already received.")
+                        }
                     }
                 }
             }
-            other => println!("GossipsubEvent: {:?}", other),
+            other => info!("GossipsubEvent: {:?}", other),
         }
     }
 
@@ -632,63 +682,20 @@ impl Network {
         }
     }
 
-    /// Record the number of AggregateAndProofAttestation messages received per epoch.
-    async fn record_received_aggregates(&self) {
+    /// Record the number of messages received per epoch.
+    async fn record_received_messages(
+        &self,
+        measurement: &str,
+        subnets: u64,
+        messages: &Vec<HashMap<Epoch, HashSet<ValId>>>,
+    ) {
         let mut queries = vec![];
         let run_id = self.client.run_parameters().test_run;
 
-        for subnet_id in 0..ATTESTATION_SUBNETS {
-            let measurement = format!("{}_aggregates_{}", env!("CARGO_PKG_NAME"), subnet_id);
+        for subnet_id in 0..subnets as usize {
+            let measurement = format!("{}_{measurement}_{subnet_id}", env!("CARGO_PKG_NAME"));
 
-            for (epoch, vals) in self
-                .received_aggregates
-                .get(subnet_id as usize)
-                .expect("subnet_id")
-                .iter()
-            {
-                let timestamp: Timestamp = {
-                    let duration = self
-                        .slot_clock
-                        .start_of(epoch.start_slot(SLOTS_PER_EPOCH))
-                        .unwrap();
-
-                    Local
-                        .timestamp_opt(duration.as_secs() as i64, 0)
-                        .single()
-                        .expect("datetime")
-                        .into()
-                };
-
-                let query = WriteQuery::new(timestamp, &measurement)
-                    .add_tag(TAG_PEER_ID, self.beacon_node_info.peer_id.to_string())
-                    .add_tag(TAG_RUN_ID, run_id.to_owned())
-                    .add_tag("epoch", epoch.as_u64())
-                    .add_field("count", vals.len() as u64);
-                queries.push(query);
-            }
-        }
-
-        for query in queries {
-            if let Err(e) = self.client.record_metric(query).await {
-                error!("Failed to record received_aggregates: {e:?}");
-            }
-        }
-    }
-
-    /// Record the number of Attestations messages received per epoch.
-    async fn record_received_attestations(&self) {
-        let mut queries = vec![];
-        let run_id = self.client.run_parameters().test_run;
-
-        for subnet_id in 0..ATTESTATION_SUBNETS {
-            let measurement = format!("{}_attestations_{}", env!("CARGO_PKG_NAME"), subnet_id);
-
-            for (epoch, vals) in self
-                .received_attestations
-                .get(subnet_id as usize)
-                .expect("subnet_id")
-                .iter()
-            {
+            for (epoch, vals) in messages.get(subnet_id).expect("subnet_id").iter() {
                 let timestamp: Timestamp = {
                     let duration = self
                         .slot_clock
