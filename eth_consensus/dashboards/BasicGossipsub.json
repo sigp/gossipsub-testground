@@ -1,35 +1,4 @@
 {
-  "__inputs": [
-    {
-      "name": "DS_INFLUXDB",
-      "label": "InfluxDB",
-      "description": "",
-      "type": "datasource",
-      "pluginId": "influxdb",
-      "pluginName": "InfluxDB"
-    }
-  ],
-  "__elements": {},
-  "__requires": [
-    {
-      "type": "grafana",
-      "id": "grafana",
-      "name": "Grafana",
-      "version": "9.2.0"
-    },
-    {
-      "type": "datasource",
-      "id": "influxdb",
-      "name": "InfluxDB",
-      "version": "1.0.0"
-    },
-    {
-      "type": "panel",
-      "id": "timeseries",
-      "name": "Time series",
-      "version": ""
-    }
-  ],
   "annotations": {
     "list": [
       {
@@ -52,17 +21,151 @@
       }
     ]
   },
+  "description": "",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": null,
+  "id": 5,
   "links": [],
   "liveNow": false,
   "panels": [
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 7,
+        "x": 0,
+        "y": 0
+      },
+      "hideTimeOverride": false,
+      "id": 15,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "9.2.0",
+      "targets": [
+        {
+          "alias": "Instance: $tag_instance_name Topic: $tag_hash",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ds_influxdb"
+          },
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT difference(count) FROM \"topic_msg_sent_bytes\" WHERE \"run_id\" =~ /^$run_id$/ AND (\"instance_name\" =~ /^$instance_name$/) AND (\"hash\" =~ /^$hash$/) GROUP BY \"hash\", \"instance_name\" ",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "instance_name",
+              "operator": "=~",
+              "value": "/^$InstanceName$/"
+            }
+          ]
+        }
+      ],
+      "title": "Message Sent Bytes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ds_influxdb"
       },
       "fieldConfig": {
         "defaults": {
@@ -118,9 +221,9 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 11,
-        "w": 24,
-        "x": 0,
+        "h": 9,
+        "w": 9,
+        "x": 7,
         "y": 0
       },
       "hideTimeOverride": false,
@@ -142,7 +245,7 @@
           "alias": "Instance: $tag_instance_name Topic: $tag_hash",
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "groupBy": [
             {
@@ -160,7 +263,7 @@
           ],
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "SELECT derivative(\"count\", 10s) FROM \"topic_msg_recv_bytes\" WHERE \"run_id\" =~ /^$run_id$/ AND (\"instance_name\" =~ /^$instance_name$/) GROUP BY \"hash\", \"instance_name\"",
+          "query": "SELECT derivative(\"count\", 10s) FROM \"topic_msg_recv_bytes\" WHERE \"run_id\" =~ /^$run_id$/ AND (\"instance_name\" =~ /^$instance_name$/) AND (\"hash\" =~ /^$hash$/) GROUP BY \"hash\", \"instance_name\"",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
@@ -187,13 +290,13 @@
           ]
         }
       ],
-      "title": "Topic Message Received Bytes",
+      "title": "Message Received Bytes",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
       },
       "fieldConfig": {
         "defaults": {
@@ -249,9 +352,148 @@
       },
       "gridPos": {
         "h": 9,
-        "w": 24,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "id": 10,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "9.2.0",
+      "targets": [
+        {
+          "alias": "Instance: $tag_instance_name Topic:[[tag_hash]]",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ds_influxdb"
+          },
+          "groupBy": [
+            {
+              "params": [
+                "instance_name"
+              ],
+              "type": "tag"
+            },
+            {
+              "params": [
+                "hash"
+              ],
+              "type": "tag"
+            }
+          ],
+          "measurement": "mesh_peer_counts",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT * from topic_subscription_status WHERE run_id == $run_id",
+          "rawQuery": false,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "count"
+                ],
+                "type": "field"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "instance_name",
+              "operator": "=~",
+              "value": "/^$instance_name$/"
+            },
+            {
+              "condition": "AND",
+              "key": "run_id",
+              "operator": "=~",
+              "value": "/^$run_id$/"
+            },
+            {
+              "condition": "AND",
+              "key": "hash",
+              "operator": "=~",
+              "value": "/^$hash$/"
+            }
+          ]
+        }
+      ],
+      "title": "Mesh Peers",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ds_influxdb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 7,
         "x": 0,
-        "y": 11
+        "y": 9
       },
       "id": 14,
       "options": {
@@ -272,7 +514,7 @@
           "alias": "Instance: $tag_instance_name Topic:[[tag_hash]]",
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "groupBy": [
             {
@@ -320,6 +562,12 @@
               "key": "run_id",
               "operator": "=~",
               "value": "/^$run_id$/"
+            },
+            {
+              "condition": "AND",
+              "key": "hash",
+              "operator": "=~",
+              "value": "/^$hash$/"
             }
           ]
         }
@@ -330,7 +578,573 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "ds_influxdb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 9,
+        "x": 7,
+        "y": 9
+      },
+      "id": 16,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "9.2.0",
+      "targets": [
+        {
+          "alias": "Instance: $tag_instance_name Topic:[[tag_hash]]",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ds_influxdb"
+          },
+          "groupBy": [
+            {
+              "params": [
+                "instance_name"
+              ],
+              "type": "tag"
+            },
+            {
+              "params": [
+                "hash"
+              ],
+              "type": "tag"
+            }
+          ],
+          "measurement": "topic_msg_recv_counts",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT * from topic_subscription_status WHERE run_id == $run_id",
+          "rawQuery": false,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "count"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "difference"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "instance_name",
+              "operator": "=~",
+              "value": "/^$instance_name$/"
+            },
+            {
+              "condition": "AND",
+              "key": "run_id",
+              "operator": "=~",
+              "value": "/^$run_id$/"
+            },
+            {
+              "condition": "AND",
+              "key": "hash",
+              "operator": "=~",
+              "value": "/^$hash$/"
+            }
+          ]
+        }
+      ],
+      "title": "Messages Received",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ds_influxdb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 16,
+        "y": 9
+      },
+      "id": 17,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "9.2.0",
+      "targets": [
+        {
+          "alias": "Instance: $tag_instance_name Topic:[[tag_hash]]",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ds_influxdb"
+          },
+          "groupBy": [
+            {
+              "params": [
+                "instance_name"
+              ],
+              "type": "tag"
+            },
+            {
+              "params": [
+                "hash"
+              ],
+              "type": "tag"
+            }
+          ],
+          "measurement": "topic_msg_recv_duplicates",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT difference(\"count\") FROM \"topic_msg_recv_duplicates\" WHERE (\"instance_name\" =~ /^$instance_name$/ AND \"run_id\" =~ /^$run_id$/ AND \"hash\" =~ /^$hash$/) AND $timeFilter GROUP BY \"instance_name\", \"hash\"",
+          "rawQuery": false,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "count"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "difference"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "instance_name",
+              "operator": "=~",
+              "value": "/^$instance_name$/"
+            },
+            {
+              "condition": "AND",
+              "key": "run_id",
+              "operator": "=~",
+              "value": "/^$run_id$/"
+            },
+            {
+              "condition": "AND",
+              "key": "hash",
+              "operator": "=~",
+              "value": "/^$hash$/"
+            }
+          ]
+        }
+      ],
+      "title": "Duplicate Messages Received",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ds_influxdb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 7,
+        "x": 0,
+        "y": 18
+      },
+      "id": 11,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "9.2.0",
+      "targets": [
+        {
+          "alias": "$tag_instance_name",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ds_influxdb"
+          },
+          "groupBy": [
+            {
+              "params": [
+                "instance_name"
+              ],
+              "type": "tag"
+            },
+            {
+              "params": [
+                "hash"
+              ],
+              "type": "tag"
+            }
+          ],
+          "measurement": "heartbeat_duration",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT * from topic_subscription_status WHERE run_id == $run_id",
+          "rawQuery": false,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "count"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "difference"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "instance_name",
+              "operator": "=~",
+              "value": "/^$instance_name$/"
+            },
+            {
+              "condition": "AND",
+              "key": "run_id",
+              "operator": "=~",
+              "value": "/^$run_id$/"
+            }
+          ]
+        }
+      ],
+      "title": "Heartbeat Duration",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ds_influxdb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 9,
+        "x": 7,
+        "y": 18
+      },
+      "id": 19,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "9.2.0",
+      "targets": [
+        {
+          "alias": "Instance: $tag_instance_name Topic:[[tag_hash]]",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ds_influxdb"
+          },
+          "groupBy": [
+            {
+              "params": [
+                "instance_name"
+              ],
+              "type": "tag"
+            },
+            {
+              "params": [
+                "hash"
+              ],
+              "type": "tag"
+            }
+          ],
+          "measurement": "topic_msg_recv_counts_unfiltered",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT * from topic_subscription_status WHERE run_id == $run_id",
+          "rawQuery": false,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "count"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "difference"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "instance_name",
+              "operator": "=~",
+              "value": "/^$instance_name$/"
+            },
+            {
+              "condition": "AND",
+              "key": "run_id",
+              "operator": "=~",
+              "value": "/^$run_id$/"
+            },
+            {
+              "condition": "AND",
+              "key": "hash",
+              "operator": "=~",
+              "value": "/^$hash$/"
+            }
+          ]
+        }
+      ],
+      "title": "Messages Received Unfiltered",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ds_influxdb"
       },
       "description": "",
       "fieldConfig": {
@@ -386,10 +1200,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 20
+        "h": 9,
+        "w": 8,
+        "x": 16,
+        "y": 18
       },
       "id": 13,
       "options": {
@@ -410,7 +1224,7 @@
           "alias": "Instance: $tag_instance_name Topic:[[tag_hash]]",
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "ds_influxdb"
           },
           "groupBy": [
             {
@@ -460,276 +1274,6 @@
       ],
       "title": "IWANT Messages",
       "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 28
-      },
-      "id": 10,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "9.2.0",
-      "targets": [
-        {
-          "alias": "Instance: $tag_instance_name Topic:[[tag_hash]]",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
-          },
-          "groupBy": [
-            {
-              "params": [
-                "instance_name"
-              ],
-              "type": "tag"
-            },
-            {
-              "params": [
-                "hash"
-              ],
-              "type": "tag"
-            }
-          ],
-          "measurement": "mesh_peer_counts",
-          "orderByTime": "ASC",
-          "policy": "default",
-          "query": "SELECT * from topic_subscription_status WHERE run_id == $run_id",
-          "rawQuery": false,
-          "refId": "A",
-          "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "count"
-                ],
-                "type": "field"
-              }
-            ]
-          ],
-          "tags": [
-            {
-              "key": "instance_name",
-              "operator": "=~",
-              "value": "/^$instance_name$/"
-            },
-            {
-              "condition": "AND",
-              "key": "run_id",
-              "operator": "=~",
-              "value": "/^$run_id$/"
-            }
-          ]
-        }
-      ],
-      "title": "Mesh Peers",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 28
-      },
-      "id": 11,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "9.2.0",
-      "targets": [
-        {
-          "alias": "$tag_instance_name",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
-          },
-          "groupBy": [
-            {
-              "params": [
-                "instance_name"
-              ],
-              "type": "tag"
-            },
-            {
-              "params": [
-                "hash"
-              ],
-              "type": "tag"
-            }
-          ],
-          "measurement": "heartbeat_duration",
-          "orderByTime": "ASC",
-          "policy": "default",
-          "query": "SELECT * from topic_subscription_status WHERE run_id == $run_id",
-          "rawQuery": false,
-          "refId": "A",
-          "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "count"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "difference"
-              }
-            ]
-          ],
-          "tags": [
-            {
-              "key": "instance_name",
-              "operator": "=~",
-              "value": "/^$instance_name$/"
-            },
-            {
-              "condition": "AND",
-              "key": "run_id",
-              "operator": "=~",
-              "value": "/^$run_id$/"
-            }
-          ]
-        }
-      ],
-      "title": "Heartbeat Duration",
-      "type": "timeseries"
     }
   ],
   "refresh": false,
@@ -739,10 +1283,14 @@
   "templating": {
     "list": [
       {
-        "current": {},
+        "current": {
+          "selected": false,
+          "text": "cdvefmvsmuj9b9j4io1g",
+          "value": "cdvefmvsmuj9b9j4io1g"
+        },
         "datasource": {
           "type": "influxdb",
-          "uid": "${DS_INFLUXDB}"
+          "uid": "ds_influxdb"
         },
         "definition": "select distinct(run_id) from (select * from participants);",
         "description": "The specific run",
@@ -753,17 +1301,21 @@
         "name": "run_id",
         "options": [],
         "query": "select distinct(run_id) from (select * from participants);",
-        "refresh": 1,
+        "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
         "sort": 0,
         "type": "query"
       },
       {
-        "current": {},
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
         "datasource": {
           "type": "influxdb",
-          "uid": "${DS_INFLUXDB}"
+          "uid": "ds_influxdb"
         },
         "definition": "SELECT distinct(instance_name) FROM \"participants\" WHERE \"run_id\" = '${run_id:text}' ",
         "hide": 0,
@@ -778,6 +1330,30 @@
         "skipUrlSync": false,
         "sort": 0,
         "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "ds_influxdb"
+        },
+        "definition": "SELECT distinct(hash) from (select * from topic_msg_published)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "topic",
+        "multi": false,
+        "name": "hash",
+        "options": [],
+        "query": "SELECT distinct(hash) from (select * from topic_msg_published)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
       }
     ]
   },
@@ -787,8 +1363,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "New dashboard",
+  "title": "Basic Gossipsub",
   "uid": "pPBA4fd4z",
-  "version": 4,
+  "version": 1,
   "weekStart": ""
 }

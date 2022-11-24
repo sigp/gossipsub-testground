@@ -174,7 +174,7 @@ impl Network {
                     let start = current_cut[0];
                     let end = current_cut[1];
                     let assigned_vals: BTreeSet<ValId> =
-                        all_validators[start..end].into_iter().cloned().collect();
+                        all_validators[start..end].iter().cloned().collect();
                     (node_id, assigned_vals)
                 })
                 .collect();
@@ -262,6 +262,7 @@ impl Network {
         &self.params
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn destructure(
         self,
     ) -> (

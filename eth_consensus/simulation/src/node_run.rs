@@ -1,6 +1,6 @@
 use crate::utils::{
-    queries_for_counter, queries_for_gauge, queries_for_histogram, record_instance_info,
-    BARRIER_LIBP2P_READY, BARRIER_TOPOLOGY_READY,
+    get_counter_value, queries_for_counter, queries_for_counter_custom, queries_for_gauge,
+    queries_for_histogram, record_instance_info, BARRIER_LIBP2P_READY, BARRIER_TOPOLOGY_READY,
 };
 use crate::InstanceInfo;
 use chrono::{DateTime, Utc};
@@ -133,13 +133,11 @@ pub(crate) async fn run(
     let validator_set: HashSet<ValId> =
         validator_set.into_iter().map(|v| ValId(v as u64)).collect();
 
-    let peer_id = instance_info.peer_id.clone();
     record_instance_info(
         &client,
         node_id,
-        &peer_id,
+        &instance_info.peer_id,
         &client.run_parameters().test_run,
-        true,
     )
     .await?;
 
@@ -179,16 +177,6 @@ pub(crate) async fn run(
         error!("[{}] Failed to subscribe to topics {e}", network.node_id);
     };
     network.run_sim(run_duration).await;
-
-    // Register the end time
-    record_instance_info(
-        &client,
-        node_id,
-        &peer_id,
-        &client.run_parameters().test_run,
-        false,
-    )
-    .await?;
 
     client.record_success().await?;
     Ok(())
@@ -241,6 +229,7 @@ pub(crate) struct Network {
 }
 
 impl Network {
+    #[allow(clippy::too_many_arguments)]
     fn new(
         mut registry: Registry<Box<dyn EncodeMetric>>,
         keypair: Keypair,
@@ -535,6 +524,42 @@ impl Network {
             };
 
             queries.extend(q);
+        }
+
+        // We can do joins in InfluxDB easily, so do some custom queries here to calculate
+        // duplicates.
+        let recvd_unfiltered_family_metric = metric_set
+            .metric_families
+            .iter()
+            .find(|family| family.name.as_str() == "topic_msg_recv_counts_unfiltered")
+            .and_then(|family| family.metrics.first());
+
+        if let Some(metric) = recvd_unfiltered_family_metric {
+            let recvd_unfiltered = get_counter_value(metric).0;
+
+            if let Some(recvd_unfiltered) = recvd_unfiltered {
+                let recvd = metric_set
+                    .metric_families
+                    .iter()
+                    .find(|family| family.name.as_str() == "topic_msg_recv_counts")
+                    .and_then(|family| family.metrics.first())
+                    .and_then(|metric| get_counter_value(metric).0);
+
+                let duplicates = recvd.map(|recvd| recvd_unfiltered.saturating_sub(recvd));
+
+                if let Some(dupe) = duplicates {
+                    let q = queries_for_counter_custom(
+                        &current,
+                        metric,
+                        "topic_msg_recv_duplicates",
+                        self.node_id,
+                        &self.instance_info,
+                        run_id,
+                        dupe,
+                    );
+                    queries.push(q);
+                }
+            }
         }
 
         for query in queries {

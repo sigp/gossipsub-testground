@@ -82,6 +82,28 @@ pub(crate) fn queries_for_counter(
     queries
 }
 
+/// Create InfluxDB queries for Counter metrics.
+pub(crate) fn queries_for_counter_custom(
+    datetime: &DateTime<Utc>,
+    metric: &Metric,
+    name: &str,
+    node_id: usize,
+    instance_info: &InstanceInfo,
+    run_id: &str,
+    custom_value: u64,
+) -> WriteQuery {
+    let mut query = WriteQuery::new((*datetime).into(), name)
+        .add_tag(TAG_INSTANCE_PEER_ID, instance_info.peer_id.to_string())
+        .add_tag(TAG_INSTANCE_NAME, node_id.to_string())
+        .add_tag(TAG_RUN_ID, run_id.to_owned())
+        .add_field("count", custom_value);
+
+    for l in &metric.labels {
+        query = query.add_tag(l.name.clone(), l.value.clone());
+    }
+    query
+}
+
 /// Create InfluxDB queries for Gauge metrics.
 pub(crate) fn queries_for_gauge(
     datetime: &DateTime<Utc>,
@@ -158,7 +180,7 @@ fn get_gauge_value(metric: &Metric) -> (Option<i64>, Option<f64>) {
     }
 }
 
-fn get_counter_value(metric: &Metric) -> (Option<u64>, Option<f64>) {
+pub(crate) fn get_counter_value(metric: &Metric) -> (Option<u64>, Option<f64>) {
     assert_eq!(1, metric.metric_points.len());
 
     let metric_point = metric.metric_points.first().unwrap();
@@ -190,7 +212,6 @@ pub(crate) async fn record_instance_info(
     node_id: usize,
     peer_id: &PeerId,
     run_id: &str,
-    start: bool,
 ) -> Result<(), testground::errors::Error> {
     let query = WriteQuery::new(Local::now().into(), "participants")
         .add_tag(TAG_RUN_ID, run_id.to_owned())
@@ -198,8 +219,7 @@ pub(crate) async fn record_instance_info(
         // https://docs.influxdata.com/influxdb/v1.8/query_language/explore-data/#select-clause
         // > The SELECT clause must specify at least one field when it includes a tag.
         .add_field(TAG_INSTANCE_NAME, node_id.to_string())
-        .add_field(TAG_INSTANCE_PEER_ID, peer_id.to_string())
-        .add_field("start", start.to_string());
+        .add_field(TAG_INSTANCE_PEER_ID, peer_id.to_string());
 
     client.record_metric(query).await
 }
