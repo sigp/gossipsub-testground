@@ -311,7 +311,7 @@ impl Network {
             instance_info,
             participants,
             client,
-            metrics_interval: interval(Duration::from_secs(5)),
+            metrics_interval: interval(slot_duration/3),
             messages_gen,
             start_time,
             local_start_time,
@@ -376,8 +376,7 @@ impl Network {
                     break;
                 }
                 Some(m) = self.messages_gen.next() => {
-                    let raw_payload = m.payload();
-                    let payload = String::from_utf8_lossy(&raw_payload);
+                    let payload = m.payload();
                     let (topic, val) = match m {
                         Message::BeaconBlock { proposer: ValId(v) } => {
                             (Topic::Blocks, v)
@@ -526,7 +525,7 @@ impl Network {
             queries.extend(q);
         }
 
-        // We can do joins in InfluxDB easily, so do some custom queries here to calculate
+        // We can't do joins in InfluxDB easily, so do some custom queries here to calculate
         // duplicates.
         let recvd_unfiltered_family_metric = metric_set
             .metric_families
@@ -535,7 +534,7 @@ impl Network {
             .and_then(|family| family.metrics.first());
 
         if let Some(metric) = recvd_unfiltered_family_metric {
-            let recvd_unfiltered = get_counter_value(metric).0;
+            let recvd_unfiltered = get_counter_value(metric).0; // Should be a counter
 
             if let Some(recvd_unfiltered) = recvd_unfiltered {
                 let recvd = metric_set
@@ -573,17 +572,18 @@ impl Network {
         &mut self,
         topic: Topic,
         validator: u64,
-        payload: &str,
+        payload: &[u8],
     ) -> Result<libp2p::gossipsub::MessageId, libp2p::gossipsub::error::PublishError> {
         let ident_topic: IdentTopic = topic.into();
         // simple tuples as messages
         let msg =
             serde_json::to_vec(&(validator, payload)).expect("json serialization never fails");
+        info!("Publishing message on topic: {}, instance: {}, size: {}", ident_topic, self.node_id, msg.len());
         self.swarm.behaviour_mut().publish(ident_topic, msg)
     }
 
     pub fn subscribe_topics(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        // blocks, attestations and aggregates, syncc messages and aggregates
+        // blocks, attestations and aggregates, sync messages and aggregates
         let blocks_topic: IdentTopic =
             GossipTopic::new(serde_json::to_string(&Topic::Blocks).unwrap());
         self.swarm.behaviour_mut().subscribe(&blocks_topic)?;
