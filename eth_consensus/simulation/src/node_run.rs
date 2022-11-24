@@ -180,7 +180,6 @@ pub(crate) async fn run(
     };
     network.run_sim(run_duration).await;
 
-
     // Register the end time
     record_instance_info(
         &client,

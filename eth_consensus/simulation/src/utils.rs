@@ -190,7 +190,7 @@ pub(crate) async fn record_instance_info(
     node_id: usize,
     peer_id: &PeerId,
     run_id: &str,
-    start:bool,
+    start: bool,
 ) -> Result<(), testground::errors::Error> {
     let query = WriteQuery::new(Local::now().into(), "participants")
         .add_tag(TAG_RUN_ID, run_id.to_owned())
