@@ -578,7 +578,7 @@ impl Network {
         // simple tuples as messages
         let msg =
             serde_json::to_vec(&(validator, payload)).expect("json serialization never fails");
-        info!("Publishing message on topic: {}, instance: {}, size: {}", ident_topic, self.node_id, msg.len());
+        info!("[{}] Publishing message topic: {}, size: {}", self.node_id, ident_topic, msg.len());
         self.swarm.behaviour_mut().publish(ident_topic, msg)
     }
 

@@ -1285,8 +1285,8 @@
       {
         "current": {
           "selected": false,
-          "text": "cdvefmvsmuj9b9j4io1g",
-          "value": "cdvefmvsmuj9b9j4io1g"
+          "text": "cdvhdj7smuj29lbhau80",
+          "value": "cdvhdj7smuj29lbhau80"
         },
         "datasource": {
           "type": "influxdb",
@@ -1309,9 +1309,13 @@
       },
       {
         "current": {
-          "selected": false,
-          "text": "All",
-          "value": "$__all"
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
         },
         "datasource": {
           "type": "influxdb",
@@ -1321,7 +1325,7 @@
         "hide": 0,
         "includeAll": true,
         "label": "",
-        "multi": false,
+        "multi": true,
         "name": "instance_name",
         "options": [],
         "query": "SELECT distinct(instance_name) FROM \"participants\" WHERE \"run_id\" = '${run_id:text}' ",
@@ -1334,8 +1338,12 @@
       {
         "current": {
           "selected": true,
-          "text": "All",
-          "value": "$__all"
+          "text": [
+            "\\\"Blocks\\\""
+          ],
+          "value": [
+            "\\\"Blocks\\\""
+          ]
         },
         "datasource": {
           "type": "influxdb",
@@ -1345,7 +1353,7 @@
         "hide": 0,
         "includeAll": true,
         "label": "topic",
-        "multi": false,
+        "multi": true,
         "name": "hash",
         "options": [],
         "query": "SELECT distinct(hash) from (select * from topic_msg_published)",
@@ -1358,8 +1366,8 @@
     ]
   },
   "time": {
-    "from": "now-6h",
-    "to": "now"
+    "from": "2022-11-24T07:04:49.170Z",
+    "to": "2022-11-24T07:06:43.076Z"
   },
   "timepicker": {},
   "timezone": "",
