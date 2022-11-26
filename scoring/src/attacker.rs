@@ -1,6 +1,6 @@
 use crate::beacon_node::BeaconNodeInfo;
 use crate::beacon_node::PRUNE_BACKOFF;
-use crate::utils::BARRIER_SIMULATION_COMPLETED;
+use crate::utils::{record_victim_id, BARRIER_SIMULATION_COMPLETED};
 use crate::{BARRIER_LIBP2P_READY, BARRIER_TOPOLOGY_READY};
 use delay_map::HashSetDelay;
 use libp2p_testground::core::connection::ConnectionId;
@@ -90,6 +90,7 @@ pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>
         .expect("The target_node_id should be in the beacon_nodes.");
 
     info!("Censor target : {:?}", target);
+    record_victim_id(&client, target).await;
 
     swarm.dial(target.multiaddr().clone())?;
     barrier_and_drive_swarm(&client, &mut swarm, BARRIER_TOPOLOGY_READY).await?;

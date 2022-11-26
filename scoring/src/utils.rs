@@ -10,6 +10,7 @@ use serde::Serialize;
 use std::borrow::Cow;
 use testground::client::Client;
 use testground::WriteQuery;
+use tracing::warn;
 
 // States for `barrier()`
 pub(crate) const BARRIER_LIBP2P_READY: &str = "Started libp2p";
@@ -90,5 +91,39 @@ fn get_counter_value(metric: &Metric) -> (Option<u64>, Option<f64>) {
             _ => unreachable!(),
         },
         _ => unreachable!(),
+    }
+}
+
+pub(crate) async fn record_run_id(client: &Client) {
+    if client.group_seq() != 1 {
+        return;
+    }
+
+    let measurement = format!("{}_run_id", env!("CARGO_PKG_NAME"));
+
+    let query = WriteQuery::new(Local::now().into(), measurement)
+        .add_tag(TAG_RUN_ID, client.run_parameters().test_run)
+        .add_field(TAG_RUN_ID, client.run_parameters().test_run);
+
+    if let Err(e) = client.record_metric(query).await {
+        warn!("Failed to record run_id: {e:?}");
+    }
+}
+
+pub(crate) async fn record_victim_id(client: &Client, victim: &BeaconNodeInfo) {
+    if client.group_seq() != 1 {
+        return;
+    }
+
+    let measurement = format!("{}_victim", env!("CARGO_PKG_NAME"));
+    let query = WriteQuery::new(Local::now().into(), measurement)
+        .add_tag(TAG_RUN_ID, client.run_parameters().test_run)
+        .add_field("peer_id", victim.peer_id().to_string());
+
+    if let Err(e) = client.record_metric(query).await {
+        warn!(
+            "Failed to record victim peer id. peer_id: {}, error: {e:?}",
+            victim.peer_id()
+        );
     }
 }

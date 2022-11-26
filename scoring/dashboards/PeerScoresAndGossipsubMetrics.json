@@ -1153,8 +1153,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1451,8 +1450,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1700,38 +1698,43 @@
       {
         "current": {
           "selected": true,
-          "text": "cdqnac34lvk27aesepm0",
-          "value": "cdqnac34lvk27aesepm0"
+          "text": "ce0ropr4lvk1bf00kd6g",
+          "value": "ce0ropr4lvk1bf00kd6g"
         },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "ds_influxdb"
+        },
+        "definition": "select run_id from scoring_run_id order by time DESC",
+        "description": "Run IDs newest first",
         "hide": 0,
+        "includeAll": false,
+        "multi": false,
         "name": "run_id",
-        "options": [
-          {
-            "selected": true,
-            "text": "cdqnac34lvk27aesepm0",
-            "value": "cdqnac34lvk27aesepm0"
-          }
-        ],
-        "query": "cdqnac34lvk27aesepm0",
+        "options": [],
+        "query": "select run_id from scoring_run_id order by time DESC",
+        "refresh": 1,
+        "regex": "",
         "skipUrlSync": false,
-        "type": "textbox"
+        "sort": 0,
+        "type": "query"
       },
       {
         "current": {
-          "selected": true,
-          "text": "12D3KooWBxZrvCGaRQJbYXQVwMQ38C9JhxU8Pab7N7oEDTtkASYn",
-          "value": "12D3KooWBxZrvCGaRQJbYXQVwMQ38C9JhxU8Pab7N7oEDTtkASYn"
+          "selected": false,
+          "text": "",
+          "value": ""
         },
         "hide": 0,
         "name": "peer_id",
         "options": [
           {
             "selected": true,
-            "text": "12D3KooWBxZrvCGaRQJbYXQVwMQ38C9JhxU8Pab7N7oEDTtkASYn",
-            "value": "12D3KooWBxZrvCGaRQJbYXQVwMQ38C9JhxU8Pab7N7oEDTtkASYn"
+            "text": "",
+            "value": ""
           }
         ],
-        "query": "12D3KooWBxZrvCGaRQJbYXQVwMQ38C9JhxU8Pab7N7oEDTtkASYn",
+        "query": "",
         "skipUrlSync": false,
         "type": "textbox"
       }
@@ -1745,6 +1748,6 @@
   "timezone": "",
   "title": "Peer Scores and Gossipsub Metrics",
   "uid": "trOmP_vVz",
-  "version": 3,
+  "version": 1,
   "weekStart": ""
 }

@@ -1148,8 +1148,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1241,8 +1240,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1347,8 +1345,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1440,8 +1437,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1533,8 +1529,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1626,8 +1621,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1682,22 +1676,27 @@
     "list": [
       {
         "current": {
-          "selected": false,
-          "text": "cdvo64r4lvk9splekvog",
-          "value": "cdvo64r4lvk9splekvog"
+          "selected": true,
+          "text": "ce0ropr4lvk1bf00kd6g",
+          "value": "ce0ropr4lvk1bf00kd6g"
         },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "ds_influxdb"
+        },
+        "definition": "select run_id from scoring_run_id order by time DESC",
+        "description": "The RunIDs in newest first.",
         "hide": 0,
+        "includeAll": false,
+        "multi": false,
         "name": "run_id",
-        "options": [
-          {
-            "selected": true,
-            "text": "cdvo64r4lvk9splekvog",
-            "value": "cdvo64r4lvk9splekvog"
-          }
-        ],
-        "query": "cdvo64r4lvk9splekvog",
+        "options": [],
+        "query": "select run_id from scoring_run_id order by time DESC",
+        "refresh": 1,
+        "regex": "",
         "skipUrlSync": false,
-        "type": "textbox"
+        "sort": 0,
+        "type": "query"
       }
     ]
   },

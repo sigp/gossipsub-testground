@@ -2,7 +2,7 @@ use crate::param::{build_peer_score_params, parse_peer_score_thresholds, parse_t
 use crate::publish_and_collect;
 use crate::topic::Topic;
 use crate::utils::{
-    queries_for_counter, BARRIER_LIBP2P_READY, BARRIER_SIMULATION_COMPLETED,
+    queries_for_counter, record_run_id, BARRIER_LIBP2P_READY, BARRIER_SIMULATION_COMPLETED,
     BARRIER_TOPOLOGY_READY, TAG_PEER_ID, TAG_RUN_ID,
 };
 use chrono::Local;
@@ -74,6 +74,8 @@ impl BeaconNodeInfo {
 }
 
 pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>> {
+    record_run_id(&client).await;
+
     // The network definition starts at 0 and the testground sequences start at 1, so adjust
     // accordingly.
     let node_id = client.group_seq() as usize - 1;
