@@ -27,3 +27,9 @@ providers:
     type: file
     options:
       path: /var/lib/grafana/dashboards/scoring/PeerScoresAndGossipsubMetrics.json
+  - name: 'Settings'
+    orgId: 1
+    folder: 'Scoring'
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards/scoring/Settings.json

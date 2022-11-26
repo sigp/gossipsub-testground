@@ -1,6 +1,8 @@
 use crate::beacon_node::BeaconNodeInfo;
 use crate::beacon_node::PRUNE_BACKOFF;
-use crate::utils::{record_victim_id, BARRIER_SIMULATION_COMPLETED};
+use crate::utils::{
+    record_topology_attacker, record_topology_edge, record_victim_id, BARRIER_SIMULATION_COMPLETED,
+};
 use crate::{BARRIER_LIBP2P_READY, BARRIER_TOPOLOGY_READY};
 use delay_map::HashSetDelay;
 use libp2p_testground::core::connection::ConnectionId;
@@ -80,6 +82,8 @@ pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>
         .publish("attacker_info", Cow::Owned(serde_json::to_value(&peer_id)?))
         .await?;
 
+    record_topology_attacker(&client, &peer_id).await;
+
     barrier_and_drive_swarm(&client, &mut swarm, BARRIER_LIBP2P_READY).await?;
 
     // /////////////////////////////////////////////////////////////////////////////////////////////
@@ -89,8 +93,9 @@ pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>
         .get(&target_node_id)
         .expect("The target_node_id should be in the beacon_nodes.");
 
-    info!("Censor target : {:?}", target);
+    info!("Censoring target : {:?}", target);
     record_victim_id(&client, target).await;
+    record_topology_edge(&client, peer_id.to_string(), target.peer_id().to_string()).await;
 
     swarm.dial(target.multiaddr().clone())?;
     barrier_and_drive_swarm(&client, &mut swarm, BARRIER_TOPOLOGY_READY).await?;

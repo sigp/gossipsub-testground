@@ -14,6 +14,7 @@ libp2p = { git = "https://github.com/ackintosh/rust-libp2p.git", branch = "prome
 npg = { git = "https://github.com/sigp/eth-npg", rev = "f01eb51b2771ab3b1ed2a63c42e1acf095ca0e98" }
 prometheus-client = { git = "https://github.com/prometheus/client_rust.git", rev = "682b24ee8c6c857b76c0683b1dd7df5a97b75c27", features = ["protobuf"] }
 prost = "0.11"
+rand = "0.8.5"
 serde_json = "1.0"
 serde = "1.0"
 slot_clock = { git = "https://github.com/divagant-martian/lighthouse", branch = "sizes" }

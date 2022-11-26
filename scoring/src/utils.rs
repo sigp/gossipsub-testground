@@ -127,3 +127,53 @@ pub(crate) async fn record_victim_id(client: &Client, victim: &BeaconNodeInfo) {
         );
     }
 }
+
+pub(crate) async fn record_topology_beacon_node(client: &Client, info: &BeaconNodeInfo) {
+    let measurement = format!("{}_topology_node", env!("CARGO_PKG_NAME"));
+    let title = if info.validators().len() > 0 {
+        format!("bn_{}", client.group_seq() - 1)
+    } else {
+        format!("bn_no_val_{}", client.group_seq() - 1)
+    };
+
+    // ref: https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/node-graph/#node-parameters
+    let query = WriteQuery::new(Local::now().into(), measurement)
+        .add_tag(TAG_RUN_ID, client.run_parameters().test_run)
+        .add_field("id", info.peer_id().to_string())
+        .add_field("title", title)
+        .add_field("arc__bn", 1);
+
+    if let Err(e) = client.record_metric(query).await {
+        warn!("Failed to record topology. error: {e:?}");
+    }
+}
+
+pub(crate) async fn record_topology_attacker(client: &Client, peer_id: &libp2p_testground::PeerId) {
+    let measurement = format!("{}_topology_node", env!("CARGO_PKG_NAME"));
+
+    // ref: https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/node-graph/#node-parameters
+    let query = WriteQuery::new(Local::now().into(), measurement)
+        .add_tag(TAG_RUN_ID, client.run_parameters().test_run)
+        .add_field("id", peer_id.to_string())
+        .add_field("title", format!("attacker_{}", client.group_seq() - 1))
+        .add_field("arc__attacker", 1);
+
+    if let Err(e) = client.record_metric(query).await {
+        warn!("Failed to record topology. error: {e:?}");
+    }
+}
+
+pub(crate) async fn record_topology_edge(client: &Client, source: String, target: String) {
+    let measurement = format!("{}_topology_edge", env!("CARGO_PKG_NAME"));
+
+    // ref: https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/node-graph/#edge-parameters
+    let query = WriteQuery::new(Local::now().into(), measurement)
+        .add_tag(TAG_RUN_ID, client.run_parameters().test_run)
+        .add_field("id", rand::random::<u32>().to_string())
+        .add_field("source", source)
+        .add_field("target", target);
+
+    if let Err(e) = client.record_metric(query).await {
+        warn!("Failed to record topology. error: {e:?}");
+    }
+}
