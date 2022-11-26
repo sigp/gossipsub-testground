@@ -125,3 +125,57 @@ instances = { min = 3, max = 100, default = 3 }
   ## P4: invalid messages
   a_invalid_message_deliveries_weight = { type = "float", default = -6879.9999 }
   a_invalid_message_deliveries_decay = { type = "float", default = 0.9971 }
+
+  # SignedContributionAndProof
+  # * Disabled by default based on current lighthouse implementation.
+  # * The default topic params below are from libp2p-gossipsub.
+  scap_enable_topic_params = { type = "bool", default = false } # Disabled by default
+  scap_topic_weight = { type = "float", default = 0.5 }
+  ## P1: time in the mesh
+  scap_time_in_mesh_weight = { type = "float", default = 1.0 }
+  scap_time_in_mesh_quantum = { type = "int", unit = "slot", default = 1 }
+  scap_time_in_mesh_cap = { type = "float", default = 3600.0 }
+  ## P2: first message deliveries
+  scap_first_message_deliveries_weight = { type = "float", default = 1.0 }
+  scap_first_message_deliveries_decay = { type = "float", default = 0.5 }
+  scap_first_message_deliveries_cap = { type = "float", default = 2000.0 }
+  ## P3: mesh message deliveries
+  scap_mesh_message_deliveries_weight = { type = "float", default = -1.0 }
+  scap_mesh_message_deliveries_decay = { type = "float", default = 0.5 }
+  scap_mesh_message_deliveries_threshold = { type = "float", default = 20.0 }
+  scap_mesh_message_deliveries_cap = { type = "float", default = 100.0 }
+  scap_mesh_message_deliveries_activation = { type = "int", unit = "epoch", default = 1 }
+  scap_mesh_message_deliveries_window = { type = "int", unit = "sec", default = 1 }
+  ## P3b: sticky mesh propagation failures
+  scap_mesh_failure_penalty_weight = { type = "float", default = -1.0 }
+  scap_mesh_failure_penalty_decay = { type = "float", default = 0.5 }
+  ## P4: invalid messages
+  scap_invalid_message_deliveries_weight = { type = "float", default = -1.0 }
+  scap_invalid_message_deliveries_decay = { type = "float", default = 0.3 }
+
+  # SyncCommitteeMessage
+  # * Disabled by default based on current lighthouse implementation.
+  # * The default topic params below are from libp2p-gossipsub.
+  scm_enable_topic_params = { type = "bool", default = false } # Disabled by default
+  scm_topic_weight = { type = "float", default = 0.5 }
+  ## P1: time in the mesh
+  scm_time_in_mesh_weight = { type = "float", default = 1.0 }
+  scm_time_in_mesh_quantum = { type = "int", unit = "slot", default = 1 }
+  scm_time_in_mesh_cap = { type = "float", default = 3600.0 }
+  ## P2: first message deliveries
+  scm_first_message_deliveries_weight = { type = "float", default = 1.0 }
+  scm_first_message_deliveries_decay = { type = "float", default = 0.5 }
+  scm_first_message_deliveries_cap = { type = "float", default = 2000.0 }
+  ## P3: mesh message deliveries
+  scm_mesh_message_deliveries_weight = { type = "float", default = -1.0 }
+  scm_mesh_message_deliveries_decay = { type = "float", default = 0.5 }
+  scm_mesh_message_deliveries_threshold = { type = "float", default = 20.0 }
+  scm_mesh_message_deliveries_cap = { type = "float", default = 100.0 }
+  scm_mesh_message_deliveries_activation = { type = "int", unit = "epoch", default = 1 }
+  scm_mesh_message_deliveries_window = { type = "int", unit = "sec", default = 1 }
+  ## P3b: sticky mesh propagation failures
+  scm_mesh_failure_penalty_weight = { type = "float", default = -1.0 }
+  scm_mesh_failure_penalty_decay = { type = "float", default = 0.5 }
+  ## P4: invalid messages
+  scm_invalid_message_deliveries_weight = { type = "float", default = -1.0 }
+  scm_invalid_message_deliveries_decay = { type = "float", default = 0.3 }

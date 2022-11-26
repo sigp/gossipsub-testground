@@ -44,7 +44,7 @@ use tracing::{debug, error, info, warn};
 use types::{Epoch, Slot};
 
 pub(crate) const ATTESTATION_SUBNETS: u64 = 4;
-const SYNC_SUBNETS: u64 = 4;
+pub(crate) const SYNC_SUBNETS: u64 = 4;
 
 pub(crate) const SLOT: u64 = 12;
 pub(crate) const SLOTS_PER_EPOCH: u64 = 32;
@@ -516,12 +516,8 @@ impl Network {
 
         info!("The simulation has completed. Recording the results.");
         self.record_received_beacon_blocks().await;
-        self.record_received_messages(
-            "aggregates",
-            ATTESTATION_SUBNETS,
-            &self.received_aggregates,
-        )
-        .await;
+        self.record_received_messages("aggregates", ATTESTATION_SUBNETS, &self.received_aggregates)
+            .await;
         self.record_received_messages(
             "attestations",
             ATTESTATION_SUBNETS,

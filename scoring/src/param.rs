@@ -1,4 +1,4 @@
-use crate::beacon_node::{ATTESTATION_SUBNETS, SLOT, SLOTS_PER_EPOCH};
+use crate::beacon_node::{ATTESTATION_SUBNETS, SLOT, SLOTS_PER_EPOCH, SYNC_SUBNETS};
 use crate::topic::Topic;
 use gen_topology::Params;
 use libp2p::gossipsub::{
@@ -83,11 +83,13 @@ pub(crate) fn build_peer_score_params(
         ident_topic.hash()
     };
 
+    // BeaconBlock
     params.topics.insert(
         get_hash(Topic::Blocks),
         parse_topic_score_params("bb", instance_params).expect("Valid topic params"),
     );
 
+    // BeaconAggregateAndProof and Attestation
     let beacon_aggregate_proof_param =
         parse_topic_score_params("baap", instance_params).expect("Valid topic params");
     let beacon_attestation_subnet_param =
@@ -102,6 +104,32 @@ pub(crate) fn build_peer_score_params(
             get_hash(Topic::Attestations(subnet_n)),
             beacon_attestation_subnet_param.clone(),
         );
+    }
+
+    // SignedContributionAndProof
+    if get_bool_param("scap_enable_topic_params", instance_params).expect("Valid param") {
+        let signed_contribution_and_proof_subnet_param =
+            parse_topic_score_params("scap", instance_params).expect("Valid topic params");
+
+        for subnet_n in 0..SYNC_SUBNETS {
+            params.topics.insert(
+                get_hash(Topic::SignedContributionAndProof(subnet_n)),
+                signed_contribution_and_proof_subnet_param.clone(),
+            );
+        }
+    }
+
+    // SyncCommitteeMessage
+    if get_bool_param("scm_enable_topic_params", instance_params).expect("Valid param") {
+        let sync_committee_message_subnet_param =
+            parse_topic_score_params("scm", instance_params).expect("Valid topic params");
+
+        for subnet_n in 0..SYNC_SUBNETS {
+            params.topics.insert(
+                get_hash(Topic::SyncMessages(subnet_n)),
+                sync_committee_message_subnet_param.clone(),
+            );
+        }
     }
 
     params
@@ -246,5 +274,15 @@ fn get_param<'a>(
 ) -> Result<&'a String, String> {
     instance_params
         .get(k)
+        .ok_or(format!("{k} is not specified."))
+}
+
+fn get_bool_param<'a>(
+    k: &'a str,
+    instance_params: &'a HashMap<String, String>,
+) -> Result<bool, String> {
+    instance_params
+        .get(k)
+        .map(|v| v.parse::<bool>().expect("bool"))
         .ok_or(format!("{k} is not specified."))
 }
