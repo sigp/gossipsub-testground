@@ -5,6 +5,7 @@ use libp2p::gossipsub::{
     IdentTopic, PeerScoreParams, PeerScoreThresholds, TopicHash, TopicScoreParams,
 };
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::time::Duration;
 
 /// Parse `test_instance_params` and returns `gen_topology::Params`
@@ -59,15 +60,12 @@ pub(crate) fn parse_peer_score_thresholds(
 ) -> Result<PeerScoreThresholds, Box<dyn std::error::Error>> {
     let mut thresholds = PeerScoreThresholds::default();
 
-    thresholds.gossip_threshold = get_param("gossip_threshold", instance_params)?.parse::<f64>()?;
-    thresholds.publish_threshold =
-        get_param("publish_threshold", instance_params)?.parse::<f64>()?;
-    thresholds.graylist_threshold =
-        get_param("graylist_threshold", instance_params)?.parse::<f64>()?;
-    thresholds.accept_px_threshold =
-        get_param("accept_px_threshold", instance_params)?.parse::<f64>()?;
+    thresholds.gossip_threshold = get_param::<f64>("gossip_threshold", instance_params)?;
+    thresholds.publish_threshold = get_param::<f64>("publish_threshold", instance_params)?;
+    thresholds.graylist_threshold = get_param::<f64>("graylist_threshold", instance_params)?;
+    thresholds.accept_px_threshold = get_param::<f64>("accept_px_threshold", instance_params)?;
     thresholds.opportunistic_graft_threshold =
-        get_param("opportunistic_graft_threshold", instance_params)?.parse::<f64>()?;
+        get_param::<f64>("opportunistic_graft_threshold", instance_params)?;
 
     Ok(thresholds)
 }
@@ -107,7 +105,7 @@ pub(crate) fn build_peer_score_params(
     }
 
     // SignedContributionAndProof
-    if get_bool_param("scap_enable_topic_params", instance_params).expect("Valid param") {
+    if get_param::<bool>("scap_enable_topic_params", instance_params).expect("Valid param") {
         let signed_contribution_and_proof_subnet_param =
             parse_topic_score_params("scap", instance_params).expect("Valid topic params");
 
@@ -120,7 +118,7 @@ pub(crate) fn build_peer_score_params(
     }
 
     // SyncCommitteeMessage
-    if get_bool_param("scm_enable_topic_params", instance_params).expect("Valid param") {
+    if get_param::<bool>("scm_enable_topic_params", instance_params).expect("Valid param") {
         let sync_committee_message_subnet_param =
             parse_topic_score_params("scm", instance_params).expect("Valid topic params");
 
@@ -139,30 +137,27 @@ fn parse_peer_score_params(
     instance_params: &HashMap<String, String>,
 ) -> Result<PeerScoreParams, Box<dyn std::error::Error>> {
     let mut params = PeerScoreParams::default();
-    params.topic_score_cap = get_param("topic_score_cap", instance_params)?.parse::<f64>()?;
+    params.topic_score_cap = get_param::<f64>("topic_score_cap", instance_params)?;
     params.decay_interval =
-        Duration::from_secs(get_param("decay_interval", instance_params)?.parse::<u64>()?);
-    params.decay_to_zero = get_param("decay_to_zero", instance_params)?.parse::<f64>()?;
-    params.retain_score =
-        Duration::from_secs(get_param("retain_score", instance_params)?.parse::<u64>()?);
+        Duration::from_secs(get_param::<u64>("decay_interval", instance_params)?);
+    params.decay_to_zero = get_param::<f64>("decay_to_zero", instance_params)?;
+    params.retain_score = Duration::from_secs(get_param::<u64>("retain_score", instance_params)?);
 
     // P5: Application-specific peer scoring
-    params.app_specific_weight =
-        get_param("app_specific_weight", instance_params)?.parse::<f64>()?;
+    params.app_specific_weight = get_param::<f64>("app_specific_weight", instance_params)?;
 
     // P6: IP-colocation factor.
     params.ip_colocation_factor_weight =
-        get_param("ip_colocation_factor_weight", instance_params)?.parse::<f64>()?;
+        get_param::<f64>("ip_colocation_factor_weight", instance_params)?;
     params.ip_colocation_factor_threshold =
-        get_param("ip_colocation_factor_threshold", instance_params)?.parse::<f64>()?;
+        get_param::<f64>("ip_colocation_factor_threshold", instance_params)?;
 
     // P7: behavioural pattern penalties.
     params.behaviour_penalty_weight =
-        get_param("behaviour_penalty_weight", instance_params)?.parse::<f64>()?;
+        get_param::<f64>("behaviour_penalty_weight", instance_params)?;
     params.behaviour_penalty_threshold =
-        get_param("behaviour_penalty_threshold", instance_params)?.parse::<f64>()?;
-    params.behaviour_penalty_decay =
-        get_param("behaviour_penalty_decay", instance_params)?.parse::<f64>()?;
+        get_param::<f64>("behaviour_penalty_threshold", instance_params)?;
+    params.behaviour_penalty_decay = get_param::<f64>("behaviour_penalty_decay", instance_params)?;
 
     Ok(params)
 }
@@ -172,117 +167,91 @@ fn parse_topic_score_params(
     instance_params: &HashMap<String, String>,
 ) -> Result<TopicScoreParams, Box<dyn std::error::Error>> {
     let mut param = TopicScoreParams::default();
-    param.topic_weight =
-        get_param(&format!("{prefix}_topic_weight"), instance_params)?.parse::<f64>()?;
+    param.topic_weight = get_param::<f64>(&format!("{prefix}_topic_weight"), instance_params)?;
 
     // P1: time in the mesh
     param.time_in_mesh_weight =
-        get_param(&format!("{prefix}_time_in_mesh_weight"), instance_params)?.parse::<f64>()?;
+        get_param::<f64>(&format!("{prefix}_time_in_mesh_weight"), instance_params)?;
     param.time_in_mesh_quantum = {
-        let n = get_param(&format!("{prefix}_time_in_mesh_quantum"), instance_params)?
-            .parse::<u64>()?;
+        let n = get_param::<u64>(&format!("{prefix}_time_in_mesh_quantum"), instance_params)?;
         Duration::from_secs(SLOT * n)
     };
     param.time_in_mesh_cap =
-        get_param(&format!("{prefix}_time_in_mesh_cap"), instance_params)?.parse::<f64>()?;
+        get_param::<f64>(&format!("{prefix}_time_in_mesh_cap"), instance_params)?;
 
     // P2: first message deliveries
-    param.first_message_deliveries_weight = get_param(
+    param.first_message_deliveries_weight = get_param::<f64>(
         &format!("{prefix}_first_message_deliveries_weight"),
         instance_params,
-    )?
-    .parse::<f64>()?;
-    param.first_message_deliveries_decay = get_param(
+    )?;
+    param.first_message_deliveries_decay = get_param::<f64>(
         &format!("{prefix}_first_message_deliveries_decay"),
         instance_params,
-    )?
-    .parse::<f64>()?;
-    param.first_message_deliveries_cap = get_param(
+    )?;
+    param.first_message_deliveries_cap = get_param::<f64>(
         &format!("{prefix}_first_message_deliveries_cap"),
         instance_params,
-    )?
-    .parse::<f64>()?;
+    )?;
 
     // P3: mesh message deliveries
-    param.mesh_message_deliveries_weight = get_param(
+    param.mesh_message_deliveries_weight = get_param::<f64>(
         &format!("{prefix}_mesh_message_deliveries_weight"),
         instance_params,
-    )?
-    .parse::<f64>()?;
-    param.mesh_message_deliveries_decay = get_param(
+    )?;
+    param.mesh_message_deliveries_decay = get_param::<f64>(
         &format!("{prefix}_mesh_message_deliveries_decay"),
         instance_params,
-    )?
-    .parse::<f64>()?;
-    param.mesh_message_deliveries_threshold = get_param(
+    )?;
+    param.mesh_message_deliveries_threshold = get_param::<f64>(
         &format!("{prefix}_mesh_message_deliveries_threshold"),
         instance_params,
-    )?
-    .parse::<f64>()?;
-    param.mesh_message_deliveries_cap = get_param(
+    )?;
+    param.mesh_message_deliveries_cap = get_param::<f64>(
         &format!("{prefix}_mesh_message_deliveries_cap"),
         instance_params,
-    )?
-    .parse::<f64>()?;
+    )?;
     param.mesh_message_deliveries_activation = {
-        let n = get_param(
+        let n = get_param::<u64>(
             &format!("{prefix}_mesh_message_deliveries_activation"),
             instance_params,
-        )?
-        .parse::<u64>()?;
+        )?;
         Duration::from_secs(SLOT * SLOTS_PER_EPOCH * n)
     };
     param.mesh_message_deliveries_window = {
-        let n = get_param(
+        let n = get_param::<u64>(
             &format!("{prefix}_mesh_message_deliveries_window"),
             instance_params,
-        )?
-        .parse::<u64>()?;
+        )?;
         Duration::from_secs(n)
     };
 
     // P3b: sticky mesh propagation failures
-    param.mesh_failure_penalty_weight = get_param(
+    param.mesh_failure_penalty_weight = get_param::<f64>(
         &format!("{prefix}_mesh_failure_penalty_weight"),
         instance_params,
-    )?
-    .parse::<f64>()?;
-    param.mesh_failure_penalty_decay = get_param(
+    )?;
+    param.mesh_failure_penalty_decay = get_param::<f64>(
         &format!("{prefix}_mesh_failure_penalty_decay"),
         instance_params,
-    )?
-    .parse::<f64>()?;
+    )?;
 
     // P4: invalid messages
-    param.invalid_message_deliveries_weight = get_param(
+    param.invalid_message_deliveries_weight = get_param::<f64>(
         &format!("{prefix}_invalid_message_deliveries_weight"),
         instance_params,
-    )?
-    .parse::<f64>()?;
-    param.invalid_message_deliveries_decay = get_param(
+    )?;
+    param.invalid_message_deliveries_decay = get_param::<f64>(
         &format!("{prefix}_invalid_message_deliveries_decay"),
         instance_params,
-    )?
-    .parse::<f64>()?;
+    )?;
 
     Ok(param)
 }
 
-fn get_param<'a>(
-    k: &'a str,
-    instance_params: &'a HashMap<String, String>,
-) -> Result<&'a String, String> {
+fn get_param<T: FromStr>(k: &str, instance_params: &HashMap<String, String>) -> Result<T, String> {
     instance_params
         .get(k)
-        .ok_or(format!("{k} is not specified."))
-}
-
-fn get_bool_param<'a>(
-    k: &'a str,
-    instance_params: &'a HashMap<String, String>,
-) -> Result<bool, String> {
-    instance_params
-        .get(k)
-        .map(|v| v.parse::<bool>().expect("bool"))
-        .ok_or(format!("{k} is not specified."))
+        .ok_or(format!("{k} is not specified."))?
+        .parse::<T>()
+        .map_err(|_| format!("Failed to parse instance_param. key: {}", k))
 }
