@@ -20,4 +20,5 @@ tracing = "0.1.35"
 tracing-subscriber = { version = "0.3.14", features = ["env-filter"] }
 gen_topology = { path = "../utils/gen_topology" }
 futures = "0.3.24"
-npg = { git = "https://github.com/sigp/eth-npg", rev = "0005322440f3f65a8c1f1d0f267a47c19b3320a1" }
+npg = { git = "https://github.com/sigp/eth-npg", branch = "timing-change" }
+sha2 = "0.10.6"

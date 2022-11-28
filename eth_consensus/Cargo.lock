@@ -2123,7 +2123,7 @@ checksum = "2bf50223579dc7cdcfb3bfcacf7069ff68243f8c363f62ffa99cf000a6b9c451"
 [[package]]
 name = "npg"
 version = "0.1.0"
-source = "git+https://github.com/sigp/eth-npg?rev=0005322440f3f65a8c1f1d0f267a47c19b3320a1#0005322440f3f65a8c1f1d0f267a47c19b3320a1"
+source = "git+https://github.com/sigp/eth-npg?branch=timing-change#f57ce53afeb5e6b51bea9484385989d3344910c0"
 dependencies = [
  "futures",
  "rand 0.8.5",
@@ -3143,6 +3143,7 @@ dependencies = [
  "prometheus-client 0.19.0",
  "serde",
  "serde_json",
+ "sha2 0.10.6",
  "testground",
  "tokio",
  "tracing",

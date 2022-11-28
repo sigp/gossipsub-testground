@@ -82,26 +82,58 @@ pub(crate) fn queries_for_counter(
     queries
 }
 
-/// Create InfluxDB queries for Counter metrics.
-pub(crate) fn queries_for_counter_custom(
+/// Create InfluxDB queries joining counter metrics
+pub(crate) fn queries_for_counter_join(
     datetime: &DateTime<Utc>,
-    metric: &Metric,
+    family1: &MetricFamily,
+    family2: &MetricFamily,
     name: &str,
     node_id: usize,
     instance_info: &InstanceInfo,
     run_id: &str,
-    custom_value: u64,
-) -> WriteQuery {
-    let mut query = WriteQuery::new((*datetime).into(), name)
-        .add_tag(TAG_INSTANCE_PEER_ID, instance_info.peer_id.to_string())
-        .add_tag(TAG_INSTANCE_NAME, node_id.to_string())
-        .add_tag(TAG_RUN_ID, run_id.to_owned())
-        .add_field("count", custom_value);
+    predicate: fn(u64,u64) -> u64,
+) -> Vec<WriteQuery> {
 
-    for l in &metric.labels {
-        query = query.add_tag(l.name.clone(), l.value.clone());
+    let mut queries = vec![];
+
+    for metric in family1.metrics.iter() {
+
+        // Match on metric values
+        let value = {
+            let current_val = get_counter_value(metric).0.expect("should have int value");
+            let other_val = family2.metrics.iter().find(|m2| {
+                // match on all labels
+                let mut found = true;
+                for label in &metric.labels {
+                  if m2.labels.iter().find(|l| l.name == label.name && l.value == label.value).is_none() {
+                      found = false;
+                      break;
+                  }
+                }
+                found
+            }).and_then(|m| get_counter_value(m).0);
+            other_val.map(|other| predicate(current_val, other))
+        };
+
+        if let Some(val) = value {
+            let mut query = WriteQuery::new((*datetime).into(), name.clone())
+                .add_tag(TAG_INSTANCE_PEER_ID, instance_info.peer_id.to_string())
+                .add_tag(TAG_INSTANCE_NAME, node_id.to_string())
+                .add_tag(TAG_RUN_ID, run_id.to_owned())
+                .add_field(
+                    "count",
+                    val,
+                );
+
+        for l in &metric.labels {
+            query = query.add_tag(l.name.clone(), l.value.clone());
+        }
+
+        queries.push(query);
+        }
     }
-    query
+
+    queries
 }
 
 /// Create InfluxDB queries for Gauge metrics.
