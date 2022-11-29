@@ -14,7 +14,9 @@ root directory):
 testground run composition -f ./eth_consensus/compositions/composition.toml --wait
 ```
 
-Various aspects of the simulation can be modified. Please read the `eth_consensus/manifest.toml` to understand test parameters and `eth_consensus/compositions/composition.toml` to modify them.
+Various aspects of the simulation can be modified. Please read the
+`eth_consensus/manifest.toml` to understand test parameters and
+`eth_consensus/compositions/composition.toml` to modify them.
 
 
 ## Influx DB Queries
@@ -56,9 +58,7 @@ topology for the simulation.
 
 To visualise the topology, a dot file and json file can be produced by running:
 ```
-cargo run --bin gen_topology_file <seed> <total_validators>
-<total_node_with_vals> <min_peer_per_node> <max_peer_per_node>
-<output-dot-file> <output-json-file>
+cargo run --bin gen_topology_file <seed> <total_validators> <total_node_with_vals> <min_peer_per_node> <max_peer_per_node> <output-dot-file> <output-json-file>
 ```
 
 an example is:

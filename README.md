@@ -29,7 +29,7 @@ This is a basic run of a few gossipsub nodes sending messages between
 themselves. This serves as a simple example of how rust-gossipsub can be
 integrated with testground and a simple simulation can be run.
 
-See the [smoke documentation](./smoke/README) for instructions on how to run
+See the [smoke documentation](./smoke/README.md) for instructions on how to run
 the simulation.
 
 ### [Censoring](./censoring/README.md)
@@ -38,7 +38,7 @@ This simulation constructs a network of malicious peers which attempt to censor
 messages on the network. The gossipsub scoring parameters are recorded and can
 be examined to determine their effectiveness.
 
-See the [censoring documentation](./censoring/README) for instructions on how to run
+See the [censoring documentation](./censoring/README.md) for instructions on how to run
 the simulation.
 
 ### [Ethereum Consensus](./eth_consensus/README.md)
@@ -47,7 +47,7 @@ This is a simulation of the standard gossipsub network for various sizes of the
 Ethereum consensus layer. It can be used in some forms to model network traffic
 for the Ethereum consensus layer.
 
-See the [Ethereum consensus documentation](./eth_consensus/README) for instructions on how to run
+See the [Ethereum consensus documentation](./eth_consensus/README.md) for instructions on how to run
 the simulation.
 
 ## Dashboards
