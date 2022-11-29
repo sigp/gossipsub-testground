@@ -1,10 +1,8 @@
 use crate::utils::{
-    queries_for_counter, queries_for_counter_join, queries_for_gauge,
-    queries_for_histogram, record_instance_info, BARRIER_LIBP2P_READY, BARRIER_TOPOLOGY_READY,
+    queries_for_counter, queries_for_counter_join, queries_for_gauge, queries_for_histogram,
+    record_instance_info, BARRIER_LIBP2P_READY, BARRIER_TOPOLOGY_READY,
 };
-use prometheus_client::encoding::proto::openmetrics_data_model::MetricSet;
 use crate::InstanceInfo;
-use sha2::{Digest, Sha256};
 use chrono::{DateTime, Utc};
 use gen_topology::Params;
 use libp2p::core::muxing::StreamMuxerBox;
@@ -14,8 +12,9 @@ use libp2p::futures::StreamExt;
 use libp2p::gossipsub::metrics::Config;
 use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
 use libp2p::gossipsub::{
-    Gossipsub, GossipsubConfigBuilder, IdentTopic, IdentityTransform, MessageAuthenticity, GossipsubEvent,
-    PeerScoreParams, PeerScoreThresholds, Topic as GossipTopic, MessageId, ValidationMode, GossipsubMessage,
+    Gossipsub, GossipsubConfigBuilder, GossipsubEvent, GossipsubMessage, IdentTopic,
+    IdentityTransform, MessageAuthenticity, MessageId, PeerScoreParams, PeerScoreThresholds,
+    Topic as GossipTopic, ValidationMode,
 };
 use libp2p::identity::Keypair;
 use libp2p::mplex::MplexConfig;
@@ -28,12 +27,14 @@ use libp2p::Swarm;
 use libp2p::Transport;
 use npg::slot_generator::{Subnet, ValId};
 use npg::{Generator, Message};
+use prometheus_client::encoding::proto::openmetrics_data_model::MetricSet;
 use prometheus_client::encoding::proto::EncodeMetric;
 use prometheus_client::registry::Registry;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
-use std::time::{Duration, Instant};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use testground::client::Client;
 use tokio::time::{interval, Interval};
 use tracing::{debug, error, info};
@@ -211,7 +212,7 @@ fn build_transport(keypair: &Keypair) -> libp2p::core::transport::Boxed<(PeerId,
 }
 
 // A context struct for passing information into the `record_metrics` function that can be spawned
-// into its own task. 
+// into its own task.
 struct RecordMetricsInfo {
     client: Arc<Client>,
     metrics: MetricSet,
@@ -245,7 +246,6 @@ pub(crate) struct Network {
 }
 
 impl Network {
-
     #[allow(clippy::too_many_arguments)]
     fn new(
         mut registry: Registry<Box<dyn EncodeMetric>>,
@@ -258,31 +258,32 @@ impl Network {
         params: Params,
     ) -> Self {
         let gossipsub = {
+            let gossip_message_id = move |message: &GossipsubMessage| {
+                MessageId::from(
+                    &Sha256::digest([message.topic.as_str().as_bytes(), &message.data].concat())
+                        [..20],
+                )
+            };
 
-    let gossip_message_id = move |message: &GossipsubMessage| {
-        MessageId::from(&Sha256::digest([message.topic.as_str().as_bytes(), &message.data].concat())[..20])
-    };
-
-    let gossipsub_config = GossipsubConfigBuilder::default()
-        .max_transmit_size(10 * 1_048_576) // gossip_max_size(true)
-        // .heartbeat_interval(Duration::from_secs(1))
-        .prune_backoff(Duration::from_secs(60))
-        .mesh_n(8)
-        .mesh_n_low(4)
-        .mesh_n_high(12)
-        .gossip_lazy(6)
-        .fanout_ttl(Duration::from_secs(60))
-        .history_length(12)
-        .max_messages_per_rpc(Some(500)) // Responses to IWANT can be quite large
-        .history_gossip(3)
-         // .validate_messages() // TODO: Reintroduce message validation delays
-        .validation_mode(ValidationMode::Anonymous)
-        .duplicate_cache_time(Duration::from_secs(SLOT_DURATION * SLOTS_PER_EPOCH + 1))
-        .message_id_fn(gossip_message_id)
-        .allow_self_origin(true)
-        .build()
-        .expect("valid gossipsub configuration");
-
+            let gossipsub_config = GossipsubConfigBuilder::default()
+                .max_transmit_size(10 * 1_048_576) // gossip_max_size(true)
+                // .heartbeat_interval(Duration::from_secs(1))
+                .prune_backoff(Duration::from_secs(60))
+                .mesh_n(8)
+                .mesh_n_low(4)
+                .mesh_n_high(12)
+                .gossip_lazy(6)
+                .fanout_ttl(Duration::from_secs(60))
+                .history_length(12)
+                .max_messages_per_rpc(Some(500)) // Responses to IWANT can be quite large
+                .history_gossip(3)
+                // .validate_messages() // TODO: Reintroduce message validation delays
+                .validation_mode(ValidationMode::Anonymous)
+                .duplicate_cache_time(Duration::from_secs(SLOT_DURATION * SLOTS_PER_EPOCH + 1))
+                .message_id_fn(gossip_message_id)
+                .allow_self_origin(true)
+                .build()
+                .expect("valid gossipsub configuration");
 
             let mut gs = Gossipsub::new_with_subscription_filter_and_transform(
                 MessageAuthenticity::Anonymous,
@@ -347,7 +348,7 @@ impl Network {
             instance_info,
             participants,
             client: Arc::new(client),
-            metrics_interval: interval(slot_duration/3),
+            metrics_interval: interval(slot_duration / 3),
             messages_gen,
             start_time,
             local_start_time,
@@ -386,8 +387,6 @@ impl Network {
             current,
         }
     }
-
-
 
     pub async fn dial_peers(
         &mut self,
@@ -466,19 +465,14 @@ impl Network {
                 }
                 event = self.swarm.select_next_some() => {
                     match event {
-                        SwarmEvent::Behaviour(GossipsubEvent::Message { propagation_source, 
+                        SwarmEvent::Behaviour(GossipsubEvent::Message { propagation_source,
                     message_id: _,
                     message,
                         }
                         ) => {
                             let src_node = self.participants.iter().find(|(_k,v)| v.peer_id == propagation_source).map(|(k,_v)| k);
-                            match message.topic.as_str() {
-                                "\"Blocks\"" => {
-                                    info!("[{}] Received block from: {:?}, size {}", self.node_id, src_node, message.data.len()); 
-                                }
-                                _ =>  {
-                                    //info!("[{}] Received {} from: {}, size {}", message.topic, src_node, message.data.len()); 
-                                }
+                            if message.topic.as_str() == "\"Blocks\"" {
+                                    info!("[{}] Received block from: {:?}, size {}", self.node_id, src_node, message.data.len());
                             }
                         }
                         _ =>  debug!("SwarmEvent: {:?}", event),
@@ -488,19 +482,22 @@ impl Network {
         }
     }
 
-
     fn publish(
         &mut self,
         topic: Topic,
         validator: u64,
         payload: &[u8],
     ) -> Result<libp2p::gossipsub::MessageId, libp2p::gossipsub::error::PublishError> {
-
         // simple tuples as messages
         let msg =
             serde_json::to_vec(&(validator, payload)).expect("json serialization never fails");
         if let Topic::Blocks = topic {
-            info!("[{}] Publishing message topic: {}, size: {}", self.node_id, IdentTopic::from(topic.clone()), msg.len());
+            info!(
+                "[{}] Publishing message topic: {}, size: {}",
+                self.node_id,
+                IdentTopic::from(topic.clone()),
+                msg.len()
+            );
         }
         let ident_topic: IdentTopic = topic.into();
         self.swarm.behaviour_mut().publish(ident_topic, msg)
@@ -528,149 +525,141 @@ impl Network {
     }
 }
 
-    async fn record_metrics(info: RecordMetricsInfo) {
-        let run_id = &info.client.run_parameters().test_run;
+async fn record_metrics(info: RecordMetricsInfo) {
+    let run_id = &info.client.run_parameters().test_run;
 
-        // Encode the metrics to an instance of the OpenMetrics protobuf format.
-        // https://github.com/OpenObservability/OpenMetrics/blob/main/proto/openmetrics_data_model.proto
-        let metric_set = info.metrics;
+    // Encode the metrics to an instance of the OpenMetrics protobuf format.
+    // https://github.com/OpenObservability/OpenMetrics/blob/main/proto/openmetrics_data_model.proto
+    let metric_set = info.metrics;
 
-        let mut queries = vec![];
-        let current = info.current;
-        let node_id = info.node_id;
+    let mut queries = vec![];
+    let current = info.current;
+    let node_id = info.node_id;
 
-        for family in metric_set.metric_families.iter() {
-            let q = match family.name.as_str() {
-                // ///////////////////////////////////
-                // Metrics per known topic
-                // ///////////////////////////////////
-                "topic_subscription_status" => queries_for_gauge(
-                    &current,
-                    family,
-                    node_id,
-                    &info.instance_info,
-                    run_id,
-                    "status",
-                ),
-                "topic_peers_counts" => queries_for_gauge(
-                    &current,
-                    family,
-                    node_id,
-                    &info.instance_info,
-                    run_id,
-                    "count",
-                ),
-                "invalid_messages_per_topic"
-                | "accepted_messages_per_topic"
-                | "ignored_messages_per_topic"
-                | "rejected_messages_per_topic" => {
-                    queries_for_counter(&current, family, node_id, &info.instance_info, run_id)
-                }
-                // ///////////////////////////////////
-                // Metrics regarding mesh state
-                // ///////////////////////////////////
-                "mesh_peer_counts" => queries_for_gauge(
-                    &current,
-                    family,
-                    info.node_id,
-                    &info.instance_info,
-                    run_id,
-                    "count",
-                ),
-                "mesh_peer_inclusion_events" => {
-                    queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id)
-                }
-                "mesh_peer_churn_events" => {
-                    queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id)
-                }
-                // ///////////////////////////////////
-                // Metrics regarding messages sent/received
-                // ///////////////////////////////////
-                "topic_msg_sent_counts"
-                | "topic_msg_published"
-                | "topic_msg_sent_bytes"
-                | "topic_msg_recv_counts_unfiltered"
-                | "topic_msg_recv_counts"
-                | "topic_msg_recv_bytes" => {
-                    queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id)
-                }
-                // ///////////////////////////////////
-                // Metrics related to scoring
-                // ///////////////////////////////////
-                "score_per_mesh" => queries_for_histogram(
-                    &current,
-                    family,
-                    info.node_id,
-                    &info.instance_info,
-                    run_id,
-                ),
-                "scoring_penalties" => {
-                    queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id)
-                }
-                // ///////////////////////////////////
-                // General Metrics
-                // ///////////////////////////////////
-                "peers_per_protocol" => queries_for_gauge(
-                    &current,
-                    family,
-                    info.node_id,
-                    &info.instance_info,
-                    run_id,
-                    "peers",
-                ),
-                "heartbeat_duration" => queries_for_histogram(
-                    &current,
-                    family,
-                    info.node_id,
-                    &info.instance_info,
-                    run_id,
-                ),
-                // ///////////////////////////////////
-                // Performance metrics
-                // ///////////////////////////////////
-                "topic_iwant_msgs" => {
-                    queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id)
-                }
-                "memcache_misses" => {
-                    queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id)
-                }
-                _ => unreachable!(),
-            };
+    for family in metric_set.metric_families.iter() {
+        let q = match family.name.as_str() {
+            // ///////////////////////////////////
+            // Metrics per known topic
+            // ///////////////////////////////////
+            "topic_subscription_status" => queries_for_gauge(
+                &current,
+                family,
+                node_id,
+                &info.instance_info,
+                run_id,
+                "status",
+            ),
+            "topic_peers_counts" => queries_for_gauge(
+                &current,
+                family,
+                node_id,
+                &info.instance_info,
+                run_id,
+                "count",
+            ),
+            "invalid_messages_per_topic"
+            | "accepted_messages_per_topic"
+            | "ignored_messages_per_topic"
+            | "rejected_messages_per_topic" => {
+                queries_for_counter(&current, family, node_id, &info.instance_info, run_id)
+            }
+            // ///////////////////////////////////
+            // Metrics regarding mesh state
+            // ///////////////////////////////////
+            "mesh_peer_counts" => queries_for_gauge(
+                &current,
+                family,
+                info.node_id,
+                &info.instance_info,
+                run_id,
+                "count",
+            ),
+            "mesh_peer_inclusion_events" => {
+                queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id)
+            }
+            "mesh_peer_churn_events" => {
+                queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id)
+            }
+            // ///////////////////////////////////
+            // Metrics regarding messages sent/received
+            // ///////////////////////////////////
+            "topic_msg_sent_counts"
+            | "topic_msg_published"
+            | "topic_msg_sent_bytes"
+            | "topic_msg_recv_counts_unfiltered"
+            | "topic_msg_recv_counts"
+            | "topic_msg_recv_bytes" => {
+                queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id)
+            }
+            // ///////////////////////////////////
+            // Metrics related to scoring
+            // ///////////////////////////////////
+            "score_per_mesh" => {
+                queries_for_histogram(&current, family, info.node_id, &info.instance_info, run_id)
+            }
+            "scoring_penalties" => {
+                queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id)
+            }
+            // ///////////////////////////////////
+            // General Metrics
+            // ///////////////////////////////////
+            "peers_per_protocol" => queries_for_gauge(
+                &current,
+                family,
+                info.node_id,
+                &info.instance_info,
+                run_id,
+                "peers",
+            ),
+            "heartbeat_duration" => {
+                queries_for_histogram(&current, family, info.node_id, &info.instance_info, run_id)
+            }
+            // ///////////////////////////////////
+            // Performance metrics
+            // ///////////////////////////////////
+            "topic_iwant_msgs" => {
+                queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id)
+            }
+            "memcache_misses" => {
+                queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id)
+            }
+            _ => unreachable!(),
+        };
+
+        queries.extend(q);
+    }
+
+    // We can't do joins in InfluxDB easily, so do some custom queries here to calculate
+    // duplicates.
+    let recvd_unfiltered = metric_set
+        .metric_families
+        .iter()
+        .find(|family| family.name.as_str() == "topic_msg_recv_counts_unfiltered");
+
+    if let Some(recvd_unfiltered) = recvd_unfiltered {
+        let recvd = metric_set
+            .metric_families
+            .iter()
+            .find(|family| family.name.as_str() == "topic_msg_recv_counts");
+        if let Some(recvd) = recvd {
+            let q = queries_for_counter_join(
+                &current,
+                recvd_unfiltered,
+                recvd,
+                "topic_msg_recv_duplicates",
+                info.node_id,
+                &info.instance_info,
+                run_id,
+                |a, b| a.saturating_sub(b),
+            );
 
             queries.extend(q);
         }
+    }
 
-        // We can't do joins in InfluxDB easily, so do some custom queries here to calculate
-        // duplicates.
-        let recvd_unfiltered = metric_set
-            .metric_families
-            .iter()
-            .find(|family| family.name.as_str() == "topic_msg_recv_counts_unfiltered");
-
-        if let Some(recvd_unfiltered) = recvd_unfiltered {
-                let recvd = metric_set
-                    .metric_families
-                    .iter()
-                    .find(|family| family.name.as_str() == "topic_msg_recv_counts");
-            if let Some(recvd) = recvd {
-                let q = queries_for_counter_join(
-                        &current,
-                        recvd_unfiltered,
-                        recvd,
-                        "topic_msg_recv_duplicates",
-                        info.node_id,
-                        &info.instance_info,
-                        run_id,
-                        |a,b| {a.saturating_sub(b)} ,
-                        );
-
-                    queries.extend(q);
-                }
-            }
-
-        for query in queries {
-            if let Err(e) = info.client.record_metric(query).await {
-                error!("Failed to record metrics: {:?}", e);
-            }
+    for query in queries {
+        if let Err(e) = info.client.record_metric(query).await {
+            error!("Failed to record metrics: {:?}", e);
         }
     }
+}
