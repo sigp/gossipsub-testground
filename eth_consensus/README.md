@@ -69,13 +69,12 @@ cargo run --bin gen_topology_file 40 200 2 3 2 3 output.dot output.json
 
 Which produces the following topology:
 
-```dot
-digraph {
-	0 -> 2;
-	0 -> 3;
-	1 -> 2;
-	2 -> 4;
-	3 -> 1;
-	4 -> 1;
-}
+```mermaid
+graph TD; 
+	0-->2;
+	0-->3;
+	1-->2;
+	2-->4;
+	3-->1;
+	4-->1;
 ```
