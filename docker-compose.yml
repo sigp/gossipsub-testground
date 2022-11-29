@@ -9,6 +9,7 @@ services:
       - ./grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
       - ./grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
       - ./censoring/dashboards:/var/lib/grafana/dashboards/censoring
+      - ./eth_consensus/dashboards:/var/lib/grafana/dashboards/eth_consensus
 
 networks:
   # Connect containers to `testground-control` to access Testground-supplied containers.

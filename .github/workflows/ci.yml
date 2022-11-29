@@ -7,20 +7,25 @@ on:
       - main
 
 jobs:
-
   cargo-fmt:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        simulations: ["eth_consensus", "censoring", "smoke"]
     steps:
     - uses: actions/checkout@v2
     - name: Get latest version of stable rust
       run: rustup update stable
     - name: Check formatting with cargofmt
-      run: cargo fmt --all -- --check
+      run: cd "${{ matrix.simulations }}" && cargo fmt --all -- --check
 
   clippy:
+    needs: cargo-fmt
     name: clippy
     runs-on: ubuntu-latest
-    needs: cargo-fmt
+    strategy:
+      matrix:
+        simulations: ["eth_consensus", "censoring", "smoke"]
     steps:
     - uses: actions/checkout@v1
     - name: Install protoc
@@ -32,6 +37,6 @@ jobs:
     - name: Install Protoc
       uses: arduino/setup-protoc@64c0c85d18e984422218383b81c52f8b077404d3 # v1.1.2
     - name: Lint code for quality and style with Clippy
-      run: cargo clippy --workspace --tests -- -D warnings
+      run: cd "${{ matrix.simulations }}" && cargo clippy --workspace --tests -- -D warnings
     - name: Certify Cargo.lock freshness
-      run: git diff --exit-code Cargo.lock
+      run: cd "${{ matrix.simulations }}" && git diff --exit-code Cargo.lock

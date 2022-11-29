@@ -41,6 +41,15 @@ be examined to determine their effectiveness.
 See the [censoring documentation](./censoring/README) for instructions on how to run
 the simulation.
 
+### [Ethereum Consensus](./eth_consensus/README.md)
+
+This is a simulation of the standard gossipsub network for various sizes of the
+Ethereum consensus layer. It can be used in some forms to model network traffic
+for the Ethereum consensus layer.
+
+See the [Ethereum consensus documentation](./eth_consensus/README) for instructions on how to run
+the simulation.
+
 ## Dashboards
 
 Grafana dashboards are provided for some of the simulations. These are provided

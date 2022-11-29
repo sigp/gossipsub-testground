@@ -7,7 +7,7 @@ parameters to mitigate censoring attacks on gossipsub networks.
 ## Running the simulation
 
 ```shell
-testground run composition -f censoring/compositions/censoring.toml --wait
+testground run composition -f censoring/compositions/composition.toml --wait
 ```
 
 ## How the Simulation Works
