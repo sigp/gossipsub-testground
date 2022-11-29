@@ -16,8 +16,8 @@ use libp2p::futures::StreamExt;
 use libp2p::gossipsub::metrics::Config;
 use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
 use libp2p::gossipsub::{
-    Gossipsub, GossipsubConfigBuilder, GossipsubEvent, IdentTopic, IdentityTransform,
-    MessageAuthenticity,
+    FastMessageId, Gossipsub, GossipsubConfigBuilder, GossipsubEvent, GossipsubMessage, IdentTopic,
+    IdentityTransform, MessageAuthenticity, MessageId, RawGossipsubMessage, ValidationMode,
 };
 use libp2p::identity::Keypair;
 use libp2p::mplex::MplexConfig;
@@ -34,6 +34,7 @@ use npg::{Generator, Message};
 use prometheus_client::encoding::proto::EncodeMetric;
 use prometheus_client::registry::Registry;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use slot_clock::SlotClock;
 use slot_clock::SystemTimeSlotClock;
 use std::collections::{HashMap, HashSet};
@@ -293,16 +294,43 @@ impl Network {
         params: Params,
     ) -> Self {
         let gossipsub = {
+            let gossip_message_id = move |message: &GossipsubMessage| {
+                MessageId::from(
+                    &Sha256::digest([message.topic.as_str().as_bytes(), &message.data].concat())
+                        [..20],
+                )
+            };
+            let fast_gossip_message_id = |message: &RawGossipsubMessage| {
+                FastMessageId::from(&Sha256::digest(&message.data)[..8])
+            };
+
             let gossipsub_config = GossipsubConfigBuilder::default()
+                // Following params are set based on lighthouse.
                 .max_transmit_size(10 * 1_048_576) // 10M
                 .prune_backoff(Duration::from_secs(PRUNE_BACKOFF))
+                .fanout_ttl(Duration::from_secs(60))
                 .history_length(12)
+                .max_messages_per_rpc(Some(500))
+                .validate_messages()
+                .validation_mode(ValidationMode::Anonymous)
+                .duplicate_cache_time(Duration::from_secs(33 * SLOT + 1))
+                .message_id_fn(gossip_message_id)
+                .fast_message_id_fn(fast_gossip_message_id)
+                .allow_self_origin(true)
+                // Following params are set based on `NetworkLoad: 4 Average` which defined at lighthouse.
+                .heartbeat_interval(Duration::from_millis(700))
+                .mesh_n(8)
+                .mesh_n_low(4)
+                .mesh_outbound_min(3)
+                .mesh_n_high(12)
+                .gossip_lazy(3)
+                .history_gossip(3)
                 .build()
-                .expect("Valid configuration");
+                .expect("Valid gossipsub configuration");
 
             let mut gs = Gossipsub::new_with_subscription_filter_and_transform(
                 MessageAuthenticity::Signed(keypair.clone()),
-                gossipsub_config.clone(),
+                gossipsub_config,
                 Some((registry, Config::default())),
                 AllowAllSubscriptionFilter {},
                 IdentityTransform {},

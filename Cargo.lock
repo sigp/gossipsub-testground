@@ -3426,6 +3426,7 @@ dependencies = [
  "rand 0.8.5",
  "serde",
  "serde_json",
+ "sha2 0.10.6",
  "slot_clock",
  "testground",
  "tokio",
