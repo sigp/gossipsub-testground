@@ -6,8 +6,8 @@ use crate::utils::{
     BARRIER_LIBP2P_READY, BARRIER_SIMULATION_COMPLETED, BARRIER_TOPOLOGY_READY, TAG_PEER_ID,
     TAG_RUN_ID,
 };
-use chrono::Local;
 use chrono::TimeZone;
+use chrono::{DateTime, Local};
 use gen_topology::Params;
 use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::upgrade::{SelectUpgrade, Version};
@@ -38,6 +38,7 @@ use sha2::{Digest, Sha256};
 use slot_clock::SlotClock;
 use slot_clock::SystemTimeSlotClock;
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 use std::time::Duration;
 use testground::client::Client;
 use testground::{Timestamp, WriteQuery};
@@ -263,13 +264,23 @@ async fn collect_attacker_info(client: &Client) -> Result<Vec<PeerId>, Box<dyn s
     Ok(attackers)
 }
 
+// A context struct for passing information into the `record_peer_scores` function that can be spawned
+// into its own task.
+struct RecordPeerScoresInfo {
+    client: Arc<Client>,
+    scores: Vec<(PeerId, f64)>,
+    attackers: Arc<Vec<PeerId>>,
+    peer_id: PeerId,
+    current: DateTime<Local>,
+}
+
 pub(crate) struct Network {
     swarm: Swarm<Gossipsub>,
     node_id: usize,
     beacon_node_info: BeaconNodeInfo,
     participants: HashMap<usize, BeaconNodeInfo>,
-    attackers: Vec<PeerId>,
-    client: Client,
+    attackers: Arc<Vec<PeerId>>,
+    client: Arc<Client>,
     score_interval: Interval,
     messages_gen: Generator,
     received_beacon_blocks: HashMap<Epoch, HashSet<Slot>>,
@@ -400,8 +411,8 @@ impl Network {
             node_id,
             beacon_node_info,
             participants,
-            attackers,
-            client,
+            attackers: Arc::new(attackers),
+            client: Arc::new(client),
             score_interval: interval(Duration::from_secs(3)),
             messages_gen,
             received_beacon_blocks: HashMap::new(),
@@ -540,7 +551,9 @@ impl Network {
                 }
                 // Record peer scores and gossipsub metrics
                 _ = self.score_interval.tick() => {
-                    self.record_peer_scores().await;
+                    let peer_scores_info = self.peer_scores_info();
+                    tokio::spawn(record_peer_scores(peer_scores_info));
+
                     self.record_metrics(registry).await;
                 }
                 event = self.swarm.select_next_some() => {
@@ -759,33 +772,19 @@ impl Network {
         }
     }
 
-    /// Record peer scores
-    async fn record_peer_scores(&mut self) {
-        let gossipsub = self.swarm.behaviour_mut();
+    fn peer_scores_info(&self) -> RecordPeerScoresInfo {
+        let gossipsub = self.swarm.behaviour();
         let scores = gossipsub
             .all_peers()
-            .filter_map(|(peer, _)| gossipsub.peer_score(peer).map(|score| (peer, score)))
+            .filter_map(|(peer, _)| gossipsub.peer_score(peer).map(|score| (*peer, score)))
             .collect::<Vec<_>>();
 
-        if !scores.is_empty() {
-            let measurement = format!("{}_scores", env!("CARGO_PKG_NAME"));
-
-            let mut query = WriteQuery::new(Local::now().into(), measurement)
-                .add_tag(TAG_PEER_ID, self.beacon_node_info.peer_id.to_string())
-                .add_tag(TAG_RUN_ID, self.client.run_parameters().test_run);
-
-            for (peer, score) in scores {
-                let field = if self.attackers.contains(peer) {
-                    format!("attacker_{}", peer.to_string())
-                } else {
-                    peer.to_string()
-                };
-                query = query.add_field(field, score);
-            }
-
-            if let Err(e) = self.client.record_metric(query).await {
-                warn!("Failed to record score: {e:?}");
-            }
+        RecordPeerScoresInfo {
+            client: self.client.clone(),
+            scores,
+            attackers: self.attackers.clone(),
+            peer_id: self.beacon_node_info.peer_id.clone(),
+            current: Local::now(),
         }
     }
 
@@ -874,5 +873,34 @@ impl Network {
                 error!("Failed to record metrics: {e:?}");
             }
         }
+    }
+}
+
+/// Record peer scores
+async fn record_peer_scores(peer_scores_info: RecordPeerScoresInfo) {
+    if peer_scores_info.scores.is_empty() {
+        return;
+    }
+
+    let measurement = format!("{}_scores", env!("CARGO_PKG_NAME"));
+
+    let mut query = WriteQuery::new(peer_scores_info.current.into(), measurement)
+        .add_tag(TAG_PEER_ID, peer_scores_info.peer_id.to_string())
+        .add_tag(
+            TAG_RUN_ID,
+            peer_scores_info.client.run_parameters().test_run,
+        );
+
+    for (peer, score) in peer_scores_info.scores {
+        let field = if peer_scores_info.attackers.contains(&peer) {
+            format!("attacker_{}", peer.to_string())
+        } else {
+            peer.to_string()
+        };
+        query = query.add_field(field, score);
+    }
+
+    if let Err(e) = peer_scores_info.client.record_metric(query).await {
+        warn!("Failed to record score: {e:?}");
     }
 }
