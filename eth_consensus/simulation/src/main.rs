@@ -1,4 +1,4 @@
-mod node_run;
+mod network;
 mod utils;
 
 use crate::utils::publish_and_collect;
@@ -48,7 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .collect::<HashMap<usize, InstanceInfo>>()
     };
 
-    node_run::run(client, node_id, instance_info, participants, local_key).await?;
+    network::run(client, node_id, instance_info, participants, local_key).await?;
 
     Ok(())
 }
