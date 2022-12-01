@@ -1,6 +1,7 @@
 use crate::beacon_node::BeaconNodeInfo;
 use chrono::{DateTime, Local};
 use libp2p::futures::StreamExt;
+use libp2p::PeerId;
 use prometheus_client::encoding::proto::openmetrics_data_model::counter_value;
 use prometheus_client::encoding::proto::openmetrics_data_model::metric_point;
 use prometheus_client::encoding::proto::openmetrics_data_model::Metric;
@@ -54,7 +55,7 @@ pub(crate) async fn publish_and_collect<T: Serialize + DeserializeOwned>(
 pub(crate) fn queries_for_counter(
     datetime: &DateTime<Local>,
     family: &MetricFamily,
-    beacon_node_info: &BeaconNodeInfo,
+    peer_id: &PeerId,
     run_id: &str,
 ) -> Vec<WriteQuery> {
     let measurement = format!("{}_{}", env!("CARGO_PKG_NAME"), family.name);
@@ -62,7 +63,7 @@ pub(crate) fn queries_for_counter(
 
     for metric in family.metrics.iter() {
         let mut query = WriteQuery::new((*datetime).into(), &measurement)
-            .add_tag(TAG_PEER_ID, beacon_node_info.peer_id().to_string())
+            .add_tag(TAG_PEER_ID, peer_id.to_string())
             .add_tag(TAG_RUN_ID, run_id.to_owned())
             .add_field(
                 "count",

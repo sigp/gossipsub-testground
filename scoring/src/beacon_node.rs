@@ -31,6 +31,7 @@ use libp2p::{PeerId, Swarm};
 use npg::slot_generator::Subnet;
 use npg::slot_generator::ValId;
 use npg::{Generator, Message};
+use prometheus_client::encoding::proto::openmetrics_data_model::MetricSet;
 use prometheus_client::encoding::proto::EncodeMetric;
 use prometheus_client::registry::Registry;
 use serde::{Deserialize, Serialize};
@@ -270,6 +271,15 @@ struct RecordPeerScoresInfo {
     client: Arc<Client>,
     scores: Vec<(PeerId, f64)>,
     attackers: Arc<Vec<PeerId>>,
+    peer_id: PeerId,
+    current: DateTime<Local>,
+}
+
+// A context struct for passing information into the `record_metrics` function that can be spawned
+// into its own task.
+struct RecordMetricsInfo {
+    client: Arc<Client>,
+    metrics: MetricSet,
     peer_id: PeerId,
     current: DateTime<Local>,
 }
@@ -547,14 +557,11 @@ impl Network {
                     if let Err(e) = self.publish(topic.clone(), msg) {
                         error!("Failed to publish message {e} to topic {topic:?}");
                     }
-
                 }
                 // Record peer scores and gossipsub metrics
                 _ = self.score_interval.tick() => {
-                    let peer_scores_info = self.peer_scores_info();
-                    tokio::spawn(record_peer_scores(peer_scores_info));
-
-                    self.record_metrics(registry).await;
+                    tokio::spawn(record_peer_scores(self.peer_scores_info()));
+                    tokio::spawn(record_metrics(self.metrics_info(registry)));
                 }
                 event = self.swarm.select_next_some() => {
                     match event {
@@ -788,92 +795,101 @@ impl Network {
         }
     }
 
-    /// Record gossipsub metrics
-    async fn record_metrics(&mut self, registry: &Registry<Box<dyn EncodeMetric>>) {
-        let metric_set = prometheus_client::encoding::proto::encode(&registry);
-
-        let now = Local::now();
-        let run_id = self.client.run_parameters().test_run;
-        let mut queries = vec![];
-
-        for family in metric_set.metric_families.iter() {
-            let q = match family.name.as_str() {
-                // ///////////////////////////////////
-                // Metrics per known topic
-                // ///////////////////////////////////
-                "topic_subscription_status" => {
-                    continue;
-                }
-                "topic_peers_counts" => {
-                    continue;
-                }
-                "invalid_messages_per_topic"
-                | "accepted_messages_per_topic"
-                | "ignored_messages_per_topic"
-                | "rejected_messages_per_topic" => {
-                    queries_for_counter(&now, family, &self.beacon_node_info, &run_id)
-                }
-                // ///////////////////////////////////
-                // Metrics regarding mesh state
-                // ///////////////////////////////////
-                "mesh_peer_counts" => {
-                    continue;
-                }
-                "mesh_peer_inclusion_events" => {
-                    queries_for_counter(&now, family, &self.beacon_node_info, &run_id)
-                }
-                "mesh_peer_churn_events" => {
-                    queries_for_counter(&now, family, &self.beacon_node_info, &run_id)
-                }
-                // ///////////////////////////////////
-                // Metrics regarding messages sent/received
-                // ///////////////////////////////////
-                "topic_msg_sent_counts"
-                | "topic_msg_published"
-                | "topic_msg_sent_bytes"
-                | "topic_msg_recv_counts_unfiltered"
-                | "topic_msg_recv_counts"
-                | "topic_msg_recv_bytes" => {
-                    queries_for_counter(&now, family, &self.beacon_node_info, &run_id)
-                }
-                // ///////////////////////////////////
-                // Metrics related to scoring
-                // ///////////////////////////////////
-                "score_per_mesh" => {
-                    continue;
-                }
-                "scoring_penalties" => {
-                    queries_for_counter(&now, family, &self.beacon_node_info, &run_id)
-                }
-                // ///////////////////////////////////
-                // General Metrics
-                // ///////////////////////////////////
-                "peers_per_protocol" => {
-                    continue;
-                }
-                "heartbeat_duration" => {
-                    continue;
-                }
-                // ///////////////////////////////////
-                // Performance metrics
-                // ///////////////////////////////////
-                "topic_iwant_msgs" => {
-                    queries_for_counter(&now, family, &self.beacon_node_info, &run_id)
-                }
-                "memcache_misses" => {
-                    queries_for_counter(&now, family, &self.beacon_node_info, &run_id)
-                }
-                _ => unreachable!(),
-            };
-            queries.extend(q);
-        }
-
-        for q in queries {
-            if let Err(e) = self.client.record_metric(q).await {
-                error!("Failed to record metrics: {e:?}");
-            }
+    fn metrics_info(&self, registry: &Registry<Box<dyn EncodeMetric>>) -> RecordMetricsInfo {
+        RecordMetricsInfo {
+            client: self.client.clone(),
+            metrics: prometheus_client::encoding::proto::encode(&registry),
+            peer_id: self.beacon_node_info.peer_id.clone(),
+            current: Local::now(),
         }
     }
+
+    // Record gossipsub metrics
+    // async fn record_metrics(&mut self, registry: &Registry<Box<dyn EncodeMetric>>) {
+    //     let metric_set = prometheus_client::encoding::proto::encode(&registry);
+    //
+    //     let now = Local::now();
+    //     let run_id = self.client.run_parameters().test_run;
+    //     let mut queries = vec![];
+    //
+    //     for family in metric_set.metric_families.iter() {
+    //         let q = match family.name.as_str() {
+    //             // ///////////////////////////////////
+    //             // Metrics per known topic
+    //             // ///////////////////////////////////
+    //             "topic_subscription_status" => {
+    //                 continue;
+    //             }
+    //             "topic_peers_counts" => {
+    //                 continue;
+    //             }
+    //             "invalid_messages_per_topic"
+    //             | "accepted_messages_per_topic"
+    //             | "ignored_messages_per_topic"
+    //             | "rejected_messages_per_topic" => {
+    //                 queries_for_counter(&now, family, &self.beacon_node_info, &run_id)
+    //             }
+    //             // ///////////////////////////////////
+    //             // Metrics regarding mesh state
+    //             // ///////////////////////////////////
+    //             "mesh_peer_counts" => {
+    //                 continue;
+    //             }
+    //             "mesh_peer_inclusion_events" => {
+    //                 queries_for_counter(&now, family, &self.beacon_node_info, &run_id)
+    //             }
+    //             "mesh_peer_churn_events" => {
+    //                 queries_for_counter(&now, family, &self.beacon_node_info, &run_id)
+    //             }
+    //             // ///////////////////////////////////
+    //             // Metrics regarding messages sent/received
+    //             // ///////////////////////////////////
+    //             "topic_msg_sent_counts"
+    //             | "topic_msg_published"
+    //             | "topic_msg_sent_bytes"
+    //             | "topic_msg_recv_counts_unfiltered"
+    //             | "topic_msg_recv_counts"
+    //             | "topic_msg_recv_bytes" => {
+    //                 queries_for_counter(&now, family, &self.beacon_node_info, &run_id)
+    //             }
+    //             // ///////////////////////////////////
+    //             // Metrics related to scoring
+    //             // ///////////////////////////////////
+    //             "score_per_mesh" => {
+    //                 continue;
+    //             }
+    //             "scoring_penalties" => {
+    //                 queries_for_counter(&now, family, &self.beacon_node_info, &run_id)
+    //             }
+    //             // ///////////////////////////////////
+    //             // General Metrics
+    //             // ///////////////////////////////////
+    //             "peers_per_protocol" => {
+    //                 continue;
+    //             }
+    //             "heartbeat_duration" => {
+    //                 continue;
+    //             }
+    //             // ///////////////////////////////////
+    //             // Performance metrics
+    //             // ///////////////////////////////////
+    //             "topic_iwant_msgs" => {
+    //                 queries_for_counter(&now, family, &self.beacon_node_info, &run_id)
+    //             }
+    //             "memcache_misses" => {
+    //                 queries_for_counter(&now, family, &self.beacon_node_info, &run_id)
+    //             }
+    //             _ => unreachable!(),
+    //         };
+    //         queries.extend(q);
+    //     }
+    //
+    //     for q in queries {
+    //         if let Err(e) = self.client.record_metric(q).await {
+    //             error!("Failed to record metrics: {e:?}");
+    //         }
+    //     }
+    // }
 }
 
 /// Record peer scores
@@ -902,5 +918,110 @@ async fn record_peer_scores(peer_scores_info: RecordPeerScoresInfo) {
 
     if let Err(e) = peer_scores_info.client.record_metric(query).await {
         warn!("Failed to record score: {e:?}");
+    }
+}
+
+/// Record metrics
+async fn record_metrics(metrics_info: RecordMetricsInfo) {
+    let run_id = metrics_info.client.run_parameters().test_run;
+    let mut queries = vec![];
+
+    for family in metrics_info.metrics.metric_families.iter() {
+        let q = match family.name.as_str() {
+            // ///////////////////////////////////
+            // Metrics per known topic
+            // ///////////////////////////////////
+            "topic_subscription_status" => {
+                continue;
+            }
+            "topic_peers_counts" => {
+                continue;
+            }
+            "invalid_messages_per_topic"
+            | "accepted_messages_per_topic"
+            | "ignored_messages_per_topic"
+            | "rejected_messages_per_topic" => queries_for_counter(
+                &metrics_info.current,
+                family,
+                &metrics_info.peer_id,
+                &run_id,
+            ),
+            // ///////////////////////////////////
+            // Metrics regarding mesh state
+            // ///////////////////////////////////
+            "mesh_peer_counts" => {
+                continue;
+            }
+            "mesh_peer_inclusion_events" => queries_for_counter(
+                &metrics_info.current,
+                family,
+                &metrics_info.peer_id,
+                &run_id,
+            ),
+            "mesh_peer_churn_events" => queries_for_counter(
+                &metrics_info.current,
+                family,
+                &metrics_info.peer_id,
+                &run_id,
+            ),
+            // ///////////////////////////////////
+            // Metrics regarding messages sent/received
+            // ///////////////////////////////////
+            "topic_msg_sent_counts"
+            | "topic_msg_published"
+            | "topic_msg_sent_bytes"
+            | "topic_msg_recv_counts_unfiltered"
+            | "topic_msg_recv_counts"
+            | "topic_msg_recv_bytes" => queries_for_counter(
+                &metrics_info.current,
+                family,
+                &metrics_info.peer_id,
+                &run_id,
+            ),
+            // ///////////////////////////////////
+            // Metrics related to scoring
+            // ///////////////////////////////////
+            "score_per_mesh" => {
+                continue;
+            }
+            "scoring_penalties" => queries_for_counter(
+                &metrics_info.current,
+                family,
+                &metrics_info.peer_id,
+                &run_id,
+            ),
+            // ///////////////////////////////////
+            // General Metrics
+            // ///////////////////////////////////
+            "peers_per_protocol" => {
+                continue;
+            }
+            "heartbeat_duration" => {
+                continue;
+            }
+            // ///////////////////////////////////
+            // Performance metrics
+            // ///////////////////////////////////
+            "topic_iwant_msgs" => queries_for_counter(
+                &metrics_info.current,
+                family,
+                &metrics_info.peer_id,
+                &run_id,
+            ),
+            "memcache_misses" => queries_for_counter(
+                &metrics_info.current,
+                family,
+                &metrics_info.peer_id,
+                &run_id,
+            ),
+            _ => unreachable!(),
+        };
+        queries.extend(q);
+    }
+
+    for q in queries {
+        if let Err(e) = metrics_info.client.record_metric(q).await {
+            error!("Failed to record metrics: {e:?}");
+        }
     }
 }
