@@ -350,7 +350,7 @@ impl Network {
                 .expect("Valid gossipsub configuration");
 
             let mut gs = Gossipsub::new_with_subscription_filter_and_transform(
-                MessageAuthenticity::Signed(keypair.clone()),
+                MessageAuthenticity::Anonymous,
                 gossipsub_config,
                 Some((registry, Config::default())),
                 AllowAllSubscriptionFilter {},

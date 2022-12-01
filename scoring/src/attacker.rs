@@ -19,6 +19,7 @@ use libp2p_testground::gossipsub::types::{
 };
 use libp2p_testground::gossipsub::{
     rpc_proto, GossipsubConfig, GossipsubConfigBuilder, GossipsubEvent, GossipsubRpc, TopicHash,
+    ValidationMode,
 };
 use libp2p_testground::identity::Keypair;
 use libp2p_testground::mplex::MplexConfig;
@@ -221,6 +222,7 @@ impl MaliciousBehaviour {
             config: GossipsubConfigBuilder::default()
                 .max_transmit_size(10 * 1_048_576) // 10M
                 .history_length(12)
+                .validation_mode(ValidationMode::Anonymous)
                 .build()
                 .expect("Valid configuration"),
             events: VecDeque::new(),
