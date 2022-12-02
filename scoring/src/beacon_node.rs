@@ -174,28 +174,22 @@ pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>
     // Set up the listening address
     network.start_libp2p().await;
 
-    if let Err(e) = client
+    client
         .signal_and_wait(
             BARRIER_LIBP2P_READY,
             client.run_parameters().test_instance_count,
         )
-        .await
-    {
-        panic!("error : BARRIER_LIBP2P_READY : {:?}", e);
-    }
+        .await?;
 
     // Dial the designated outbound peers
     network.dial_peers(&outbound_peers).await;
 
-    if let Err(e) = client
+    client
         .signal_and_wait(
             BARRIER_TOPOLOGY_READY,
             client.run_parameters().test_instance_count,
         )
-        .await
-    {
-        panic!("error : BARRIER_TOPOLOGY_READY : {:?}", e);
-    }
+        .await?;
 
     if let Err(e) = network.subscribe_topics() {
         error!("[{}] Failed to subscribe to topics {e}", network.node_id);
@@ -207,15 +201,12 @@ pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>
     // /////////////////////////////////////////////////////////////////////////////////////////////
     network.run_sim(run_duration, &registry).await;
 
-    if let Err(e) = client
+    client
         .signal_and_wait(
             BARRIER_SIMULATION_COMPLETED,
             client.run_parameters().test_instance_count,
         )
-        .await
-    {
-        panic!("error : BARRIER_SIMULATION_COMPLETED : {:?}", e);
-    }
+        .await?;
 
     client.record_success().await?;
     Ok(())
