@@ -2,9 +2,9 @@ use crate::param::{build_peer_score_params, parse_peer_score_thresholds, parse_t
 use crate::publish_and_collect;
 use crate::topic::Topic;
 use crate::utils::{
-    queries_for_counter, record_run_id, record_topology_beacon_node, record_topology_edge,
-    BARRIER_LIBP2P_READY, BARRIER_SIMULATION_COMPLETED, BARRIER_TOPOLOGY_READY, TAG_PEER_ID,
-    TAG_RUN_ID,
+    queries_for_counter, queries_for_counter_join, record_run_id, record_topology_beacon_node,
+    record_topology_edge, BARRIER_LIBP2P_READY, BARRIER_SIMULATION_COMPLETED,
+    BARRIER_TOPOLOGY_READY, TAG_PEER_ID, TAG_RUN_ID,
 };
 use chrono::TimeZone;
 use chrono::{DateTime, Local};
@@ -921,6 +921,35 @@ async fn record_metrics(metrics_info: RecordMetricsInfo) {
             _ => unreachable!(),
         };
         queries.extend(q);
+    }
+
+    // We can't do joins in InfluxDB easily, so do some custom queries here to calculate
+    // duplicates.
+    let recvd_unfiltered = metrics_info
+        .metrics
+        .metric_families
+        .iter()
+        .find(|family| family.name.as_str() == "topic_msg_recv_counts_unfiltered");
+
+    if let Some(recvd_unfiltered) = recvd_unfiltered {
+        let recvd = metrics_info
+            .metrics
+            .metric_families
+            .iter()
+            .find(|family| family.name.as_str() == "topic_msg_recv_counts");
+        if let Some(recvd) = recvd {
+            let q = queries_for_counter_join(
+                &metrics_info.current,
+                recvd_unfiltered,
+                recvd,
+                "topic_msg_recv_counts_duplicates",
+                &metrics_info.peer_id,
+                &run_id,
+                |a, b| a.saturating_sub(b),
+            );
+
+            queries.extend(q);
+        }
     }
 
     for q in queries {

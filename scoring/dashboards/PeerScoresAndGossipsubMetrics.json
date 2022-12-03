@@ -99,7 +99,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 7,
+        "h": 9,
         "w": 24,
         "x": 0,
         "y": 1
@@ -194,10 +194,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 10,
         "w": 24,
         "x": 0,
-        "y": 8
+        "y": 10
       },
       "id": 2,
       "options": {
@@ -245,11 +245,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 20
       },
       "id": 6,
       "panels": [],
-      "title": "Metrics regarding messages sent/received",
+      "title": "Messages Sent/Received",
       "type": "row"
     },
     {
@@ -311,12 +311,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 11,
-        "w": 24,
+        "h": 12,
+        "w": 8,
         "x": 0,
-        "y": 17
+        "y": 21
       },
-      "id": 4,
+      "id": 25,
       "options": {
         "legend": {
           "calcs": [],
@@ -331,210 +331,27 @@
       },
       "targets": [
         {
-          "alias": "Blocks",
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "ds_influxdb"
           },
-          "query": "SELECT count from scoring_topic_msg_sent_counts WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '\\\\\"Blocks\\\\\"'",
+          "query": "SELECT count from scoring_topic_msg_sent_counts WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' GROUP BY peer_id, hash",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series"
-        },
-        {
-          "alias": "Attestations_0",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_counts WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Attestations\\\\\":0}'",
-          "rawQuery": true,
-          "refId": "B",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Attestations_1",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_counts WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Attestations\\\\\":1}'",
-          "rawQuery": true,
-          "refId": "C",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Attestations_2",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_counts WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Attestations\\\\\":2}'",
-          "rawQuery": true,
-          "refId": "D",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Attestations_3",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_counts WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Attestations\\\\\":3}'",
-          "rawQuery": true,
-          "refId": "E",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Aggregates_0",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_counts WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Aggregates\\\\\":0}'",
-          "rawQuery": true,
-          "refId": "F",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Aggregates_1",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_counts WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Aggregates\\\\\":1}'",
-          "rawQuery": true,
-          "refId": "G",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Aggregates_2",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_counts WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Aggregates\\\\\":2}'",
-          "rawQuery": true,
-          "refId": "H",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Aggregates_3",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_counts WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Aggregates\\\\\":3}'",
-          "rawQuery": true,
-          "refId": "I",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SyncMessages_0",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_counts WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SyncMessages\\\\\":0}'",
-          "rawQuery": true,
-          "refId": "J",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SyncMessages_1",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_counts WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SyncMessages\\\\\":1}'",
-          "rawQuery": true,
-          "refId": "K",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SyncMessages_2",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_counts WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SyncMessages\\\\\":2}'",
-          "rawQuery": true,
-          "refId": "L",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SyncMessages_3",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_counts WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SyncMessages\\\\\":3}'",
-          "rawQuery": true,
-          "refId": "M",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SignedContributionAndProof_0",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_counts WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SignedContributionAndProof\\\\\":0}'",
-          "rawQuery": true,
-          "refId": "N",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SignedContributionAndProof_1",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_counts WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SignedContributionAndProof\\\\\":1}'",
-          "rawQuery": true,
-          "refId": "O",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SignedContributionAndProof_2",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_counts WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SignedContributionAndProof\\\\\":2}'",
-          "rawQuery": true,
-          "refId": "P",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SignedContributionAndProof_3",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_counts WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SignedContributionAndProof\\\\\":3}'",
-          "rawQuery": true,
-          "refId": "Q",
-          "resultFormat": "time_series"
         }
       ],
-      "title": "topic_msg_sent_counts",
+      "title": "Message Sent Counts",
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(.+)\\\"(.+)\\\\\"(:*)([0-9]*).*",
+            "renamePattern": "$2 $4"
+          }
+        }
+      ],
       "type": "timeseries"
     },
     {
@@ -591,15 +408,16 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "decbytes"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 11,
-        "w": 24,
-        "x": 0,
-        "y": 28
+        "h": 12,
+        "w": 8,
+        "x": 8,
+        "y": 21
       },
       "id": 11,
       "options": {
@@ -616,210 +434,129 @@
       },
       "targets": [
         {
-          "alias": "Blocks",
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "ds_influxdb"
           },
-          "query": "SELECT count from scoring_topic_msg_sent_bytes WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '\\\\\"Blocks\\\\\"'",
+          "query": "SELECT count from scoring_topic_msg_sent_bytes WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' GROUP BY peer_id, hash",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series"
-        },
+        }
+      ],
+      "title": "Message Sent Bytes",
+      "transformations": [
         {
-          "alias": "Attestations_0",
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(.+)\\\"(.+)\\\\\"(:*)([0-9]*).*",
+            "renamePattern": "$2 $4"
+          }
+        }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ds_influxdb"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 8,
+        "x": 16,
+        "y": 21
+      },
+      "id": 10,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "ds_influxdb"
           },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_bytes WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Attestations\\\\\":0}'",
+          "query": "SELECT count from scoring_topic_msg_published WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' GROUP BY peer_id, hash",
           "rawQuery": true,
-          "refId": "B",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Attestations_1",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_bytes WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Attestations\\\\\":1}'",
-          "rawQuery": true,
-          "refId": "C",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Attestations_2",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_bytes WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Attestations\\\\\":2}'",
-          "rawQuery": true,
-          "refId": "D",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Attestations_3",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_bytes WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Attestations\\\\\":3}'",
-          "rawQuery": true,
-          "refId": "E",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Aggregates_0",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_bytes WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Aggregates\\\\\":0}'",
-          "rawQuery": true,
-          "refId": "F",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Aggregates_1",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_bytes WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Aggregates\\\\\":1}'",
-          "rawQuery": true,
-          "refId": "G",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Aggregates_2",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_bytes WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Aggregates\\\\\":2}'",
-          "rawQuery": true,
-          "refId": "H",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Aggregates_3",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_bytes WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Aggregates\\\\\":3}'",
-          "rawQuery": true,
-          "refId": "I",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SyncMessages_0",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_bytes WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SyncMessages\\\\\":0}'",
-          "rawQuery": true,
-          "refId": "J",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SyncMessages_1",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_bytes WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SyncMessages\\\\\":1}'",
-          "rawQuery": true,
-          "refId": "K",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SyncMessages_2",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_bytes WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SyncMessages\\\\\":2}'",
-          "rawQuery": true,
-          "refId": "L",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SyncMessages_3",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_bytes WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SyncMessages\\\\\":3}'",
-          "rawQuery": true,
-          "refId": "M",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SignedContributionAndProof_0",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_bytes WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SignedContributionAndProof\\\\\":0}'",
-          "rawQuery": true,
-          "refId": "N",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SignedContributionAndProof_1",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_bytes WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SignedContributionAndProof\\\\\":1}'",
-          "rawQuery": true,
-          "refId": "O",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SignedContributionAndProof_2",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_bytes WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SignedContributionAndProof\\\\\":2}'",
-          "rawQuery": true,
-          "refId": "P",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SignedContributionAndProof_3",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_sent_bytes WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SignedContributionAndProof\\\\\":3}'",
-          "rawQuery": true,
-          "refId": "Q",
+          "refId": "A",
           "resultFormat": "time_series"
         }
       ],
-      "title": "topic_msg_sent_bytes",
+      "title": "Message Published",
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(.+)\\\"(.+)\\\\\"(:*)([0-9]*).*",
+            "renamePattern": "$2 $4"
+          }
+        }
+      ],
       "type": "timeseries"
     },
     {
@@ -882,11 +619,11 @@
       },
       "gridPos": {
         "h": 11,
-        "w": 24,
+        "w": 8,
         "x": 0,
-        "y": 39
+        "y": 33
       },
-      "id": 10,
+      "id": 12,
       "options": {
         "legend": {
           "calcs": [],
@@ -901,210 +638,27 @@
       },
       "targets": [
         {
-          "alias": "Blocks",
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "ds_influxdb"
           },
-          "query": "SELECT count from scoring_topic_msg_published WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '\\\\\"Blocks\\\\\"'",
+          "query": "SELECT count from scoring_topic_msg_recv_counts WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' GROUP BY peer_id, hash",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series"
-        },
-        {
-          "alias": "Attestations_0",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_published WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Attestations\\\\\":0}'",
-          "rawQuery": true,
-          "refId": "B",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Attestations_1",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_published WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Attestations\\\\\":1}'",
-          "rawQuery": true,
-          "refId": "C",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Attestations_2",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_published WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Attestations\\\\\":2}'",
-          "rawQuery": true,
-          "refId": "D",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Attestations_3",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_published WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Attestations\\\\\":3}'",
-          "rawQuery": true,
-          "refId": "E",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Aggregates_0",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_published WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Aggregates\\\\\":0}'",
-          "rawQuery": true,
-          "refId": "F",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Aggregates_1",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_published WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Aggregates\\\\\":1}'",
-          "rawQuery": true,
-          "refId": "G",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Aggregates_2",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_published WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Aggregates\\\\\":2}'",
-          "rawQuery": true,
-          "refId": "H",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Aggregates_3",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_published WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Aggregates\\\\\":3}'",
-          "rawQuery": true,
-          "refId": "I",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SyncMessages_0",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_published WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SyncMessages\\\\\":0}'",
-          "rawQuery": true,
-          "refId": "J",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SyncMessages_1",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_published WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SyncMessages\\\\\":1}'",
-          "rawQuery": true,
-          "refId": "K",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SyncMessages_2",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_published WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SyncMessages\\\\\":2}'",
-          "rawQuery": true,
-          "refId": "L",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SyncMessages_3",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_published WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SyncMessages\\\\\":3}'",
-          "rawQuery": true,
-          "refId": "M",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SignedContributionAndProof_0",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_published WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SignedContributionAndProof\\\\\":0}'",
-          "rawQuery": true,
-          "refId": "N",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SignedContributionAndProof_1",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_published WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SignedContributionAndProof\\\\\":1}'",
-          "rawQuery": true,
-          "refId": "O",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SignedContributionAndProof_2",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_published WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SignedContributionAndProof\\\\\":2}'",
-          "rawQuery": true,
-          "refId": "P",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SignedContributionAndProof_3",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_published WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SignedContributionAndProof\\\\\":3}'",
-          "rawQuery": true,
-          "refId": "Q",
-          "resultFormat": "time_series"
         }
       ],
-      "title": "topic_msg_published",
+      "title": "Message Received",
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(.+)\\\"(.+)\\\\\"(:*)([0-9]*).*",
+            "renamePattern": "$2 $4"
+          }
+        }
+      ],
       "type": "timeseries"
     },
     {
@@ -1153,7 +707,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -1166,11 +721,11 @@
       },
       "gridPos": {
         "h": 11,
-        "w": 24,
-        "x": 0,
-        "y": 50
+        "w": 8,
+        "x": 8,
+        "y": 33
       },
-      "id": 12,
+      "id": 21,
       "options": {
         "legend": {
           "calcs": [],
@@ -1185,210 +740,129 @@
       },
       "targets": [
         {
-          "alias": "Blocks",
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "ds_influxdb"
           },
-          "query": "SELECT count from scoring_topic_msg_recv_counts_unfiltered WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '\\\\\"Blocks\\\\\"'",
+          "query": "SELECT count from scoring_topic_msg_recv_counts_unfiltered WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' GROUP BY peer_id, hash",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series"
-        },
+        }
+      ],
+      "title": "Message Received Unfiltered",
+      "transformations": [
         {
-          "alias": "Attestations_0",
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(.+)\\\"(.+)\\\\\"(:*)([0-9]*).*",
+            "renamePattern": "$2 $4"
+          }
+        }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ds_influxdb"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 8,
+        "x": 16,
+        "y": 33
+      },
+      "id": 20,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "ds_influxdb"
           },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_recv_counts_unfiltered WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Attestations\\\\\":0}'",
+          "query": "SELECT count from scoring_topic_msg_recv_counts_duplicates WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' GROUP BY peer_id, hash",
           "rawQuery": true,
-          "refId": "B",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Attestations_1",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_recv_counts_unfiltered WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Attestations\\\\\":1}'",
-          "rawQuery": true,
-          "refId": "C",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Attestations_2",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_recv_counts_unfiltered WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Attestations\\\\\":2}'",
-          "rawQuery": true,
-          "refId": "D",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Attestations_3",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_recv_counts_unfiltered WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Attestations\\\\\":3}'",
-          "rawQuery": true,
-          "refId": "E",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Aggregates_0",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_recv_counts_unfiltered WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Aggregates\\\\\":0}'",
-          "rawQuery": true,
-          "refId": "F",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Aggregates_1",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_recv_counts_unfiltered WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Aggregates\\\\\":1}'",
-          "rawQuery": true,
-          "refId": "G",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Aggregates_2",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_recv_counts_unfiltered WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Aggregates\\\\\":2}'",
-          "rawQuery": true,
-          "refId": "H",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Aggregates_3",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_recv_counts_unfiltered WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"Aggregates\\\\\":3}'",
-          "rawQuery": true,
-          "refId": "I",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SyncMessages_0",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_recv_counts_unfiltered WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SyncMessages\\\\\":0}'",
-          "rawQuery": true,
-          "refId": "J",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SyncMessages_1",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_recv_counts_unfiltered WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SyncMessages\\\\\":1}'",
-          "rawQuery": true,
-          "refId": "K",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SyncMessages_2",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_recv_counts_unfiltered WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SyncMessages\\\\\":2}'",
-          "rawQuery": true,
-          "refId": "L",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SyncMessages_3",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_recv_counts_unfiltered WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SyncMessages\\\\\":3}'",
-          "rawQuery": true,
-          "refId": "M",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SignedContributionAndProof_0",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_recv_counts_unfiltered WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SignedContributionAndProof\\\\\":0}'",
-          "rawQuery": true,
-          "refId": "N",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SignedContributionAndProof_1",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_recv_counts_unfiltered WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SignedContributionAndProof\\\\\":1}'",
-          "rawQuery": true,
-          "refId": "O",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SignedContributionAndProof_2",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_recv_counts_unfiltered WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SignedContributionAndProof\\\\\":2}'",
-          "rawQuery": true,
-          "refId": "P",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SignedContributionAndProof_3",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_topic_msg_recv_counts_unfiltered WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND hash = '{\\\\\"SignedContributionAndProof\\\\\":3}'",
-          "rawQuery": true,
-          "refId": "Q",
+          "refId": "A",
           "resultFormat": "time_series"
         }
       ],
-      "title": "topic_msg_recv_counts_unfiltered",
+      "title": "Duplicate Message Received",
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(.+)\\\"(.+)\\\\\"(:*)([0-9]*).*",
+            "renamePattern": "$2 $4"
+          }
+        }
+      ],
       "type": "timeseries"
     },
     {
@@ -1397,11 +871,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 61
+        "y": 44
       },
       "id": 14,
       "panels": [],
-      "title": "Metrics regarding mesh state",
+      "title": "Mesh State",
       "type": "row"
     },
     {
@@ -1450,7 +924,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -1463,9 +938,9 @@
       },
       "gridPos": {
         "h": 11,
-        "w": 24,
+        "w": 8,
         "x": 0,
-        "y": 62
+        "y": 45
       },
       "id": 19,
       "options": {
@@ -1482,210 +957,142 @@
       },
       "targets": [
         {
-          "alias": "Blocks",
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "ds_influxdb"
           },
-          "query": "SELECT count from scoring_mesh_peer_churn_events WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND reason = 'BadScore' AND hash = '\\\\\"Blocks\\\\\"'",
+          "query": "SELECT count from scoring_mesh_peer_churn_events WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND reason = 'BadScore' GROUP BY peer_id, hash",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series"
-        },
+        }
+      ],
+      "title": "Mesh Peer Churn Events (BadScore)",
+      "transformations": [
         {
-          "alias": "Attestations_0",
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(.+)\\\"(.+)\\\\\"(:*)([0-9]*).*",
+            "renamePattern": "$2 $4"
+          }
+        }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 56
+      },
+      "id": 23,
+      "panels": [],
+      "title": "Performance",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ds_influxdb"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 8,
+        "x": 0,
+        "y": 57
+      },
+      "id": 24,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "ds_influxdb"
           },
-          "hide": false,
-          "query": "SELECT count from scoring_mesh_peer_churn_events WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND reason = 'BadScore' AND hash = '{\\\\\"Attestations\\\\\":0}'",
+          "query": "SELECT \"count\" FROM \"topic_iwant_msgs\" WHERE (\"peer_id\" =~ /^$peer_id$/ AND \"run_id\" =~ /^$run_id$/) AND $timeFilter GROUP BY \"peer_id\", \"hash\"",
           "rawQuery": true,
-          "refId": "B",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Attestations_1",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_mesh_peer_churn_events WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND reason = 'BadScore' AND hash = '{\\\\\"Attestations\\\\\":1}'",
-          "rawQuery": true,
-          "refId": "C",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Attestations_2",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_mesh_peer_churn_events WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND reason = 'BadScore' AND hash = '{\\\\\"Attestations\\\\\":2}'",
-          "rawQuery": true,
-          "refId": "D",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Attestations_3",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_mesh_peer_churn_events WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND reason = 'BadScore' AND hash = '{\\\\\"Attestations\\\\\":3}'",
-          "rawQuery": true,
-          "refId": "E",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Aggregates_0",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_mesh_peer_churn_events WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND reason = 'BadScore' AND hash = '{\\\\\"Aggregates\\\\\":0}'",
-          "rawQuery": true,
-          "refId": "F",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Aggregates_1",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_mesh_peer_churn_events WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND reason = 'BadScore' AND hash = '{\\\\\"Aggregates\\\\\":1}'",
-          "rawQuery": true,
-          "refId": "G",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Aggregates_2",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_mesh_peer_churn_events WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND reason = 'BadScore' AND hash = '{\\\\\"Aggregates\\\\\":2}'",
-          "rawQuery": true,
-          "refId": "H",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "Aggregates_3",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_mesh_peer_churn_events WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND reason = 'BadScore' AND hash = '{\\\\\"Aggregates\\\\\":3}'",
-          "rawQuery": true,
-          "refId": "I",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SyncMessages_0",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_mesh_peer_churn_events WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND reason = 'BadScore' AND hash = '{\\\\\"SyncMessages\\\\\":0}'",
-          "rawQuery": true,
-          "refId": "J",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SyncMessages_1",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_mesh_peer_churn_events WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND reason = 'BadScore' AND hash = '{\\\\\"SyncMessages\\\\\":1}'",
-          "rawQuery": true,
-          "refId": "K",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SyncMessages_2",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_mesh_peer_churn_events WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND reason = 'BadScore' AND hash = '{\\\\\"SyncMessages\\\\\":2}'",
-          "rawQuery": true,
-          "refId": "L",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SyncMessages_3",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_mesh_peer_churn_events WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND reason = 'BadScore' AND hash = '{\\\\\"SyncMessages\\\\\":3}'",
-          "rawQuery": true,
-          "refId": "M",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SignedContributionAndProof_0",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_mesh_peer_churn_events WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND reason = 'BadScore' AND hash = '{\\\\\"SignedContributionAndProof\\\\\":0}'",
-          "rawQuery": true,
-          "refId": "N",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SignedContributionAndProof_1",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_mesh_peer_churn_events WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND reason = 'BadScore' AND hash = '{\\\\\"SignedContributionAndProof\\\\\":1}'",
-          "rawQuery": true,
-          "refId": "O",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SignedContributionAndProof_2",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_mesh_peer_churn_events WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND reason = 'BadScore' AND hash = '{\\\\\"SignedContributionAndProof\\\\\":2}'",
-          "rawQuery": true,
-          "refId": "P",
-          "resultFormat": "time_series"
-        },
-        {
-          "alias": "SignedContributionAndProof_3",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ds_influxdb"
-          },
-          "hide": false,
-          "query": "SELECT count from scoring_mesh_peer_churn_events WHERE run_id = '${run_id:text}' AND peer_id = '${peer_id:text}' AND reason = 'BadScore' AND hash = '{\\\\\"SignedContributionAndProof\\\\\":3}'",
-          "rawQuery": true,
-          "refId": "Q",
+          "refId": "A",
           "resultFormat": "time_series"
         }
       ],
-      "title": "mesh_peer_churn_events (BadScore)",
+      "title": "IWANT Messages",
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(.+)\\\"(.+)\\\\\"(:*)([0-9]*).*",
+            "renamePattern": "$2 $4"
+          }
+        }
+      ],
       "type": "timeseries"
     }
   ],
@@ -1697,9 +1104,9 @@
     "list": [
       {
         "current": {
-          "selected": true,
-          "text": "ce0ropr4lvk1bf00kd6g",
-          "value": "ce0ropr4lvk1bf00kd6g"
+          "selected": false,
+          "text": "ce5errb4lvk2schkoob0",
+          "value": "ce5errb4lvk2schkoob0"
         },
         "datasource": {
           "type": "influxdb",
@@ -1721,33 +1128,33 @@
       },
       {
         "current": {
-          "selected": false,
-          "text": "",
-          "value": ""
+          "selected": true,
+          "text": "12D3KooWQ5KKbBLHhJsciHvq2DGVR63rSqafub5f3b7C5tGoNCUh",
+          "value": "12D3KooWQ5KKbBLHhJsciHvq2DGVR63rSqafub5f3b7C5tGoNCUh"
         },
         "hide": 0,
         "name": "peer_id",
         "options": [
           {
             "selected": true,
-            "text": "",
-            "value": ""
+            "text": "12D3KooWQ5KKbBLHhJsciHvq2DGVR63rSqafub5f3b7C5tGoNCUh",
+            "value": "12D3KooWQ5KKbBLHhJsciHvq2DGVR63rSqafub5f3b7C5tGoNCUh"
           }
         ],
-        "query": "",
+        "query": "12D3KooWQ5KKbBLHhJsciHvq2DGVR63rSqafub5f3b7C5tGoNCUh",
         "skipUrlSync": false,
         "type": "textbox"
       }
     ]
   },
   "time": {
-    "from": "2022-11-16T23:42:12.567Z",
-    "to": "2022-11-16T23:45:24.494Z"
+    "from": "2022-12-03T06:36:05.140Z",
+    "to": "2022-12-03T06:41:02.139Z"
   },
   "timepicker": {},
   "timezone": "",
   "title": "Peer Scores and Gossipsub Metrics",
   "uid": "trOmP_vVz",
-  "version": 1,
+  "version": 5,
   "weekStart": ""
 }

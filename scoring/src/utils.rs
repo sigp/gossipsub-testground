@@ -80,6 +80,63 @@ pub(crate) fn queries_for_counter(
     queries
 }
 
+/// Create InfluxDB queries joining counter metrics
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn queries_for_counter_join(
+    datetime: &DateTime<Local>,
+    family1: &MetricFamily,
+    family2: &MetricFamily,
+    name: &str,
+    peer_id: &PeerId,
+    run_id: &str,
+    predicate: fn(u64, u64) -> u64,
+) -> Vec<WriteQuery> {
+    let measurement = format!("{}_{name}", env!("CARGO_PKG_NAME"));
+    let mut queries = vec![];
+
+    for metric in family1.metrics.iter() {
+        // Match on metric values
+        let value = {
+            let current_val = get_counter_value(metric).0.expect("should have int value");
+            let other_val = family2
+                .metrics
+                .iter()
+                .find(|m2| {
+                    // match on all labels
+                    let mut found = true;
+                    for label in &metric.labels {
+                        if !m2
+                            .labels
+                            .iter()
+                            .any(|l| l.name == label.name && l.value == label.value)
+                        {
+                            found = false;
+                            break;
+                        }
+                    }
+                    found
+                })
+                .and_then(|m| get_counter_value(m).0);
+            other_val.map(|other| predicate(current_val, other))
+        };
+
+        if let Some(val) = value {
+            let mut query = WriteQuery::new((*datetime).into(), &measurement)
+                .add_tag(TAG_PEER_ID, peer_id.to_string())
+                .add_tag(TAG_RUN_ID, run_id.to_owned())
+                .add_field("count", val);
+
+            for l in &metric.labels {
+                query = query.add_tag(l.name.clone(), l.value.clone());
+            }
+
+            queries.push(query);
+        }
+    }
+
+    queries
+}
+
 fn get_counter_value(metric: &Metric) -> (Option<u64>, Option<f64>) {
     assert_eq!(1, metric.metric_points.len());
 
