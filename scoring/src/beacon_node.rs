@@ -285,10 +285,10 @@ pub(crate) struct Network {
     score_interval: Interval,
     messages_gen: Generator,
     received_beacon_blocks: HashMap<Epoch, HashSet<Slot>>,
-    received_aggregates: Vec<HashMap<Epoch, HashSet<ValId>>>,
+    received_aggregates: Vec<HashMap<Epoch, Vec<ValId>>>,
     received_attestations: Vec<HashMap<Epoch, HashSet<ValId>>>,
-    received_sync_committee_aggregates: Vec<HashMap<Epoch, HashSet<ValId>>>,
-    received_sync_committee_messages: Vec<HashMap<Epoch, HashSet<ValId>>>,
+    received_sync_committee_aggregates: Vec<HashMap<Epoch, Vec<ValId>>>,
+    received_sync_committee_messages: Vec<HashMap<Epoch, Vec<ValId>>>,
     slot_clock: SystemTimeSlotClock,
 }
 
@@ -565,21 +565,20 @@ impl Network {
 
         info!("The simulation has completed. Recording the results.");
         self.record_received_beacon_blocks().await;
-        self.record_received_messages("aggregates", ATTESTATION_SUBNETS, &self.received_aggregates)
-            .await;
-        self.record_received_messages(
-            "attestations",
+        self.record_received_attestations().await;
+        self.record_received_message_count_per_epoch(
+            "aggregates",
             ATTESTATION_SUBNETS,
-            &self.received_attestations,
+            &self.received_aggregates,
         )
         .await;
-        self.record_received_messages(
+        self.record_received_message_count_per_epoch(
             "sync_committee_aggregates",
             SYNC_SUBNETS,
             &self.received_sync_committee_aggregates,
         )
         .await;
-        self.record_received_messages(
+        self.record_received_message_count_per_epoch(
             "sync_committee_messages",
             SYNC_SUBNETS,
             &self.received_sync_committee_messages,
@@ -627,16 +626,12 @@ impl Network {
                             serde_json::from_slice(&message.data).unwrap();
                         let epoch = slot.epoch(SLOTS_PER_EPOCH);
 
-                        if !self
-                            .received_aggregates
+                        self.received_aggregates
                             .get_mut(subnet_id as usize)
                             .expect("subnet_id")
                             .entry(epoch)
                             .or_default()
-                            .insert(ValId(validator))
-                        {
-                            warn!("AggregateAndProofAttestation message from {validator} is already received.")
-                        }
+                            .push(ValId(validator));
                     }
                     Topic::Attestations(subnet_id) => {
                         let (validator, slot, _payload): (u64, Slot, String) =
@@ -659,32 +654,24 @@ impl Network {
                             serde_json::from_slice(&message.data).unwrap();
                         let epoch = slot.epoch(SLOTS_PER_EPOCH);
 
-                        if !self
-                            .received_sync_committee_aggregates
+                        self.received_sync_committee_aggregates
                             .get_mut(subnet_id as usize)
                             .expect("subnet_id")
                             .entry(epoch)
                             .or_default()
-                            .insert(ValId(validator))
-                        {
-                            warn!("SignedContributionAndProof message from {validator} is already received.")
-                        }
+                            .push(ValId(validator));
                     }
                     Topic::SyncMessages(subnet_id) => {
                         let (validator, slot, _payload): (u64, Slot, String) =
                             serde_json::from_slice(&message.data).unwrap();
                         let epoch = slot.epoch(SLOTS_PER_EPOCH);
 
-                        if !self
-                            .received_sync_committee_messages
+                        self.received_sync_committee_messages
                             .get_mut(subnet_id as usize)
                             .expect("subnet_id")
                             .entry(epoch)
                             .or_default()
-                            .insert(ValId(validator))
-                        {
-                            warn!("SyncMessage message from {validator} is already received.")
-                        }
+                            .push(ValId(validator));
                     }
                 }
             }
@@ -727,12 +714,55 @@ impl Network {
         }
     }
 
+    /// Record the number of Attestations received per epoch.
+    async fn record_received_attestations(&self) {
+        let mut queries = vec![];
+        let run_id = self.client.run_parameters().test_run;
+
+        for subnet_id in 0..ATTESTATION_SUBNETS as usize {
+            let measurement = format!("{}_attestations_{subnet_id}", env!("CARGO_PKG_NAME"));
+
+            for (epoch, vals) in self
+                .received_attestations
+                .get(subnet_id)
+                .expect("subnet_id")
+                .iter()
+            {
+                let timestamp: Timestamp = {
+                    let duration = self
+                        .slot_clock
+                        .start_of(epoch.start_slot(SLOTS_PER_EPOCH))
+                        .unwrap();
+
+                    Local
+                        .timestamp_opt(duration.as_secs() as i64, 0)
+                        .single()
+                        .expect("datetime")
+                        .into()
+                };
+
+                let query = WriteQuery::new(timestamp, &measurement)
+                    .add_tag(TAG_PEER_ID, self.beacon_node_info.peer_id.to_string())
+                    .add_tag(TAG_RUN_ID, run_id.to_owned())
+                    .add_tag("epoch", epoch.as_u64())
+                    .add_field("count", vals.len() as u64);
+                queries.push(query);
+            }
+        }
+
+        for query in queries {
+            if let Err(e) = self.client.record_metric(query).await {
+                error!("Failed to record received_attestations: {e:?}");
+            }
+        }
+    }
+
     /// Record the number of messages received per epoch.
-    async fn record_received_messages(
+    async fn record_received_message_count_per_epoch(
         &self,
         measurement: &str,
         subnets: u64,
-        messages: &Vec<HashMap<Epoch, HashSet<ValId>>>,
+        messages: &Vec<HashMap<Epoch, Vec<ValId>>>,
     ) {
         let mut queries = vec![];
         let run_id = self.client.run_parameters().test_run;
@@ -765,7 +795,7 @@ impl Network {
 
         for query in queries {
             if let Err(e) = self.client.record_metric(query).await {
-                error!("Failed to record received_attestations: {e:?}");
+                error!("Failed to record received aggregates: {e:?}");
             }
         }
     }
