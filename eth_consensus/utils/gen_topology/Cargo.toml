@@ -1,0 +1,10 @@
+[package]
+name = "gen_topology"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+rand = "0.8.5"
+rand_chacha = "0.3.1"
+serde = { workspace = true, features = [ "derive" ]}

@@ -1,0 +1,24 @@
+[package]
+name = "simulation"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+chrono = { version = "0.4.19", features = [ "std" ]}
+delay_map = "0.1.1"
+
+# libp2p = { version = "0.48.0", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux", "serde"] }
+prometheus-client = { git = "https://github.com/prometheus/client_rust.git", rev = "682b24ee8c6c857b76c0683b1dd7df5a97b75c27", features = ["protobuf"] }
+libp2p = { git = "https://github.com/ackintosh/rust-libp2p.git", branch = "prometheus-ptotobuf-support", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux", "serde"] }
+serde_json = "1.0"
+serde = "1.0"
+testground = "0.4.0"
+tokio = { version = "1.21.2", features = ["macros"] }
+tracing = "0.1.35"
+tracing-subscriber = { version = "0.3.14", features = ["env-filter"] }
+gen_topology = { path = "../utils/gen_topology" }
+futures = "0.3.24"
+npg = { git = "https://github.com/sigp/eth-npg", branch = "timing-change" }
+sha2 = "0.10.6"

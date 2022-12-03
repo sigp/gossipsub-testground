@@ -1,0 +1,26 @@
+[workspace]
+
+members = [
+	"simulation",
+    "utils/gen_topology",
+    "utils/gen_topology_files"
+]
+
+[workspace.dependencies]
+serde_json = "1.0"
+serde = "1.0"
+testground = "0.4.0"
+tokio = { version = "1.21.2", features = ["macros"] }
+tracing = "0.1.35"
+tracing-subscriber = { version = "0.3.14", features = ["env-filter"] }
+
+[patch]
+[patch.crates-io]
+types = { git = "https://github.com/divagant-martian/lighthouse", branch = "sizes" }
+eth2_ssz = { git = "https://github.com/divagant-martian/lighthouse", branch = "sizes" }
+eth2_ssz_types = { git = "https://github.com/divagant-martian/lighthouse", branch = "sizes" }
+eth2_serde_utils = { git = "https://github.com/divagant-martian/lighthouse", branch = "sizes" }
+tree_hash = { git = "https://github.com/divagant-martian/lighthouse", branch = "sizes" }
+eth2_hashing = { git = "https://github.com/divagant-martian/lighthouse", branch = "sizes" }
+eth2_ssz_derive = { git = "https://github.com/divagant-martian/lighthouse", branch = "sizes" }
+tree_hash_derive = { git = "https://github.com/divagant-martian/lighthouse", branch = "sizes" }
