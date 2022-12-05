@@ -33,7 +33,7 @@ use std::time::{Duration, Instant};
 use testground::client::Client;
 use tokio::time::interval;
 use tokio_util::time::DelayQueue;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use super::metrics;
 use super::Network;
@@ -334,44 +334,51 @@ impl Network {
             )));
 
         loop {
+            
             tokio::select! {
-            _ = deadline.as_mut() => {
-                // Sim complete
-                break;
-            }
-            Some(m) = self.messages_gen.next() => {
-                let payload = m.payload();
-                let (topic, val) = match m {
-                    Message::BeaconBlock { proposer: ValId(v), slot: _ } => {
-                        (Topic::Blocks, v)
-
-                    },
-                    Message::AggregateAndProofAttestation { aggregator: ValId(v), subnet: Subnet(_s), slot: _ } => {
-                        (Topic::Aggregates, v)
-                    },
-                    Message::Attestation { attester: ValId(v), subnet: Subnet(s), slot: _ } => {
-                        (Topic::Attestations(s), v)
-                    },
-                    Message::SignedContributionAndProof { validator: ValId(v), subnet: Subnet(s), slot: _ } => {
-                        (Topic::SignedContributionAndProof(s), v)
-                    },
-                    Message::SyncCommitteeMessage { validator: ValId(v), subnet: Subnet(s), slot: _ } => {
-                        (Topic::SyncMessages(s), v)
-                    },
-                };
-                if let Err(e) = self.publish(topic.clone(), val, payload) {
-                    error!("Failed to publish message {e} to topic {topic:?}");
+                _ = deadline.as_mut() => {
+                    // Sim complete
+                    break;
                 }
+                Some(m) = self.messages_gen.next() => {
+                    let payload = m.payload();
+                    let (topic, val) = match m {
+                        Message::BeaconBlock { proposer: ValId(v), slot: _ } => {
+                            (Topic::Blocks, v)
 
-            }
-            // Record peer scores
-            _ = self.metrics_interval.tick() => {
-                let metrics_info = self.record_metrics_info();
-                // Spawn into its own task
-                self.influx_db_handles.push(tokio::spawn(metrics::record_metrics(metrics_info)));
-            },
-            _ = self.influx_db_handles.next() => {} // Remove excess db handles
-            event = self.swarm.select_next_some() => self.handle_swarm_event(event),
+                        },
+                        Message::AggregateAndProofAttestation { aggregator: ValId(v), subnet: Subnet(_s), slot: _ } => {
+                            (Topic::Aggregates, v)
+                        },
+                        Message::Attestation { attester: ValId(v), subnet: Subnet(s), slot: _ } => {
+                            (Topic::Attestations(s), v)
+                        },
+                        Message::SignedContributionAndProof { validator: ValId(v), subnet: Subnet(s), slot: _ } => {
+                            (Topic::SignedContributionAndProof(s), v)
+                        },
+                        Message::SyncCommitteeMessage { validator: ValId(v), subnet: Subnet(s), slot: _ } => {
+                            (Topic::SyncMessages(s), v)
+                        },
+                    };
+                    if let Err(e) = self.publish(topic.clone(), val, payload) {
+                        error!("Failed to publish message {e} to topic {topic:?}");
+                    }
+
+                }
+                // Record peer scores
+                _ = self.metrics_interval.tick() => {
+                    let metrics_info = self.record_metrics_info();
+                    // Spawn into its own task
+                    self.influx_db_handles.push(tokio::spawn(metrics::record_metrics(metrics_info)));
+                },
+                _ = self.influx_db_handles.next() => {} // Remove excess db handles
+                event = self.swarm.select_next_some() => self.handle_swarm_event(event),
+                Some(x) = self.messages_to_validate.next(), if !self.messages_to_validate.is_empty() => { // Message needs validation
+                    let (message_id, peer_id) = x.into_inner();
+                    if let Err(e)  = self.swarm.behaviour_mut().report_message_validation_result(&message_id, &peer_id, libp2p::gossipsub::MessageAcceptance::Accept) {
+                        warn!("Could not publish message: {} {}", message_id, e);
+                    }
+                }
             }
         }
 

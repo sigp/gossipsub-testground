@@ -1,12 +1,12 @@
 use crate::InstanceInfo;
 use chrono::{DateTime, Utc};
+use futures::stream::FuturesUnordered;
 use libp2p::gossipsub::{
     error::GossipsubHandlerError, Gossipsub, GossipsubEvent, IdentTopic, MessageId,
     Topic as GossipTopic,
 };
 use libp2p::swarm::SwarmEvent;
-// use libp2p::PeerId;
-use futures::stream::FuturesUnordered;
+use libp2p::PeerId;
 use libp2p::Swarm;
 use npg::Generator;
 use prometheus_client::encoding::proto::EncodeMetric;
@@ -54,7 +54,7 @@ pub struct Network {
     /// Keeps track of futures spawned for the influx db to end gracefully.
     influx_db_handles: FuturesUnordered<JoinHandle<()>>,
     /// A delay queue indicating when to validate messages
-    messages_to_validate: DelayQueue<MessageId>,
+    messages_to_validate: DelayQueue<(MessageId, PeerId)>,
 }
 
 impl Network {
@@ -161,7 +161,7 @@ impl Network {
                 }
 
                 // Perform custom validation and artificial delay
-                self.custom_validation(message_id, message.data.len());
+                self.custom_validation(message_id, propagation_source, message.data.len());
             }
             _ => debug!("SwarmEvent: {:?}", event),
         }
@@ -169,7 +169,7 @@ impl Network {
 
     /// Create an artificial delay to the validation which half-represents propagation time, with
     /// the caveat that the delay applies to all peers.
-    fn custom_validation(&mut self, message_id: MessageId, msg_size: usize) {
+    fn custom_validation(&mut self, message_id: MessageId, peer_id: PeerId, msg_size: usize) {
         // Lets use tiers for message propagation and validation
         let mut rng = rand::thread_rng();
 
@@ -188,8 +188,10 @@ impl Network {
                 rng.gen_range(0..500)
             }
         };
-        self.messages_to_validate
-            .insert(message_id, tokio::time::Duration::from_millis(ms_duration));
+        self.messages_to_validate.insert(
+            (message_id, peer_id),
+            tokio::time::Duration::from_millis(ms_duration),
+        );
     }
 }
 
