@@ -1,40 +1,32 @@
 use crate::InstanceInfo;
 use chrono::{DateTime, Utc};
-use gen_topology::Params;
-use libp2p::gossipsub::metrics::Config;
-use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
 use libp2p::gossipsub::{
-    error::GossipsubHandlerError, Gossipsub, GossipsubConfigBuilder, GossipsubEvent,
-    GossipsubMessage, IdentTopic, IdentityTransform, MessageAuthenticity, MessageId,
-    PeerScoreParams, PeerScoreThresholds, Topic as GossipTopic, ValidationMode, 
+    error::GossipsubHandlerError, Gossipsub, GossipsubEvent, IdentTopic, MessageId,
+    Topic as GossipTopic,
 };
-use libp2p::identity::Keypair;
-use libp2p::swarm::{SwarmBuilder, SwarmEvent};
-use libp2p::PeerId;
+use libp2p::swarm::SwarmEvent;
+// use libp2p::PeerId;
+use futures::stream::FuturesUnordered;
 use libp2p::Swarm;
-use npg::slot_generator::ValId;
 use npg::Generator;
 use prometheus_client::encoding::proto::EncodeMetric;
 use prometheus_client::registry::Registry;
-use sha2::{Digest, Sha256};
-use std::collections::{HashMap, HashSet};
+use rand;
+use rand::Rng;
+use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use testground::client::Client;
-use tokio::time::{interval, Interval};
-use tracing::{debug, info};
-use futures::stream::FuturesUnordered;
 use tokio::task::JoinHandle;
+use tokio::time::Interval;
+use tokio_util::time::DelayQueue;
+use tracing::{debug, info};
 
 mod metrics;
 mod run;
 
 pub(crate) use run::run;
-
-const ATTESTATION_SUBNETS: u64 = 4;
-const SYNC_SUBNETS: u64 = 4;
-const SLOTS_PER_EPOCH: u64 = 2;
-const SLOT_DURATION: u64 = 12;
+use run::{ATTESTATION_SUBNETS, SYNC_SUBNETS};
 
 /// Main struct to run the simulation.
 pub struct Network {
@@ -61,120 +53,12 @@ pub struct Network {
     messages_gen: Generator,
     /// Keeps track of futures spawned for the influx db to end gracefully.
     influx_db_handles: FuturesUnordered<JoinHandle<()>>,
+    /// A delay queue indicating when to validate messages
+    messages_to_validate: DelayQueue<MessageId>,
 }
 
 impl Network {
     #[allow(clippy::too_many_arguments)]
-
-    fn new(
-        mut registry: Registry<Box<dyn EncodeMetric>>,
-        keypair: Keypair,
-        node_id: usize,
-        instance_info: InstanceInfo,
-        participants: HashMap<usize, InstanceInfo>,
-        client: Client,
-        validator_set: HashSet<ValId>,
-        params: Params,
-    ) -> Self {
-        let gossipsub = {
-            let gossip_message_id = move |message: &GossipsubMessage| {
-                MessageId::from(
-                    &Sha256::digest([message.topic.as_str().as_bytes(), &message.data].concat())
-                        [..20],
-                )
-            };
-
-            let gossipsub_config = GossipsubConfigBuilder::default()
-                .max_transmit_size(10 * 1_048_576) // gossip_max_size(true)
-                // .heartbeat_interval(Duration::from_secs(1))
-                .prune_backoff(Duration::from_secs(60))
-                .mesh_n(8)
-                .mesh_n_low(4)
-                .mesh_n_high(12)
-                .gossip_lazy(6)
-                .fanout_ttl(Duration::from_secs(60))
-                .history_length(12)
-                .max_messages_per_rpc(Some(500)) // Responses to IWANT can be quite large
-                .history_gossip(3)
-                // .validate_messages() // TODO: Reintroduce message validation delays
-                .validation_mode(ValidationMode::Anonymous)
-                .duplicate_cache_time(Duration::from_secs(SLOT_DURATION * SLOTS_PER_EPOCH + 1))
-                .message_id_fn(gossip_message_id)
-                .allow_self_origin(true)
-                .build()
-                .expect("valid gossipsub configuration");
-
-            let mut gs = Gossipsub::new_with_subscription_filter_and_transform(
-                MessageAuthenticity::Anonymous,
-                gossipsub_config,
-                Some((&mut registry, Config::default())),
-                AllowAllSubscriptionFilter {},
-                IdentityTransform {},
-            )
-            .expect("Valid configuration");
-
-            // Setup the scoring system.
-            let peer_score_params = PeerScoreParams::default();
-            gs.with_peer_score(peer_score_params, PeerScoreThresholds::default())
-                .expect("Valid score params and thresholds");
-
-            gs
-        };
-
-        let swarm = SwarmBuilder::new(
-            run::build_transport(&keypair),
-            gossipsub,
-            PeerId::from(keypair.public()),
-        )
-        .executor(Box::new(|future| {
-            tokio::spawn(future);
-        }))
-        .build();
-
-        info!(
-            "[{}] running with {} validators",
-            node_id,
-            validator_set.len()
-        );
-
-        let genesis_slot = 0;
-        let genesis_duration = Duration::ZERO;
-        let slot_duration = Duration::from_secs(SLOT_DURATION);
-        let slots_per_epoch = SLOTS_PER_EPOCH;
-        let sync_subnet_size = 2;
-        let target_aggregators = 14;
-
-        let messages_gen = Generator::builder()
-            .slot_clock(genesis_slot, genesis_duration, slot_duration)
-            .slots_per_epoch(slots_per_epoch)
-            .sync_subnet_size(sync_subnet_size)
-            .sync_committee_subnets(SYNC_SUBNETS)
-            .total_validators(params.total_validators() as u64)
-            .target_aggregators(target_aggregators)
-            .attestation_subnets(ATTESTATION_SUBNETS)
-            .build(validator_set)
-            .expect("need to adjust these params");
-
-        let start_time: DateTime<Utc> =
-            DateTime::parse_from_rfc3339(&client.run_parameters().test_start_time)
-                .expect("Correct time date format from testground")
-                .into();
-        let local_start_time = Instant::now();
-
-        Network {
-            swarm,
-            node_id,
-            instance_info,
-            participants,
-            client: Arc::new(client),
-            metrics_interval: interval(slot_duration / 3),
-            messages_gen,
-            start_time,
-            local_start_time,
-            registry,
-            influx_db_handles: FuturesUnordered::new(),
-        }
-    }
 
     pub async fn dial_peers(
         &mut self,
@@ -258,9 +142,10 @@ impl Network {
         match event {
             SwarmEvent::Behaviour(GossipsubEvent::Message {
                 propagation_source,
-                message_id: _,
+                message_id,
                 message,
             }) => {
+                // Log the event
                 let src_node = self
                     .participants
                     .iter()
@@ -274,9 +159,37 @@ impl Network {
                         message.data.len()
                     );
                 }
+
+                // Perform custom validation and artificial delay
+                self.custom_validation(message_id, message.data.len());
             }
             _ => debug!("SwarmEvent: {:?}", event),
         }
+    }
+
+    /// Create an artificial delay to the validation which half-represents propagation time, with
+    /// the caveat that the delay applies to all peers.
+    fn custom_validation(&mut self, message_id: MessageId, msg_size: usize) {
+        // Lets use tiers for message propagation and validation
+        let mut rng = rand::thread_rng();
+
+        let ms_duration = match msg_size {
+            0..=300 => {
+                // 500 bytes, up to a 50ms delay
+                rng.gen_range(0..50)
+            }
+            301..=600 => {
+                // 300-600 bytes up to 80ms delay
+                rng.gen_range(0..80)
+            }
+            _ => {
+                // Blocks can be up to a few hundred kb
+                // The delay can be up to 500ms
+                rng.gen_range(0..500)
+            }
+        };
+        self.messages_to_validate
+            .insert(message_id, tokio::time::Duration::from_millis(ms_duration));
     }
 }
 
@@ -294,9 +207,11 @@ impl From<Topic> for IdentTopic {
         let rep: String = match t {
             Topic::Blocks => "Blocks".into(),
             Topic::Aggregates => "Aggregates".into(),
-            Topic::Attestations(x) => format!("Attestations/{}",x).into(),
-            Topic::SyncMessages(x) => format!("SyncMessages/{}",x).into(),
-            Topic::SignedContributionAndProof(x) => format!("SignedContributionAndProof/{}",x).into(),
+            Topic::Attestations(x) => format!("Attestations/{}", x).into(),
+            Topic::SyncMessages(x) => format!("SyncMessages/{}", x).into(),
+            Topic::SignedContributionAndProof(x) => {
+                format!("SignedContributionAndProof/{}", x).into()
+            }
         };
         GossipTopic::new(rep)
     }
@@ -308,15 +223,18 @@ impl From<IdentTopic> for Topic {
         match repr.as_str() {
             "Blocks" => Topic::Blocks,
             "Aggregates" => Topic::Aggregates,
-            x => {
-           match x.rsplit_once("/") {
-                Some(("Attestations", x)) => Topic::Attestations(x.parse::<u64>().expect("no malicious topics")),
-                Some(("SyncMessages", x)) => Topic::SyncMessages(x.parse::<u64>().expect("no malicious topics")),
-                Some(("SignedContributionAndProof", x)) => Topic::SignedContributionAndProof(x.parse::<u64>().expect("no malicious topics")),
-                _ => unreachable!()
-            }
-       }
-
-    }
+            x => match x.rsplit_once("/") {
+                Some(("Attestations", x)) => {
+                    Topic::Attestations(x.parse::<u64>().expect("no malicious topics"))
+                }
+                Some(("SyncMessages", x)) => {
+                    Topic::SyncMessages(x.parse::<u64>().expect("no malicious topics"))
+                }
+                Some(("SignedContributionAndProof", x)) => Topic::SignedContributionAndProof(
+                    x.parse::<u64>().expect("no malicious topics"),
+                ),
+                _ => unreachable!(),
+            },
+        }
     }
 }

@@ -96,10 +96,8 @@ pub(crate) fn initialise_counter(
         .add_tag(TAG_INSTANCE_NAME, node_id.to_string())
         .add_tag(TAG_RUN_ID, run_id.to_owned())
         .add_tag("hash", hash)
-        .add_field( "count", 0,)
+        .add_field("count", 0)
 }
-
-
 
 /// Create InfluxDB queries joining counter metrics
 #[allow(clippy::too_many_arguments)]

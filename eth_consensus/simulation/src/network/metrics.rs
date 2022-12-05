@@ -1,16 +1,17 @@
 use crate::utils::{
-    queries_for_counter, queries_for_counter_join, queries_for_gauge, queries_for_histogram, initialise_counter,
+    initialise_counter, queries_for_counter, queries_for_counter_join, queries_for_gauge,
+    queries_for_histogram,
 };
 use crate::InstanceInfo;
 use chrono::{DateTime, Utc};
+use libp2p::gossipsub::IdentTopic;
 use prometheus_client::encoding::proto::openmetrics_data_model::MetricSet;
 use std::sync::Arc;
 use testground::client::Client;
 use tracing::error;
-use libp2p::gossipsub::IdentTopic;
 
 pub use super::Network;
-use super::{Topic};
+use super::Topic;
 use super::{ATTESTATION_SUBNETS, SYNC_SUBNETS};
 
 // A context struct for passing information into the `record_metrics` function that can be spawned
@@ -42,23 +43,26 @@ impl Network {
             current,
         }
     }
-
-
 }
 
 /// Initialises some counters to the 0 value.
 pub(crate) async fn initialise_metrics(info: RecordMetricsInfo) {
-
     let mut queries = vec![];
     let run_id = &info.client.run_parameters().test_run;
     let current = info.current;
     let node_id = info.node_id;
     let instance_info = &info.instance_info;
 
-    let to_initialise_metrics = ["topic_msg_published", "topic_msg_recv_counts", "topic_msg_recv_counts_unfiltered", "topic_msg_recv_duplicates", "topic_msg_sent_bytes", "topic_msg_recv_bytes"];
+    let to_initialise_metrics = [
+        "topic_msg_published",
+        "topic_msg_recv_counts",
+        "topic_msg_recv_counts_unfiltered",
+        "topic_msg_recv_duplicates",
+        "topic_msg_sent_bytes",
+        "topic_msg_recv_bytes",
+    ];
 
     for name in to_initialise_metrics {
-
         let mut topics = vec![Topic::Blocks, Topic::Aggregates];
         for x in 0..ATTESTATION_SUBNETS {
             topics.push(Topic::Attestations(x));
@@ -68,8 +72,18 @@ pub(crate) async fn initialise_metrics(info: RecordMetricsInfo) {
             topics.push(Topic::SignedContributionAndProof(x));
         }
 
-        for topic in topics.into_iter().map(|t| IdentTopic::from(t).hash().into_string()) {
-            queries.push(initialise_counter(&current, name.into(), topic, node_id, instance_info, run_id)); 
+        for topic in topics
+            .into_iter()
+            .map(|t| IdentTopic::from(t).hash().into_string())
+        {
+            queries.push(initialise_counter(
+                &current,
+                name.into(),
+                topic,
+                node_id,
+                instance_info,
+                run_id,
+            ));
         }
     }
 
