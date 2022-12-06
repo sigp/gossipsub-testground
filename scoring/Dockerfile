@@ -19,7 +19,13 @@ RUN echo "fn main() { println!(\"If you see this message, you may want to clean 
 COPY ./plan/Cargo.toml ./plan/
 RUN cd ./plan/ && cargo build --release
 
-COPY . .
+# Coping each files only needed instead of all of them(`COPY . .`) in order to avoid unnecessary compiling.
+# e.g. compile triggered by modifiying `manifest.toml`.
+# NOTE:
+# `.dockerignore` is not effective because the build context is not this directory on the test run.
+# See https://docs.testground.ai/builder-library/docker-generic#usage
+COPY ./plan/src ./plan/src
+COPY ./plan/Cargo.lock ./plan/
 
 # This is in order to make sure `main.rs`s mtime timestamp is updated to avoid the dummy `main`
 # remaining in the release binary.
