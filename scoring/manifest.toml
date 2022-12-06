@@ -16,6 +16,13 @@ name = "scoring"
 instances = { min = 3, max = 100, default = 3 }
   [testcases.params]
   # ###########################################################################
+  # Network config
+  # ###########################################################################
+  latency = { type = "int", desc = "Network latency between nodes", unit = "ms", default = 5 }
+  latency_max = { type = "int", desc = "If supplied, latency is between latency and latency_max", unit = "ms", default = 50 }
+  bandwidth = { type = "int", desc = "Bandwidth in MiB", unit = "MiB", default = 1024 }
+
+  # ###########################################################################
   # Topology config
   # ###########################################################################
   seed = { type = "int", desc = "Seed to use for the rng", default = 40 }

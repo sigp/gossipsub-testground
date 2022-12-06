@@ -14,6 +14,7 @@ use testground::WriteQuery;
 use tracing::warn;
 
 // States for `barrier()`
+pub(crate) const BARRIER_NETWORK_READY: &str = "Network configured";
 pub(crate) const BARRIER_LIBP2P_READY: &str = "Started libp2p";
 pub(crate) const BARRIER_TOPOLOGY_READY: &str = "Topology generated";
 pub(crate) const BARRIER_SIMULATION_COMPLETED: &str = "Simulation completed";

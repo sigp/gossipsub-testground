@@ -4,6 +4,7 @@ use gen_topology::Params;
 use libp2p::gossipsub::{
     IdentTopic, PeerScoreParams, PeerScoreThresholds, TopicHash, TopicScoreParams,
 };
+use rand::Rng;
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::time::Duration;
@@ -235,4 +236,31 @@ fn get_param<T: FromStr>(k: &str, instance_params: &HashMap<String, String>) -> 
         .ok_or(format!("{k} is not specified."))?
         .parse::<T>()
         .map_err(|_| format!("Failed to parse instance_param. key: {}", k))
+}
+
+#[derive(Debug)]
+pub(crate) struct NetworkParams {
+    /// Network latency between nodes in millisecond.
+    pub(crate) latency: u64,
+    /// Bandwidth in MiB.
+    pub(crate) bandwidth: u64,
+}
+
+impl NetworkParams {
+    pub(crate) fn new(
+        instance_params: &HashMap<String, String>,
+    ) -> Result<NetworkParams, Box<dyn std::error::Error>> {
+        let mut latency = get_param::<u64>("latency", instance_params)?;
+        let latency_max = get_param::<u64>("latency_max", instance_params)?;
+
+        if latency < latency_max {
+            let mut rng = rand::thread_rng();
+            let uniform = rand::distributions::Uniform::new(latency, latency_max);
+            latency = rng.sample(uniform);
+        }
+
+        let bandwidth = get_param::<u64>("bandwidth", instance_params)?;
+
+        Ok(NetworkParams { latency, bandwidth })
+    }
 }
