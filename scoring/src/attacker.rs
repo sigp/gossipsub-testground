@@ -80,7 +80,7 @@ pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>
     let (target_node_id, beacon_nodes) = collect_beacon_node_info(&client).await?;
 
     client
-        .publish("attacker_info", Cow::Owned(serde_json::to_value(&peer_id)?))
+        .publish("attacker_info", Cow::Owned(serde_json::to_value(peer_id)?))
         .await?;
 
     record_topology_attacker(&client, &peer_id).await;

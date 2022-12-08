@@ -32,7 +32,6 @@ libp2p-testground = { git = "https://github.com/ackintosh/rust-libp2p.git", bran
 
 [patch]
 [patch.crates-io]
-types = { git = "https://github.com/divagant-martian/lighthouse", rev = "22fda6cae62c858bd3b1c057700406a7bb358c97" }
 eth2_ssz = { git = "https://github.com/divagant-martian/lighthouse", rev = "22fda6cae62c858bd3b1c057700406a7bb358c97" }
 eth2_ssz_types = { git = "https://github.com/divagant-martian/lighthouse", rev = "22fda6cae62c858bd3b1c057700406a7bb358c97" }
 eth2_serde_utils = { git = "https://github.com/divagant-martian/lighthouse", rev = "22fda6cae62c858bd3b1c057700406a7bb358c97" }

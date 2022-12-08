@@ -4384,8 +4384,3 @@ dependencies = [
  "syn",
  "synstructure",
 ]
-
-[[patch.unused]]
-name = "types"
-version = "0.2.0"
-source = "git+https://github.com/divagant-martian/lighthouse?rev=22fda6cae62c858bd3b1c057700406a7bb358c97#22fda6cae62c858bd3b1c057700406a7bb358c97"

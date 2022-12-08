@@ -762,7 +762,7 @@ impl Network {
         &self,
         measurement: &str,
         subnets: u64,
-        messages: &Vec<HashMap<Epoch, Vec<ValId>>>,
+        messages: &[HashMap<Epoch, Vec<ValId>>],
     ) {
         let mut queries = vec![];
         let run_id = self.client.run_parameters().test_run;
@@ -811,7 +811,7 @@ impl Network {
             client: self.client.clone(),
             scores,
             attackers: self.attackers.clone(),
-            peer_id: self.beacon_node_info.peer_id.clone(),
+            peer_id: self.beacon_node_info.peer_id,
             current: Local::now(),
         }
     }
@@ -819,8 +819,8 @@ impl Network {
     fn metrics_info(&self, registry: &Registry<Box<dyn EncodeMetric>>) -> RecordMetricsInfo {
         RecordMetricsInfo {
             client: self.client.clone(),
-            metrics: prometheus_client::encoding::proto::encode(&registry),
-            peer_id: self.beacon_node_info.peer_id.clone(),
+            metrics: prometheus_client::encoding::proto::encode(registry),
+            peer_id: self.beacon_node_info.peer_id,
             current: Local::now(),
         }
     }
@@ -843,7 +843,7 @@ async fn record_peer_scores(peer_scores_info: RecordPeerScoresInfo) {
 
     for (peer, score) in peer_scores_info.scores {
         let field = if peer_scores_info.attackers.contains(&peer) {
-            format!("attacker_{}", peer.to_string())
+            format!("attacker_{}", peer)
         } else {
             peer.to_string()
         };

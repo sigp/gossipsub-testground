@@ -189,10 +189,10 @@ pub(crate) async fn record_victim_id(client: &Client, victim: &BeaconNodeInfo) {
 
 pub(crate) async fn record_topology_beacon_node(client: &Client, info: &BeaconNodeInfo) {
     let measurement = format!("{}_topology_node", env!("CARGO_PKG_NAME"));
-    let title = if info.validators().len() > 0 {
-        format!("bn_{}", client.group_seq() - 1)
-    } else {
+    let title = if info.validators().is_empty() {
         format!("bn_no_val_{}", client.group_seq() - 1)
+    } else {
+        format!("bn_{}", client.group_seq() - 1)
     };
 
     // ref: https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/node-graph/#node-parameters
