@@ -11,7 +11,7 @@ delay_map = "0.1.1"
 futures = "0.3.24"
 gen_topology = { git = "https://github.com/sigp/gossipsub-testground", rev = "4084d26b9210bc932f4aaa45f9506ecfe5f2bb04" }
 libp2p = { git = "https://github.com/ackintosh/rust-libp2p.git", branch = "prometheus-ptotobuf-support", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux", "serde"] }
-npg = { git = "https://github.com/sigp/eth-npg", rev = "f01eb51b2771ab3b1ed2a63c42e1acf095ca0e98" }
+npg = { git = "https://github.com/sigp/eth-npg", rev = "6118cdd63eb34ffa4b230d17e88c8adf7057e138" }
 prometheus-client = { git = "https://github.com/prometheus/client_rust.git", rev = "682b24ee8c6c857b76c0683b1dd7df5a97b75c27", features = ["protobuf"] }
 prost = "0.11"
 rand = "0.8.5"
