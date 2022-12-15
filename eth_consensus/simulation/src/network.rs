@@ -11,7 +11,6 @@ use libp2p::Swarm;
 use npg::Generator;
 use prometheus_client::encoding::proto::EncodeMetric;
 use prometheus_client::registry::Registry;
-use rand;
 use rand::Rng;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -209,10 +208,10 @@ impl From<Topic> for IdentTopic {
         let rep: String = match t {
             Topic::Blocks => "Blocks".into(),
             Topic::Aggregates => "Aggregates".into(),
-            Topic::Attestations(x) => format!("Attestations/{}", x).into(),
-            Topic::SyncMessages(x) => format!("SyncMessages/{}", x).into(),
+            Topic::Attestations(x) => format!("Attestations/{}", x),
+            Topic::SyncMessages(x) => format!("SyncMessages/{}", x),
             Topic::SignedContributionAndProof(x) => {
-                format!("SignedContributionAndProof/{}", x).into()
+                format!("SignedContributionAndProof/{}", x)
             }
         };
         GossipTopic::new(rep)
@@ -225,7 +224,7 @@ impl From<IdentTopic> for Topic {
         match repr.as_str() {
             "Blocks" => Topic::Blocks,
             "Aggregates" => Topic::Aggregates,
-            x => match x.rsplit_once("/") {
+            x => match x.rsplit_once('/') {
                 Some(("Attestations", x)) => {
                     Topic::Attestations(x.parse::<u64>().expect("no malicious topics"))
                 }

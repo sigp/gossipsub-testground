@@ -238,6 +238,7 @@ pub fn build_transport(
 
 impl Network {
     // Sets up initial conditions and configuration
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         mut registry: Registry<Box<dyn EncodeMetric>>,
         keypair: Keypair,
@@ -382,6 +383,6 @@ impl Network {
         }
 
         // Waiting for influx db handles to end
-        while let Some(_) = self.influx_db_handles.next().await {}
+        while (self.influx_db_handles.next().await).is_some() {}
     }
 }
