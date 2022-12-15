@@ -20,5 +20,7 @@ tracing = "0.1.35"
 tracing-subscriber = { version = "0.3.14", features = ["env-filter"] }
 gen_topology = { path = "../utils/gen_topology" }
 futures = "0.3.24"
-npg = { git = "https://github.com/sigp/eth-npg", branch = "timing-change" }
+npg = { git = "https://github.com/sigp/eth-npg"}
 sha2 = "0.10.6"
+rand = "0.8.5"
+tokio-util = { version = "0.7.4", features = ["time"] }

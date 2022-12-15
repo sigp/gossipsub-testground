@@ -263,7 +263,7 @@
           ],
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "SELECT derivative(\"count\", 10s) FROM \"topic_msg_recv_bytes\" WHERE \"run_id\" =~ /^$run_id$/ AND (\"instance_name\" =~ /^$instance_name$/) AND (\"hash\" =~ /^$hash$/) GROUP BY \"hash\", \"instance_name\"",
+          "query": "SELECT difference(count) FROM \"topic_msg_recv_bytes\" WHERE \"run_id\" =~ /^$run_id$/ AND (\"instance_name\" =~ /^$instance_name$/) AND (\"hash\" =~ /^$hash$/) GROUP BY \"hash\", \"instance_name\"",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
@@ -1285,8 +1285,8 @@
       {
         "current": {
           "selected": false,
-          "text": "cdvhdj7smuj29lbhau80",
-          "value": "cdvhdj7smuj29lbhau80"
+          "text": "ce3emcvsmuj2glg4p5k0",
+          "value": "ce3emcvsmuj2glg4p5k0"
         },
         "datasource": {
           "type": "influxdb",
@@ -1311,10 +1311,10 @@
         "current": {
           "selected": true,
           "text": [
-            "All"
+            "1"
           ],
           "value": [
-            "$__all"
+            "1"
           ]
         },
         "datasource": {
@@ -1339,10 +1339,10 @@
         "current": {
           "selected": true,
           "text": [
-            "\\\"Blocks\\\""
+            "Blocks"
           ],
           "value": [
-            "\\\"Blocks\\\""
+            "Blocks"
           ]
         },
         "datasource": {
@@ -1366,8 +1366,8 @@
     ]
   },
   "time": {
-    "from": "2022-11-24T07:04:49.170Z",
-    "to": "2022-11-24T07:06:43.076Z"
+    "from": "2022-11-30T05:34:00.036Z",
+    "to": "2022-11-30T05:36:36.355Z"
   },
   "timepicker": {},
   "timezone": "",

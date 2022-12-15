@@ -82,6 +82,23 @@ pub(crate) fn queries_for_counter(
     queries
 }
 
+/// Create InfluxDB queries for Counter metrics.
+pub(crate) fn initialise_counter(
+    datetime: &DateTime<Utc>,
+    name: String,
+    hash: String,
+    node_id: usize,
+    instance_info: &InstanceInfo,
+    run_id: &str,
+) -> WriteQuery {
+    WriteQuery::new((*datetime).into(), name)
+        .add_tag(TAG_INSTANCE_PEER_ID, instance_info.peer_id.to_string())
+        .add_tag(TAG_INSTANCE_NAME, node_id.to_string())
+        .add_tag(TAG_RUN_ID, run_id.to_owned())
+        .add_tag("hash", hash)
+        .add_field("count", 0)
+}
+
 /// Create InfluxDB queries joining counter metrics
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn queries_for_counter_join(
