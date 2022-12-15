@@ -334,7 +334,6 @@ impl Network {
             )));
 
         loop {
-            
             tokio::select! {
                 _ = deadline.as_mut() => {
                     // Sim complete
