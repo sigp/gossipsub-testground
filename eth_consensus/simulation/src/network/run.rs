@@ -5,22 +5,21 @@ use futures::stream::FuturesUnordered;
 use gen_topology::Params;
 use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::upgrade::{SelectUpgrade, Version};
-use libp2p::dns::TokioDnsConfig;
 use libp2p::futures::StreamExt;
 use libp2p::gossipsub::metrics::Config;
-use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
 use libp2p::gossipsub::{
-    Gossipsub, GossipsubConfigBuilder, GossipsubMessage, IdentityTransform, MessageAuthenticity,
+    Gossipsub, GossipsubConfigBuilder, GossipsubMessage, GossipsubBuilder, MessageAuthenticity,
     MessageId, PeerScoreParams, PeerScoreThresholds, ValidationMode,
 };
 use libp2p::identity::Keypair;
 use libp2p::mplex::MplexConfig;
 use libp2p::noise::NoiseConfig;
 use libp2p::swarm::{SwarmBuilder, SwarmEvent};
-use libp2p::tcp::{GenTcpConfig, TokioTcpTransport};
+use libp2p::tcp::{Config as GenTcpConfig};
+use libp2p::tcp::tokio::Transport as TokioTransport;
 use libp2p::yamux::YamuxConfig;
-use libp2p::PeerId;
 use libp2p::Transport;
+use libp2p::PeerId;
 use npg::slot_generator::{Subnet, ValId};
 use npg::Generator;
 use npg::Message;
@@ -110,21 +109,16 @@ pub fn setup_gossipsub(registry: &mut Registry<Box<dyn EncodeMetric>>) -> Gossip
         .max_messages_per_rpc(Some(500)) // Responses to IWANT can be quite large
         .history_gossip(3)
         .validate_messages() // Used for artificial validation delays
-        .validation_mode(ValidationMode::Anonymous)
         .duplicate_cache_time(Duration::from_secs(SLOT_DURATION * SLOTS_PER_EPOCH + 1))
         .message_id_fn(gossip_message_id)
         .allow_self_origin(true)
         .build()
         .expect("valid gossipsub configuration");
 
-    let mut gs = Gossipsub::new_with_subscription_filter_and_transform(
-        MessageAuthenticity::Anonymous,
-        gossipsub_config,
-        Some((registry, Config::default())),
-        AllowAllSubscriptionFilter {},
-        IdentityTransform {},
-    )
-    .expect("Valid configuration");
+    let mut gs = GossipsubBuilder::new(MessageAuthenticity::Anonymous)
+        .config(gossipsub_config)
+        .validation_mode(ValidationMode::Anonymous)
+        .metrics(registry, Config::default()).build().expect("Correct gossipsub configuration");
 
     // Setup the scoring system.
     let peer_score_params = PeerScoreParams::default();
@@ -216,7 +210,7 @@ pub(crate) async fn run(
 pub fn build_transport(
     keypair: &Keypair,
 ) -> libp2p::core::transport::Boxed<(PeerId, StreamMuxerBox)> {
-    let transport = TokioDnsConfig::system(TokioTcpTransport::new(
+    let transport = libp2p::dns::TokioDnsConfig::system(TokioTransport::new(
         GenTcpConfig::default().nodelay(true),
     ))
     .expect("DNS config");
@@ -251,15 +245,12 @@ impl Network {
     ) -> Self {
         let gossipsub = setup_gossipsub(&mut registry);
 
-        let swarm = SwarmBuilder::new(
+        let swarm = SwarmBuilder::with_tokio_executor(
             build_transport(&keypair),
             gossipsub,
             PeerId::from(keypair.public()),
-        )
-        .executor(Box::new(|future| {
-            tokio::spawn(future);
-        }))
-        .build();
+            )
+            .build();
 
         info!(
             "[{}] running with {} validators",
