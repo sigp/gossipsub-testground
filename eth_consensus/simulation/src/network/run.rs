@@ -8,18 +8,18 @@ use libp2p::core::upgrade::{SelectUpgrade, Version};
 use libp2p::futures::StreamExt;
 use libp2p::gossipsub::metrics::Config;
 use libp2p::gossipsub::{
-    Gossipsub, GossipsubConfigBuilder, GossipsubMessage, GossipsubBuilder, MessageAuthenticity,
+    Gossipsub, GossipsubBuilder, GossipsubConfigBuilder, GossipsubMessage, MessageAuthenticity,
     MessageId, PeerScoreParams, PeerScoreThresholds, ValidationMode,
 };
 use libp2p::identity::Keypair;
 use libp2p::mplex::MplexConfig;
 use libp2p::noise::NoiseConfig;
 use libp2p::swarm::{SwarmBuilder, SwarmEvent};
-use libp2p::tcp::{Config as GenTcpConfig};
 use libp2p::tcp::tokio::Transport as TokioTransport;
+use libp2p::tcp::Config as GenTcpConfig;
 use libp2p::yamux::YamuxConfig;
-use libp2p::Transport;
 use libp2p::PeerId;
+use libp2p::Transport;
 use npg::slot_generator::{Subnet, ValId};
 use npg::Generator;
 use npg::Message;
@@ -98,11 +98,15 @@ pub fn setup_gossipsub(registry: &mut Registry<Box<dyn EncodeMetric>>) -> Gossip
 
     let gossipsub_config = GossipsubConfigBuilder::default()
         .max_transmit_size(10 * 1_048_576) // gossip_max_size(true)
-        // .heartbeat_interval(Duration::from_secs(1))
+        .heartbeat_interval(Duration::from_secs(1))
         .prune_backoff(Duration::from_secs(60))
-        .mesh_n(8)
-        .mesh_n_low(4)
-        .mesh_n_high(12)
+        //.mesh_n(8)
+        .mesh_n(2)
+        .mesh_outbound_min(1)
+        //.mesh_n_low(4)
+        .mesh_n_low(1)
+        //.mesh_n_high(12)
+        .mesh_n_high(5)
         .gossip_lazy(6)
         .fanout_ttl(Duration::from_secs(60))
         .history_length(12)
@@ -112,13 +116,16 @@ pub fn setup_gossipsub(registry: &mut Registry<Box<dyn EncodeMetric>>) -> Gossip
         .duplicate_cache_time(Duration::from_secs(SLOT_DURATION * SLOTS_PER_EPOCH + 1))
         .message_id_fn(gossip_message_id)
         .allow_self_origin(true)
+        .episub_heartbeat_ticks(3) // small amount for testing
         .build()
         .expect("valid gossipsub configuration");
 
     let mut gs = GossipsubBuilder::new(MessageAuthenticity::Anonymous)
         .config(gossipsub_config)
         .validation_mode(ValidationMode::Anonymous)
-        .metrics(registry, Config::default()).build().expect("Correct gossipsub configuration");
+        .metrics(registry, Config::default())
+        .build()
+        .expect("Correct gossipsub configuration");
 
     // Setup the scoring system.
     let peer_score_params = PeerScoreParams::default();
@@ -249,8 +256,8 @@ impl Network {
             build_transport(&keypair),
             gossipsub,
             PeerId::from(keypair.public()),
-            )
-            .build();
+        )
+        .build();
 
         info!(
             "[{}] running with {} validators",
@@ -315,6 +322,7 @@ impl Network {
     // Main execution loop of the sim.
     async fn run_sim(&mut self, run_duration: Duration) {
         let deadline = tokio::time::sleep(run_duration);
+        let start_instant = Instant::now();
         futures::pin_mut!(deadline);
 
         // Initialise some metrics
@@ -351,8 +359,12 @@ impl Network {
                             (Topic::SyncMessages(s), v)
                         },
                     };
-                    if let Err(e) = self.publish(topic.clone(), val, payload) {
-                        error!("Failed to publish message {e} to topic {topic:?}");
+
+                    // Hack to just send blocks
+                    if let Topic::Blocks = topic { 
+                        if let Err(e) = self.publish(topic.clone(), val, payload) {
+                            error!("Failed to publish message {e} to topic {topic:?}");
+                        }
                     }
 
                 }
@@ -371,9 +383,18 @@ impl Network {
                     }
                 }
             }
+
+            // Sometimes the deadline doesn't fire, so we need to check if we've exceeded the run
+            // duration
+            if start_instant.elapsed() > run_duration {
+                break;
+            }
         }
 
+
         // Waiting for influx db handles to end
+        info!("Waiting for influx db writes: {}", self.influx_db_handles.len());
         while (self.influx_db_handles.next().await).is_some() {}
+        info!("Completed influx db write");
     }
 }

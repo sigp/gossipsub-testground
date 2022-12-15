@@ -60,6 +60,11 @@ pub(crate) async fn initialise_metrics(info: RecordMetricsInfo) {
         "topic_msg_recv_duplicates",
         "topic_msg_sent_bytes",
         "topic_msg_recv_bytes",
+        "episub_current_choked_peers_in_mesh",
+        "episub_received_unchoke_messages",
+        "topic_iwant_msgs",
+        "episub_mesh_additions",
+        "episub_received_choke_messages"
     ];
 
     for name in to_initialise_metrics {
@@ -161,9 +166,28 @@ pub(crate) async fn record_metrics(info: RecordMetricsInfo) {
             | "topic_msg_recv_bytes" => {
                 queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id)
             }
+
+            "topic_msg_last_sent_bytes"
+            | "topic_msg_last_recv_bytes"
+            | "topic_msg_last_recv_bytes_unfiltered" => queries_for_gauge(
+                &current,
+                family,
+                info.node_id,
+                &info.instance_info,
+                run_id,
+                "count",
+            ),
             // ///////////////////////////////////
             // Metrics related to scoring
             // ///////////////////////////////////
+            "memcache_size" => queries_for_gauge(
+                &current,
+                family,
+                info.node_id,
+                &info.instance_info,
+                run_id,
+                "count",
+            ),
             "score_per_mesh" => {
                 queries_for_histogram(&current, family, info.node_id, &info.instance_info, run_id)
             }
@@ -193,7 +217,32 @@ pub(crate) async fn record_metrics(info: RecordMetricsInfo) {
             "memcache_misses" => {
                 queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id)
             }
-            _ => unreachable!(),
+            // ///////////////////////////////////
+            // Episub Metrics
+            // ///////////////////////////////////
+            "episub_current_choked_peers_in_mesh"
+            | "episub_current_peers_choked_us"
+            | "episub_metrics_cache_size"
+            | "episub_metrics_ihave_cache_size" => queries_for_gauge(
+                &current,
+                family,
+                info.node_id,
+                &info.instance_info,
+                run_id,
+                "count",
+            ),
+
+            "episub_mesh_additions"
+            | "episub_received_choke_messages"
+            | "episub_received_unchoke_messages" => {
+                queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id)
+            }
+            "episub_heartbeat_duration"
+            | "episub_mesh_message_latency"
+            | "episub_ihave_message_stats" => {
+                queries_for_histogram(&current, family, info.node_id, &info.instance_info, run_id)
+            }
+            x => unreachable!("Metric {} is unknown", x),
         };
 
         queries.extend(q);
