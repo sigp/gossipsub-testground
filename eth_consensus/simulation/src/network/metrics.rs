@@ -116,44 +116,44 @@ pub(crate) async fn record_metrics(info: RecordMetricsInfo) {
             // ///////////////////////////////////
             // Metrics per known topic
             // ///////////////////////////////////
-            "topic_subscription_status" => queries_for_gauge(
+            "topic_subscription_status" => Some(queries_for_gauge(
                 &current,
                 family,
                 node_id,
                 &info.instance_info,
                 run_id,
                 "status",
-            ),
-            "topic_peers_counts" => queries_for_gauge(
+            )),
+            "topic_peers_counts" => Some(queries_for_gauge(
                 &current,
                 family,
                 node_id,
                 &info.instance_info,
                 run_id,
                 "count",
-            ),
+            )),
             "invalid_messages_per_topic"
             | "accepted_messages_per_topic"
             | "ignored_messages_per_topic"
             | "rejected_messages_per_topic" => {
-                queries_for_counter(&current, family, node_id, &info.instance_info, run_id)
+                Some(queries_for_counter(&current, family, node_id, &info.instance_info, run_id))
             }
             // ///////////////////////////////////
             // Metrics regarding mesh state
             // ///////////////////////////////////
-            "mesh_peer_counts" => queries_for_gauge(
+            "mesh_peer_counts" => Some(queries_for_gauge(
                 &current,
                 family,
                 info.node_id,
                 &info.instance_info,
                 run_id,
                 "count",
-            ),
+            )),
             "mesh_peer_inclusion_events" => {
-                queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id)
+                Some(queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id))
             }
             "mesh_peer_churn_events" => {
-                queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id)
+                Some(queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id))
             }
             // ///////////////////////////////////
             // Metrics regarding messages sent/received
@@ -164,58 +164,58 @@ pub(crate) async fn record_metrics(info: RecordMetricsInfo) {
             | "topic_msg_recv_counts_unfiltered"
             | "topic_msg_recv_counts"
             | "topic_msg_recv_bytes" => {
-                queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id)
+                Some(queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id))
             }
 
             "topic_msg_last_sent_bytes"
             | "topic_msg_last_recv_bytes"
-            | "topic_msg_last_recv_bytes_unfiltered" => queries_for_gauge(
+            | "topic_msg_last_recv_bytes_unfiltered" => Some(queries_for_gauge(
                 &current,
                 family,
                 info.node_id,
                 &info.instance_info,
                 run_id,
                 "count",
-            ),
+            )),
             // ///////////////////////////////////
             // Metrics related to scoring
             // ///////////////////////////////////
-            "memcache_size" => queries_for_gauge(
+            "memcache_size" => Some(queries_for_gauge(
                 &current,
                 family,
                 info.node_id,
                 &info.instance_info,
                 run_id,
                 "count",
-            ),
+            )),
             "score_per_mesh" => {
-                queries_for_histogram(&current, family, info.node_id, &info.instance_info, run_id)
+                Some(queries_for_histogram(&current, family, info.node_id, &info.instance_info, run_id))
             }
             "scoring_penalties" => {
-                queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id)
+                Some(queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id))
             }
             // ///////////////////////////////////
             // General Metrics
             // ///////////////////////////////////
-            "peers_per_protocol" => queries_for_gauge(
+            "peers_per_protocol" => Some(queries_for_gauge(
                 &current,
                 family,
                 info.node_id,
                 &info.instance_info,
                 run_id,
                 "peers",
-            ),
+            )),
             "heartbeat_duration" => {
-                queries_for_histogram(&current, family, info.node_id, &info.instance_info, run_id)
+                Some(queries_for_histogram(&current, family, info.node_id, &info.instance_info, run_id))
             }
             // ///////////////////////////////////
             // Performance metrics
             // ///////////////////////////////////
             "topic_iwant_msgs" => {
-                queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id)
+                Some(queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id))
             }
             "memcache_misses" => {
-                queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id)
+                Some(queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id))
             }
             // ///////////////////////////////////
             // Episub Metrics
@@ -223,29 +223,31 @@ pub(crate) async fn record_metrics(info: RecordMetricsInfo) {
             "episub_current_choked_peers_in_mesh"
             | "episub_current_peers_choked_us"
             | "episub_metrics_cache_size"
-            | "episub_metrics_ihave_cache_size" => queries_for_gauge(
+            | "episub_metrics_ihave_cache_size" => Some(queries_for_gauge(
                 &current,
                 family,
                 info.node_id,
                 &info.instance_info,
                 run_id,
                 "count",
-            ),
+            )),
 
             "episub_mesh_additions"
             | "episub_received_choke_messages"
             | "episub_received_unchoke_messages" => {
-                queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id)
+                Some(queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id))
             }
-            "episub_heartbeat_duration"
-            | "episub_mesh_message_latency"
-            | "episub_ihave_message_stats" => {
-                queries_for_histogram(&current, family, info.node_id, &info.instance_info, run_id)
+            "episub_heartbeat_duration" => {
+                Some(queries_for_histogram(&current, family, info.node_id, &info.instance_info, run_id))
             }
+            "episub_mesh_message_latency"
+            | "episub_ihave_message_stats" => { None } // Can't graph so currently useless to us 
             x => unreachable!("Metric {} is unknown", x),
         };
 
-        queries.extend(q);
+        if let Some(q) = q {
+            queries.extend(q);
+        }
     }
 
     // We can't do joins in InfluxDB easily, so do some custom queries here to calculate
