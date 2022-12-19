@@ -422,7 +422,7 @@ impl Network {
             received_sync_committee_aggregates,
             received_sync_committee_messages,
             slot_clock: SystemTimeSlotClock::new(
-                Slot::new(genesis_slot as u64),
+                Slot::new(genesis_slot),
                 genesis_duration,
                 slot_duration,
             ),
@@ -741,7 +741,7 @@ impl Network {
                         .into()
                 };
 
-                let query = WriteQuery::new(timestamp, &measurement)
+                let query = WriteQuery::new(timestamp, measurement.as_str())
                     .add_tag(TAG_PEER_ID, self.beacon_node_info.peer_id.to_string())
                     .add_tag(TAG_RUN_ID, run_id.to_owned())
                     .add_tag("epoch", epoch.as_u64())
@@ -784,7 +784,7 @@ impl Network {
                         .into()
                 };
 
-                let query = WriteQuery::new(timestamp, &measurement)
+                let query = WriteQuery::new(timestamp, measurement.as_str())
                     .add_tag(TAG_PEER_ID, self.beacon_node_info.peer_id.to_string())
                     .add_tag(TAG_RUN_ID, run_id.to_owned())
                     .add_tag("epoch", epoch.as_u64())

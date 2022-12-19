@@ -63,7 +63,7 @@ pub(crate) fn queries_for_counter(
     let mut queries = vec![];
 
     for metric in family.metrics.iter() {
-        let mut query = WriteQuery::new((*datetime).into(), &measurement)
+        let mut query = WriteQuery::new((*datetime).into(), measurement.as_str())
             .add_tag(TAG_PEER_ID, peer_id.to_string())
             .add_tag(TAG_RUN_ID, run_id.to_owned())
             .add_field(
@@ -122,7 +122,7 @@ pub(crate) fn queries_for_counter_join(
         };
 
         if let Some(val) = value {
-            let mut query = WriteQuery::new((*datetime).into(), &measurement)
+            let mut query = WriteQuery::new((*datetime).into(), measurement.as_str())
                 .add_tag(TAG_PEER_ID, peer_id.to_string())
                 .add_tag(TAG_RUN_ID, run_id.to_owned())
                 .add_field("count", val);
