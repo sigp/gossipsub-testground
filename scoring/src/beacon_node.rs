@@ -13,6 +13,7 @@ use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::upgrade::{SelectUpgrade, Version};
 use libp2p::dns::TokioDnsConfig;
 use libp2p::futures::StreamExt;
+use libp2p::gossipsub::error::PublishError;
 use libp2p::gossipsub::metrics::Config;
 use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
 use libp2p::gossipsub::{
@@ -586,11 +587,7 @@ impl Network {
         .await;
     }
 
-    fn publish(
-        &mut self,
-        topic: Topic,
-        msg: Vec<u8>,
-    ) -> Result<libp2p::gossipsub::MessageId, libp2p::gossipsub::error::PublishError> {
+    fn publish(&mut self, topic: Topic, msg: Vec<u8>) -> Result<MessageId, PublishError> {
         info!("Publish {:?}", topic);
         let ident_topic: IdentTopic = topic.into();
         self.swarm.behaviour_mut().publish(ident_topic, msg)
