@@ -148,7 +148,6 @@ pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>
     };
 
     let attackers = collect_attacker_info(&client).await?;
-    println!("attackers: {attackers:?}");
 
     info!(
         "Running with params {params:?} and {} participants",
@@ -601,7 +600,6 @@ impl Network {
                 message,
             } => {
                 let topic: Topic = message.topic.as_str().into();
-                println!("received topic: {:?}", topic);
 
                 match topic {
                     Topic::Blocks => {
