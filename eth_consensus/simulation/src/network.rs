@@ -13,6 +13,7 @@ use prometheus_client::encoding::proto::EncodeMetric;
 use prometheus_client::registry::Registry;
 use rand::Rng;
 use std::collections::HashMap;
+use std::hash::Hash;
 use std::sync::Arc;
 use std::time::Instant;
 use testground::client::Client;
@@ -54,6 +55,12 @@ pub struct Network {
     influx_db_handles: FuturesUnordered<JoinHandle<()>>,
     /// A delay queue indicating when to validate messages
     messages_to_validate: DelayQueue<(MessageId, PeerId)>,
+    // Keep track of the time messages on topics arrive. This is used to calculate the average
+    // delay of messages on a topic.
+    message_arrive_duration: HashMap<Topic, Vec<u64>>,
+    // A track of artificial delays for messages. This is used to calculate the average artificial
+    // message propagation delay.
+    artificial_validation_delay: HashMap<Topic, Vec<u64>>,
 }
 
 impl Network {
@@ -144,6 +151,10 @@ impl Network {
                 message_id,
                 message,
             }) => {
+                // Register the message delay time
+                let topic: Topic = message.topic.as_str().into();
+                self.register_message_delay(topic.clone());
+
                 // Log the event
                 let src_node = self
                     .participants
@@ -160,7 +171,12 @@ impl Network {
                 }
 
                 // Perform custom validation and artificial delay
-                self.custom_validation(message_id, propagation_source, message.data.len());
+                self.artificial_validation_delay(
+                    message_id,
+                    topic,
+                    propagation_source,
+                    message.data.len(),
+                );
             }
             _ => debug!("SwarmEvent: {:?}", event),
         }
@@ -168,7 +184,13 @@ impl Network {
 
     /// Create an artificial delay to the validation which half-represents propagation time, with
     /// the caveat that the delay applies to all peers.
-    fn custom_validation(&mut self, message_id: MessageId, peer_id: PeerId, msg_size: usize) {
+    fn artificial_validation_delay(
+        &mut self,
+        message_id: MessageId,
+        topic: Topic,
+        peer_id: PeerId,
+        msg_size: usize,
+    ) {
         // Lets use tiers for message propagation and validation
         let mut rng = rand::thread_rng();
 
@@ -191,11 +213,16 @@ impl Network {
             (message_id, peer_id),
             tokio::time::Duration::from_millis(ms_duration),
         );
+        // Record the message delay for the topic
+        self.artificial_validation_delay
+            .entry(topic)
+            .or_insert_with(|| vec![])
+            .push(ms_duration);
     }
 }
 
-#[derive(Clone, Debug)]
-enum Topic {
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub(crate) enum Topic {
     Blocks,
     Attestations(u64),
     Aggregates,
@@ -205,7 +232,13 @@ enum Topic {
 
 impl From<Topic> for IdentTopic {
     fn from(t: Topic) -> Self {
-        let rep: String = match t {
+        GossipTopic::new(String::from(t))
+    }
+}
+
+impl From<Topic> for String {
+    fn from(t: Topic) -> Self {
+        match t {
             Topic::Blocks => "Blocks".into(),
             Topic::Aggregates => "Aggregates".into(),
             Topic::Attestations(x) => format!("Attestations/{}", x),
@@ -213,15 +246,19 @@ impl From<Topic> for IdentTopic {
             Topic::SignedContributionAndProof(x) => {
                 format!("SignedContributionAndProof/{}", x)
             }
-        };
-        GossipTopic::new(rep)
+        }
     }
 }
 
 impl From<IdentTopic> for Topic {
     fn from(t: IdentTopic) -> Self {
-        let repr = t.hash().into_string();
-        match repr.as_str() {
+        t.hash().as_str().into()
+    }
+}
+
+impl From<&str> for Topic {
+    fn from(topic: &str) -> Self {
+        match topic {
             "Blocks" => Topic::Blocks,
             "Aggregates" => Topic::Aggregates,
             x => match x.rsplit_once('/') {
@@ -234,7 +271,7 @@ impl From<IdentTopic> for Topic {
                 Some(("SignedContributionAndProof", x)) => Topic::SignedContributionAndProof(
                     x.parse::<u64>().expect("no malicious topics"),
                 ),
-                _ => unreachable!(),
+                _ => unreachable!("Invalid topic"),
             },
         }
     }

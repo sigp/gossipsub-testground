@@ -17,6 +17,7 @@ pub struct Params {
     total_nodes_with_vals: usize,
     total_nodes: usize,
     connections_range: RangeInclusive<usize>,
+    episub: bool,
 }
 
 impl Params {
@@ -27,6 +28,7 @@ impl Params {
         total_nodes_without_vals: usize,
         min_peers_per_node: usize,
         max_peers_per_node_inclusive: usize,
+        episub: bool,
     ) -> Result<Self, &'static str> {
         let total_nodes = total_nodes_with_vals + total_nodes_without_vals;
         if total_nodes_with_vals > total_nodes {
@@ -52,6 +54,7 @@ impl Params {
             total_nodes_with_vals,
             total_nodes,
             connections_range,
+            episub,
         })
     }
     pub fn seed(&self) -> u64 {
@@ -72,6 +75,11 @@ impl Params {
 
     pub fn connections_range(&self) -> std::ops::RangeInclusive<usize> {
         self.connections_range.clone()
+    }
+
+    // Returns whether episub is enabled or not
+    pub fn episub(&self) -> bool {
+        self.episub
     }
 }
 

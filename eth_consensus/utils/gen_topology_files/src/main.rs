@@ -39,6 +39,7 @@ fn gen_and_save() -> Result<(), String> {
         total_nodes,
         min_peers_per_node,
         max_peers_per_node_inc,
+        true,
     )?;
     let network = gen_topology::Network::generate(params)?;
 

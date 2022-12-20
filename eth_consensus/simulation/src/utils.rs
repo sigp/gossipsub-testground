@@ -52,6 +52,30 @@ pub(crate) async fn publish_and_collect<T: Serialize + DeserializeOwned>(
     Ok(vec)
 }
 
+// Creates an InfluxDB query for custom entries
+pub(crate) fn influxdb_query(
+    datetime: &DateTime<Utc>,
+    measurement: &str,
+    node_id: usize,
+    peer_id: &PeerId,
+    run_id: &str,
+    tags: Vec<(String, String)>,
+    fields: Vec<(String, u64)>,
+) -> WriteQuery {
+    let mut query = WriteQuery::new((*datetime).into(), measurement)
+        .add_tag(TAG_INSTANCE_PEER_ID, peer_id.to_string())
+        .add_tag(TAG_INSTANCE_NAME, node_id.to_string())
+        .add_tag(TAG_RUN_ID, run_id.to_owned());
+    for (key, value) in tags {
+        query = query.add_tag(key, value);
+    }
+
+    for (key, value) in fields {
+        query = query.add_field(key, value);
+    }
+    query
+}
+
 /// Create InfluxDB queries for Counter metrics.
 pub(crate) fn queries_for_counter(
     datetime: &DateTime<Utc>,

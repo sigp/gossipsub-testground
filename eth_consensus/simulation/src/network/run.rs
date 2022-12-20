@@ -75,6 +75,10 @@ pub(crate) fn parse_params(
         .get("run")
         .ok_or("run is not specified.")?
         .parse::<u64>()?;
+    let episub = instance_params
+        .get("episub")
+        .ok_or("episub is not specified.")?
+        .parse::<bool>()?;
 
     let params = Params::new(
         seed,
@@ -83,20 +87,21 @@ pub(crate) fn parse_params(
         total_nodes_without_vals,
         min_peers_per_node,
         max_peers_per_node_inclusive,
+        episub,
     )?;
 
     Ok((Duration::from_secs(run), params))
 }
 
 // Sets up the gossipsub configuration to be used in the simulation.
-pub fn setup_gossipsub(registry: &mut Registry<Box<dyn EncodeMetric>>) -> Gossipsub {
+pub fn setup_gossipsub(registry: &mut Registry<Box<dyn EncodeMetric>>, use_episub: bool) -> Gossipsub {
     let gossip_message_id = move |message: &GossipsubMessage| {
         MessageId::from(
             &Sha256::digest([message.topic.as_str().as_bytes(), &message.data].concat())[..20],
         )
     };
 
-    let gossipsub_config = GossipsubConfigBuilder::default()
+    let mut gossipsub_config = GossipsubConfigBuilder::default()
         .max_transmit_size(10 * 1_048_576) // gossip_max_size(true)
         .heartbeat_interval(Duration::from_secs(1))
         .prune_backoff(Duration::from_secs(60))
@@ -116,23 +121,34 @@ pub fn setup_gossipsub(registry: &mut Registry<Box<dyn EncodeMetric>>) -> Gossip
         .duplicate_cache_time(Duration::from_secs(SLOT_DURATION * SLOTS_PER_EPOCH + 1))
         .message_id_fn(gossip_message_id)
         .allow_self_origin(true)
-        .episub_heartbeat_ticks(3) // small amount for testing
+        .episub_heartbeat_ticks(3); // small amount for testing
+
+    if !use_episub {
+        gossipsub_config = gossipsub_config
+            .disable_episub();
+    }
+
+    let gossipsub_config = gossipsub_config
         .build()
         .expect("valid gossipsub configuration");
 
-    let mut gs = GossipsubBuilder::new(MessageAuthenticity::Anonymous)
+    //let mut gs = GossipsubBuilder::new(MessageAuthenticity::Anonymous)
+    GossipsubBuilder::new(MessageAuthenticity::Anonymous)
         .config(gossipsub_config)
         .validation_mode(ValidationMode::Anonymous)
         .metrics(registry, Config::default())
         .build()
-        .expect("Correct gossipsub configuration");
+        .expect("Correct gossipsub configuration")
 
+    /* Ignore Scoring for now
     // Setup the scoring system.
     let peer_score_params = PeerScoreParams::default();
     gs.with_peer_score(peer_score_params, PeerScoreThresholds::default())
         .expect("Valid score params and thresholds");
 
     gs
+    */ 
+
 }
 
 /// The main entry point of the sim.
@@ -250,7 +266,7 @@ impl Network {
         validator_set: HashSet<ValId>,
         params: Params,
     ) -> Self {
-        let gossipsub = setup_gossipsub(&mut registry);
+        let gossipsub = setup_gossipsub(&mut registry, params.episub());
 
         let swarm = SwarmBuilder::with_tokio_executor(
             build_transport(&keypair),
@@ -302,6 +318,8 @@ impl Network {
             registry,
             influx_db_handles: FuturesUnordered::new(),
             messages_to_validate: DelayQueue::with_capacity(500),
+            message_arrive_duration: HashMap::with_capacity(64),
+            artificial_validation_delay: HashMap::with_capacity(64),
         }
     }
 
@@ -327,11 +345,10 @@ impl Network {
 
         // Initialise some metrics
         // This just adds the 0 value to some counters.
+        let metric_info = self.record_metrics_info();
 
         self.influx_db_handles
-            .push(tokio::spawn(metrics::initialise_metrics(
-                self.record_metrics_info(),
-            )));
+            .push(tokio::spawn(metrics::initialise_metrics(metric_info)));
 
         loop {
             tokio::select! {
@@ -361,11 +378,11 @@ impl Network {
                     };
 
                     // Hack to just send blocks
-                    if let Topic::Blocks = topic { 
+              //      if let Topic::Blocks = topic {
                         if let Err(e) = self.publish(topic.clone(), val, payload) {
                             error!("Failed to publish message {e} to topic {topic:?}");
                         }
-                    }
+               //     }
 
                 }
                 // Record peer scores
@@ -391,9 +408,11 @@ impl Network {
             }
         }
 
-
         // Waiting for influx db handles to end
-        info!("Waiting for influx db writes: {}", self.influx_db_handles.len());
+        info!(
+            "Waiting for influx db writes: {}",
+            self.influx_db_handles.len()
+        );
         while (self.influx_db_handles.next().await).is_some() {}
         info!("Completed influx db write");
     }

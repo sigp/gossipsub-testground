@@ -12,9 +12,9 @@ name = "eth_consensus"
 
 [[groups]]
   id = "main-instances"
-  instances = { count = 20 }
+  instances = { count = 40 }
 
   [groups.run]
   # Check the plan (./eth_consensus/manifest.toml) to understand the meaning of each param
-  test_params = { seed = "40", no_val_percentage = "60", total_validators = "200", min_peers_per_node = "2", max_peers_per_node_inclusive = "10", run = "120" }
+  test_params = { seed = "40", no_val_percentage = "60", total_validators = "2000", min_peers_per_node = "4", max_peers_per_node_inclusive = "10", run = "500", episub = "true" }
 

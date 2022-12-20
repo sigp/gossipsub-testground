@@ -1,12 +1,14 @@
 use crate::utils::{
-    initialise_counter, queries_for_counter, queries_for_counter_join, queries_for_gauge,
-    queries_for_histogram,
+    influxdb_query, initialise_counter, queries_for_counter, queries_for_counter_join,
+    queries_for_gauge, queries_for_histogram,
 };
 use crate::InstanceInfo;
 use chrono::{DateTime, Utc};
 use libp2p::gossipsub::IdentTopic;
 use prometheus_client::encoding::proto::openmetrics_data_model::MetricSet;
+use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 use testground::client::Client;
 use tracing::error;
 
@@ -22,11 +24,13 @@ pub(crate) struct RecordMetricsInfo {
     node_id: usize,
     instance_info: InstanceInfo,
     current: DateTime<Utc>,
+    message_arrive_duration: HashMap<Topic, Vec<u64>>,
+    artificial_validation_delay: HashMap<Topic, Vec<u64>>,
 }
 
 impl Network {
     // Generates the necessary amount of information to record metrics.
-    pub(super) fn record_metrics_info(&self) -> RecordMetricsInfo {
+    pub(super) fn record_metrics_info(&mut self) -> RecordMetricsInfo {
         // Encode the metrics to an instance of the OpenMetrics protobuf format.
         // https://github.com/OpenObservability/OpenMetrics/blob/main/proto/openmetrics_data_model.proto
         let metrics = prometheus_client::encoding::proto::encode(&self.registry);
@@ -41,7 +45,32 @@ impl Network {
             node_id: self.node_id,
             instance_info: self.instance_info.clone(),
             current,
+            // The last two are calculating moving averages based on the metric interval. We reset
+            // the hashmaps at each interval.
+            message_arrive_duration: std::mem::take(&mut self.message_arrive_duration),
+            artificial_validation_delay: std::mem::take(&mut self.artificial_validation_delay),
         }
+    }
+
+    pub(super) fn register_message_delay(&mut self, topic: Topic) {
+        let time_since_last_slot = self.messages_gen.time_since_last_slot();
+
+        let delay = match topic {
+            Topic::Blocks => time_since_last_slot.as_millis(),
+            Topic::Aggregates => time_since_last_slot
+                .saturating_sub(Duration::from_secs(8))
+                .as_millis(),
+            Topic::SignedContributionAndProof(_) => time_since_last_slot
+                .saturating_sub(Duration::from_secs(8))
+                .as_millis(),
+            _ => time_since_last_slot.as_millis(),
+        } as u64;
+
+        // Insert the value into the message_arrive_duration mapping
+        self.message_arrive_duration
+            .entry(topic)
+            .or_default()
+            .push(delay);
     }
 }
 
@@ -64,7 +93,9 @@ pub(crate) async fn initialise_metrics(info: RecordMetricsInfo) {
         "episub_received_unchoke_messages",
         "topic_iwant_msgs",
         "episub_mesh_additions",
-        "episub_received_choke_messages"
+        "episub_received_choke_messages",
+        "episub_average_artificial_validation_delay",
+        "episub_average_message_latency",
     ];
 
     for name in to_initialise_metrics {
@@ -135,9 +166,13 @@ pub(crate) async fn record_metrics(info: RecordMetricsInfo) {
             "invalid_messages_per_topic"
             | "accepted_messages_per_topic"
             | "ignored_messages_per_topic"
-            | "rejected_messages_per_topic" => {
-                Some(queries_for_counter(&current, family, node_id, &info.instance_info, run_id))
-            }
+            | "rejected_messages_per_topic" => Some(queries_for_counter(
+                &current,
+                family,
+                node_id,
+                &info.instance_info,
+                run_id,
+            )),
             // ///////////////////////////////////
             // Metrics regarding mesh state
             // ///////////////////////////////////
@@ -149,12 +184,20 @@ pub(crate) async fn record_metrics(info: RecordMetricsInfo) {
                 run_id,
                 "count",
             )),
-            "mesh_peer_inclusion_events" => {
-                Some(queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id))
-            }
-            "mesh_peer_churn_events" => {
-                Some(queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id))
-            }
+            "mesh_peer_inclusion_events" => Some(queries_for_counter(
+                &current,
+                family,
+                info.node_id,
+                &info.instance_info,
+                run_id,
+            )),
+            "mesh_peer_churn_events" => Some(queries_for_counter(
+                &current,
+                family,
+                info.node_id,
+                &info.instance_info,
+                run_id,
+            )),
             // ///////////////////////////////////
             // Metrics regarding messages sent/received
             // ///////////////////////////////////
@@ -163,9 +206,13 @@ pub(crate) async fn record_metrics(info: RecordMetricsInfo) {
             | "topic_msg_sent_bytes"
             | "topic_msg_recv_counts_unfiltered"
             | "topic_msg_recv_counts"
-            | "topic_msg_recv_bytes" => {
-                Some(queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id))
-            }
+            | "topic_msg_recv_bytes" => Some(queries_for_counter(
+                &current,
+                family,
+                info.node_id,
+                &info.instance_info,
+                run_id,
+            )),
 
             "topic_msg_last_sent_bytes"
             | "topic_msg_last_recv_bytes"
@@ -188,12 +235,20 @@ pub(crate) async fn record_metrics(info: RecordMetricsInfo) {
                 run_id,
                 "count",
             )),
-            "score_per_mesh" => {
-                Some(queries_for_histogram(&current, family, info.node_id, &info.instance_info, run_id))
-            }
-            "scoring_penalties" => {
-                Some(queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id))
-            }
+            "score_per_mesh" => Some(queries_for_histogram(
+                &current,
+                family,
+                info.node_id,
+                &info.instance_info,
+                run_id,
+            )),
+            "scoring_penalties" => Some(queries_for_counter(
+                &current,
+                family,
+                info.node_id,
+                &info.instance_info,
+                run_id,
+            )),
             // ///////////////////////////////////
             // General Metrics
             // ///////////////////////////////////
@@ -205,18 +260,30 @@ pub(crate) async fn record_metrics(info: RecordMetricsInfo) {
                 run_id,
                 "peers",
             )),
-            "heartbeat_duration" => {
-                Some(queries_for_histogram(&current, family, info.node_id, &info.instance_info, run_id))
-            }
+            "heartbeat_duration" => Some(queries_for_histogram(
+                &current,
+                family,
+                info.node_id,
+                &info.instance_info,
+                run_id,
+            )),
             // ///////////////////////////////////
             // Performance metrics
             // ///////////////////////////////////
-            "topic_iwant_msgs" => {
-                Some(queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id))
-            }
-            "memcache_misses" => {
-                Some(queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id))
-            }
+            "topic_iwant_msgs" => Some(queries_for_counter(
+                &current,
+                family,
+                info.node_id,
+                &info.instance_info,
+                run_id,
+            )),
+            "memcache_misses" => Some(queries_for_counter(
+                &current,
+                family,
+                info.node_id,
+                &info.instance_info,
+                run_id,
+            )),
             // ///////////////////////////////////
             // Episub Metrics
             // ///////////////////////////////////
@@ -234,14 +301,21 @@ pub(crate) async fn record_metrics(info: RecordMetricsInfo) {
 
             "episub_mesh_additions"
             | "episub_received_choke_messages"
-            | "episub_received_unchoke_messages" => {
-                Some(queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id))
-            }
-            "episub_heartbeat_duration" => {
-                Some(queries_for_histogram(&current, family, info.node_id, &info.instance_info, run_id))
-            }
-            "episub_mesh_message_latency"
-            | "episub_ihave_message_stats" => { None } // Can't graph so currently useless to us 
+            | "episub_received_unchoke_messages" => Some(queries_for_counter(
+                &current,
+                family,
+                info.node_id,
+                &info.instance_info,
+                run_id,
+            )),
+            "episub_heartbeat_duration" => Some(queries_for_histogram(
+                &current,
+                family,
+                info.node_id,
+                &info.instance_info,
+                run_id,
+            )),
+            "episub_mesh_message_latency" | "episub_ihave_message_stats" => None, // Can't graph so currently useless to us
             x => unreachable!("Metric {} is unknown", x),
         };
 
@@ -277,6 +351,42 @@ pub(crate) async fn record_metrics(info: RecordMetricsInfo) {
             queries.extend(q);
         }
     }
+
+    // Custom query for average calculations
+    let mut calculate_averages = |values: HashMap<Topic, Vec<u64>>, name| {
+        for (topic, values) in values {
+            // calculate the average value
+            let avg = values.iter().sum::<u64>() / values.len() as u64;
+
+            let tags = vec![(
+                String::from("hash"),
+                String::from(topic),
+            )];
+
+            let fields = vec![(String::from("count"), avg)];
+
+            let query = influxdb_query(
+                &current,
+                name,
+                info.node_id,
+                &info.instance_info.peer_id,
+                run_id,
+                tags,
+                fields,
+            );
+
+            queries.push(query);
+        }
+    };
+
+    calculate_averages(
+        info.artificial_validation_delay,
+        "episub_average_artificial_validation_delay",
+    );
+    calculate_averages(
+        info.message_arrive_duration,
+        "episub_average_message_latency",
+    );
 
     for query in queries {
         if let Err(e) = info.client.record_metric(query).await {
