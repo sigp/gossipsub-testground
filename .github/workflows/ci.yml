@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        simulations: ["eth_consensus", "censoring", "smoke"]
+        simulations: ["eth_consensus", "censoring", "smoke", "scoring"]
     steps:
     - uses: actions/checkout@v2
     - name: Get latest version of stable rust
@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        simulations: ["eth_consensus", "censoring", "smoke"]
+        simulations: ["eth_consensus", "censoring", "smoke", "scoring"]
     steps:
     - uses: actions/checkout@v1
     - name: Install protoc

@@ -1,0 +1,41 @@
+[package]
+name = "scoring"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+chrono = { version = "0.4.19", default-features = false, features = ["clock"] }
+delay_map = "0.1.1"
+futures = "0.3.24"
+gen_topology = { git = "https://github.com/sigp/gossipsub-testground", rev = "4084d26b9210bc932f4aaa45f9506ecfe5f2bb04" }
+libp2p = { git = "https://github.com/ackintosh/rust-libp2p.git", branch = "prometheus-ptotobuf-support", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux", "serde"] }
+npg = { git = "https://github.com/sigp/eth-npg", rev = "6118cdd63eb34ffa4b230d17e88c8adf7057e138" }
+prometheus-client = { git = "https://github.com/prometheus/client_rust.git", rev = "682b24ee8c6c857b76c0683b1dd7df5a97b75c27", features = ["protobuf"] }
+prost = "0.11"
+rand = "0.8.5"
+serde_json = "1.0"
+serde = "1.0"
+sha2 = "0.10"
+slot_clock = { git = "https://github.com/divagant-martian/lighthouse", branch = "sizes" }
+testground = "0.4.0"
+tokio = { version = "1.21.2", features = ["macros"] }
+tracing = "0.1.35"
+tracing-subscriber = { version = "0.3.14", features = ["env-filter"] }
+types = { git = "https://github.com/divagant-martian/lighthouse", branch = "sizes" }
+
+# This is a fork of `libp2p` in order to implement malicious behaviour in the `attacker` module.
+# This `libp2p-testground` is used in `attacker` module instead of `libp2p`.
+# See https://github.com/ackintosh/rust-libp2p/pull/50
+libp2p-testground = { git = "https://github.com/ackintosh/rust-libp2p.git", branch = "testground", package = "libp2p", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux", "serde"] }
+
+[patch]
+[patch.crates-io]
+eth2_ssz = { git = "https://github.com/divagant-martian/lighthouse", rev = "22fda6cae62c858bd3b1c057700406a7bb358c97" }
+eth2_ssz_types = { git = "https://github.com/divagant-martian/lighthouse", rev = "22fda6cae62c858bd3b1c057700406a7bb358c97" }
+eth2_serde_utils = { git = "https://github.com/divagant-martian/lighthouse", rev = "22fda6cae62c858bd3b1c057700406a7bb358c97" }
+tree_hash = { git = "https://github.com/divagant-martian/lighthouse", rev = "22fda6cae62c858bd3b1c057700406a7bb358c97" }
+eth2_hashing = { git = "https://github.com/divagant-martian/lighthouse", rev = "22fda6cae62c858bd3b1c057700406a7bb358c97" }
+eth2_ssz_derive = { git = "https://github.com/divagant-martian/lighthouse", rev = "22fda6cae62c858bd3b1c057700406a7bb358c97" }
+tree_hash_derive = { git = "https://github.com/divagant-martian/lighthouse", rev = "22fda6cae62c858bd3b1c057700406a7bb358c97" }

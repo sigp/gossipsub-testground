@@ -50,6 +50,15 @@ for the Ethereum consensus layer.
 See the [Ethereum consensus documentation](./eth_consensus/README.md) for instructions on how to run
 the simulation.
 
+### [Scoring](./scoring/README.md)
+
+This simulation constructs a network of malicious peers which attempt to censor
+messages on the network. Unlike [Censoring](./censoring/README.md), this simulation
+mimics gossipsub messages on an Ethereum consensus network.
+
+See the [scoring documentation](./scoring/README.md) for instructions on how to run
+the simulation.
+
 ## Dashboards
 
 Grafana dashboards are provided for some of the simulations. These are provided
