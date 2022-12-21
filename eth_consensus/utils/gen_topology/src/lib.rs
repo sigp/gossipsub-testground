@@ -161,7 +161,7 @@ impl Network {
         let mut gen = ChaCha8Rng::seed_from_u64(params.seed);
 
         let validator_assignments = {
-            // Assing validators to each node that has any validator at all
+            // Assigning validators to each node that has any validator at all
             let mut all_validators = (0..params.total_validators).collect::<Vec<_>>();
             let mut cuts: Vec<_> = all_validators
                 .choose_multiple(&mut gen, params.total_nodes_with_vals - 1)

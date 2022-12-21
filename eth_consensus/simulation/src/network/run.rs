@@ -33,6 +33,7 @@ use testground::client::Client;
 use tokio::time::interval;
 use tokio_util::time::DelayQueue;
 use tracing::{error, info, warn};
+use rand::SeedableRng;
 
 use super::metrics;
 use super::Network;
@@ -40,6 +41,7 @@ use super::Topic;
 
 pub const ATTESTATION_SUBNETS: u64 = 4;
 pub const SYNC_SUBNETS: u64 = 4;
+const TARGET_AGGREGATORS: u64 = 14;
 const SLOTS_PER_EPOCH: u64 = 2;
 const SLOT_DURATION: u64 = 12;
 
@@ -176,7 +178,6 @@ pub(crate) async fn run(
         .get(&node_id)
         .cloned()
         .unwrap_or_default();
-    info!("[{}] Validators on this node: {:?}", node_id, validator_set);
     let validator_set: HashSet<ValId> =
         validator_set.into_iter().map(|v| ValId(v as u64)).collect();
 
@@ -189,6 +190,7 @@ pub(crate) async fn run(
     .await?;
 
     let registry: Registry<Box<dyn EncodeMetric>> = Registry::default();
+
     let mut network = Network::new(
         registry,
         keypair,
@@ -285,16 +287,14 @@ impl Network {
         let genesis_duration = Duration::ZERO;
         let slot_duration = Duration::from_secs(SLOT_DURATION);
         let slots_per_epoch = SLOTS_PER_EPOCH;
-        let sync_subnet_size = 2;
-        let target_aggregators = 14;
 
         let messages_gen = Generator::builder()
             .slot_clock(genesis_slot, genesis_duration, slot_duration)
             .slots_per_epoch(slots_per_epoch)
-            .sync_subnet_size(sync_subnet_size)
+            .sync_subnet_size(SYNC_SUBNETS)
             .sync_committee_subnets(SYNC_SUBNETS)
             .total_validators(params.total_validators() as u64)
-            .target_aggregators(target_aggregators)
+            .target_aggregators(TARGET_AGGREGATORS)
             .attestation_subnets(ATTESTATION_SUBNETS)
             .build(validator_set)
             .expect("need to adjust these params");
@@ -304,6 +304,8 @@ impl Network {
                 .expect("Correct time date format from testground")
                 .into();
         let local_start_time = Instant::now();
+
+        let rng = rand::rngs::SmallRng::seed_from_u64(params.seed());
 
         Network {
             swarm,
@@ -320,6 +322,7 @@ impl Network {
             messages_to_validate: DelayQueue::with_capacity(500),
             message_arrive_duration: HashMap::with_capacity(64),
             artificial_validation_delay: HashMap::with_capacity(64),
+            rng,
         }
     }
 
@@ -357,7 +360,7 @@ impl Network {
                     break;
                 }
                 Some(m) = self.messages_gen.next() => {
-                    let payload = m.payload();
+                    let payload = m.payload(&mut self.rng);
                     let (topic, val) = match m {
                         Message::BeaconBlock { proposer: ValId(v), slot: _ } => {
                             (Topic::Blocks, v)
@@ -393,6 +396,7 @@ impl Network {
                 },
                 _ = self.influx_db_handles.next() => {} // Remove excess db handles
                 event = self.swarm.select_next_some() => self.handle_swarm_event(event),
+
                 Some(x) = self.messages_to_validate.next(), if !self.messages_to_validate.is_empty() => { // Message needs validation
                     let (message_id, peer_id) = x.into_inner();
                     if let Err(e)  = self.swarm.behaviour_mut().report_message_validation_result(&message_id, &peer_id, libp2p::gossipsub::MessageAcceptance::Accept) {

@@ -26,7 +26,7 @@ FROM debian:bullseye-slim
 
 COPY --from=builder /test-plan/target/release/simulation /usr/local/bin/eth_consensus
 
-ENV RUST_LOG=libp2p_gossipsub=debug,simulation=debug
-# ENV RUST_LOG=simulation=info
+# ENV RUST_LOG=libp2p_gossipsub=debug,simulation=debug
+ENV RUST_LOG=simulation=info
 
 ENTRYPOINT ["eth_consensus"]

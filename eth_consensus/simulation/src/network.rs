@@ -61,6 +61,8 @@ pub struct Network {
     // A track of artificial delays for messages. This is used to calculate the average artificial
     // message propagation delay.
     artificial_validation_delay: HashMap<Topic, Vec<u64>>,
+    // An rng to generate payload entropy.
+    rng: rand::rngs::SmallRng,
 }
 
 impl Network {
