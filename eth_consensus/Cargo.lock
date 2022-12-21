@@ -1666,15 +1666,6 @@ checksum = "2540771e65fc8cb83cd6e8a237f70c319bd5c29f78ed1084ba5d50eeac86f7f9"
 
 [[package]]
 name = "hermit-abi"
-version = "0.1.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62b467343b94ba476dcb2500d242dadbb39557df889310ac77c5d99100aaac33"
-dependencies = [
- "libc",
-]
-
-[[package]]
-name = "hermit-abi"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee512640fe35acbfb4bb779db6f0d80704c2cacfa2e39b601ef3e3f47d1ae4c7"
@@ -2033,11 +2024,11 @@ dependencies = [
 
 [[package]]
 name = "is-terminal"
-version = "0.4.1"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "927609f78c2913a6f6ac3c27a4fe87f43e2a35367c0c4b0f8265e8f49a104330"
+checksum = "28dfb6c8100ccc63462345b67d1bbc3679177c75ee4bf59bf29c8b1d110b8189"
 dependencies = [
- "hermit-abi 0.2.6",
+ "hermit-abi",
  "io-lifetimes",
  "rustix",
  "windows-sys",
@@ -2134,8 +2125,8 @@ dependencies = [
  "once_cell",
  "parking_lot 0.12.1",
  "pin-project",
- "prost 0.11.3",
- "prost-build 0.11.4",
+ "prost 0.11.5",
+ "prost-build 0.11.5",
  "rand 0.8.5",
  "rw-stream-sink",
  "sec1",
@@ -2178,8 +2169,8 @@ dependencies = [
  "libp2p-swarm",
  "log",
  "prometheus-client 0.19.0",
- "prost 0.11.3",
- "prost-build 0.11.4",
+ "prost 0.11.5",
+ "prost-build 0.11.5",
  "prost-codec",
  "rand 0.8.5",
  "regex",
@@ -2207,8 +2198,8 @@ dependencies = [
  "libp2p-core",
  "libp2p-swarm",
  "log",
- "prost 0.11.3",
- "prost-build 0.11.4",
+ "prost 0.11.5",
+ "prost-build 0.11.5",
  "rand 0.8.5",
  "serde",
  "sha2 0.10.6",
@@ -2277,8 +2268,8 @@ dependencies = [
  "libp2p-core",
  "log",
  "once_cell",
- "prost 0.11.3",
- "prost-build 0.11.4",
+ "prost 0.11.5",
+ "prost-build 0.11.5",
  "rand 0.8.5",
  "sha2 0.10.6",
  "snow",
@@ -2376,8 +2367,8 @@ dependencies = [
  "libp2p-noise",
  "log",
  "multihash",
- "prost 0.11.3",
- "prost-build 0.11.4",
+ "prost 0.11.5",
+ "prost-build 0.11.5",
  "prost-codec",
  "rand 0.8.5",
  "rcgen 0.9.3",
@@ -2730,7 +2721,7 @@ dependencies = [
 [[package]]
 name = "npg"
 version = "0.1.0"
-source = "git+https://github.com/sigp/eth-npg#7ab065b59774d547f8b3572f1083ffaf9be456f3"
+source = "git+https://github.com/sigp/eth-npg#9eb7e889d0e3e8b458c365af839cd3ad08e46f24"
 dependencies = [
  "futures",
  "rand 0.8.5",
@@ -2781,11 +2772,11 @@ dependencies = [
 
 [[package]]
 name = "num_cpus"
-version = "1.14.0"
+version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6058e64324c71e02bc2b150e4f3bc8286db6c83092132ffa3f6b1eab0f9def5"
+checksum = "0fac9e2da13b5eb447a6ce3d392f23a29d8694bff781bf03a16cd9ac8697593b"
 dependencies = [
- "hermit-abi 0.1.19",
+ "hermit-abi",
  "libc",
 ]
 
@@ -3232,12 +3223,12 @@ dependencies = [
 
 [[package]]
 name = "prost"
-version = "0.11.3"
+version = "0.11.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0b18e655c21ff5ac2084a5ad0611e827b3f92badf79f4910b5a5c58f4d87ff0"
+checksum = "c01db6702aa05baa3f57dec92b8eeeeb4cb19e894e73996b32a4093289e54592"
 dependencies = [
  "bytes",
- "prost-derive 0.11.2",
+ "prost-derive 0.11.5",
 ]
 
 [[package]]
@@ -3262,9 +3253,9 @@ dependencies = [
 
 [[package]]
 name = "prost-build"
-version = "0.11.4"
+version = "0.11.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "276470f7f281b0ed53d2ae42dd52b4a8d08853a3c70e7fe95882acbb98a6ae94"
+checksum = "cb5320c680de74ba083512704acb90fe00f28f79207286a848e730c45dd73ed6"
 dependencies = [
  "bytes",
  "heck 0.4.0",
@@ -3274,8 +3265,8 @@ dependencies = [
  "multimap",
  "petgraph",
  "prettyplease",
- "prost 0.11.3",
- "prost-types 0.11.2",
+ "prost 0.11.5",
+ "prost-types 0.11.5",
  "regex",
  "syn",
  "tempfile",
@@ -3289,7 +3280,7 @@ source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-h
 dependencies = [
  "asynchronous-codec",
  "bytes",
- "prost 0.11.3",
+ "prost 0.11.5",
  "thiserror",
  "unsigned-varint",
 ]
@@ -3309,9 +3300,9 @@ dependencies = [
 
 [[package]]
 name = "prost-derive"
-version = "0.11.2"
+version = "0.11.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "164ae68b6587001ca506d3bf7f1000bfa248d0e1217b618108fba4ec1d0cc306"
+checksum = "c8842bad1a5419bca14eac663ba798f6bc19c413c2fdceb5f3ba3b0932d96720"
 dependencies = [
  "anyhow",
  "itertools",
@@ -3332,12 +3323,12 @@ dependencies = [
 
 [[package]]
 name = "prost-types"
-version = "0.11.2"
+version = "0.11.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "747761bc3dc48f9a34553bf65605cf6cb6288ba219f3450b4275dbd81539551a"
+checksum = "017f79637768cde62820bc2d4fe0e45daaa027755c323ad077767c6c5f173091"
 dependencies = [
  "bytes",
- "prost 0.11.3",
+ "prost 0.11.5",
 ]
 
 [[package]]
