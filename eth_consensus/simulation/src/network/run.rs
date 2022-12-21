@@ -123,11 +123,15 @@ pub fn setup_gossipsub(registry: &mut Registry<Box<dyn EncodeMetric>>, use_episu
         .duplicate_cache_time(Duration::from_secs(SLOT_DURATION * SLOTS_PER_EPOCH + 1))
         .message_id_fn(gossip_message_id)
         .allow_self_origin(true)
-        .episub_heartbeat_ticks(3); // small amount for testing
+        .episub_heartbeat_ticks(24); // small amount for testing
 
     if !use_episub {
         gossipsub_config = gossipsub_config
             .disable_episub();
+    } else {
+        // construct a choking strategy
+        let default_strat = libp2p::gossipsub::DefaultStratBuilder::new().min_choke_message_count(2).build();
+        gossipsub_config = gossipsub_config.choking_strategy(default_strat);
     }
 
     let gossipsub_config = gossipsub_config

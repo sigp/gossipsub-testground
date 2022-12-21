@@ -25,7 +25,6 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 6,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -3080,6 +3079,12 @@
               "key": "run_id",
               "operator": "=~",
               "value": "/^$run_id$/"
+            },
+            {
+              "condition": "AND",
+              "key": "hash",
+              "operator": "=~",
+              "value": "/^$hash$/"
             }
           ]
         }
@@ -3232,8 +3237,8 @@
       {
         "current": {
           "selected": false,
-          "text": "cegl467smuj77vfu8k20",
-          "value": "cegl467smuj77vfu8k20"
+          "text": "ceh8oedevn6250ibqkqg",
+          "value": "ceh8oedevn6250ibqkqg"
         },
         "datasource": {
           "type": "influxdb",
@@ -3258,10 +3263,10 @@
         "current": {
           "selected": true,
           "text": [
-            "3"
+            "1"
           ],
           "value": [
-            "3"
+            "1"
           ]
         },
         "datasource": {
@@ -3284,12 +3289,12 @@
       },
       {
         "current": {
-          "selected": false,
+          "selected": true,
           "text": [
-            "Blocks"
+            "Attestations/0"
           ],
           "value": [
-            "Blocks"
+            "Attestations/0"
           ]
         },
         "datasource": {
@@ -3313,13 +3318,13 @@
     ]
   },
   "time": {
-    "from": "2022-12-20T06:11:33.575Z",
-    "to": "2022-12-20T06:20:54.345Z"
+    "from": "2022-12-21T04:33:21.469Z",
+    "to": "2022-12-21T04:40:54.002Z"
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Basic Gossipsub",
+  "title": "Gossipsub",
   "uid": "pPBA4fd4z",
-  "version": 2,
+  "version": 1,
   "weekStart": ""
 }
