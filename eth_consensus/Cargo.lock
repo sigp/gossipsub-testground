@@ -2079,7 +2079,7 @@ checksum = "7fc7aa29613bd6a620df431842069224d8bc9011086b1db4c0e0cd47fa03ec9a"
 [[package]]
 name = "libp2p"
 version = "0.50.0"
-source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#a79ed0cd2267f5cf1d2983fb2881ca1a21ee70e0"
+source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#5a88ca4514ee128e308c377a14f1b2469b929caa"
 dependencies = [
  "bytes",
  "futures",
@@ -2108,7 +2108,7 @@ dependencies = [
 [[package]]
 name = "libp2p-core"
 version = "0.38.0"
-source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#a79ed0cd2267f5cf1d2983fb2881ca1a21ee70e0"
+source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#5a88ca4514ee128e308c377a14f1b2469b929caa"
 dependencies = [
  "asn1_der",
  "bs58",
@@ -2142,7 +2142,7 @@ dependencies = [
 [[package]]
 name = "libp2p-dns"
 version = "0.38.0"
-source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#a79ed0cd2267f5cf1d2983fb2881ca1a21ee70e0"
+source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#5a88ca4514ee128e308c377a14f1b2469b929caa"
 dependencies = [
  "futures",
  "libp2p-core",
@@ -2155,7 +2155,7 @@ dependencies = [
 [[package]]
 name = "libp2p-gossipsub"
 version = "0.43.0"
-source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#a79ed0cd2267f5cf1d2983fb2881ca1a21ee70e0"
+source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#5a88ca4514ee128e308c377a14f1b2469b929caa"
 dependencies = [
  "asynchronous-codec",
  "base64",
@@ -2185,7 +2185,7 @@ dependencies = [
 [[package]]
 name = "libp2p-kad"
 version = "0.42.0"
-source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#a79ed0cd2267f5cf1d2983fb2881ca1a21ee70e0"
+source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#5a88ca4514ee128e308c377a14f1b2469b929caa"
 dependencies = [
  "arrayvec",
  "asynchronous-codec",
@@ -2213,7 +2213,7 @@ dependencies = [
 [[package]]
 name = "libp2p-mdns"
 version = "0.42.0"
-source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#a79ed0cd2267f5cf1d2983fb2881ca1a21ee70e0"
+source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#5a88ca4514ee128e308c377a14f1b2469b929caa"
 dependencies = [
  "data-encoding",
  "futures",
@@ -2232,7 +2232,7 @@ dependencies = [
 [[package]]
 name = "libp2p-metrics"
 version = "0.11.0"
-source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#a79ed0cd2267f5cf1d2983fb2881ca1a21ee70e0"
+source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#5a88ca4514ee128e308c377a14f1b2469b929caa"
 dependencies = [
  "libp2p-core",
  "libp2p-gossipsub",
@@ -2243,7 +2243,7 @@ dependencies = [
 [[package]]
 name = "libp2p-mplex"
 version = "0.38.0"
-source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#a79ed0cd2267f5cf1d2983fb2881ca1a21ee70e0"
+source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#5a88ca4514ee128e308c377a14f1b2469b929caa"
 dependencies = [
  "asynchronous-codec",
  "bytes",
@@ -2260,7 +2260,7 @@ dependencies = [
 [[package]]
 name = "libp2p-noise"
 version = "0.41.0"
-source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#a79ed0cd2267f5cf1d2983fb2881ca1a21ee70e0"
+source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#5a88ca4514ee128e308c377a14f1b2469b929caa"
 dependencies = [
  "bytes",
  "curve25519-dalek 3.2.0",
@@ -2282,7 +2282,7 @@ dependencies = [
 [[package]]
 name = "libp2p-quic"
 version = "0.7.0-alpha"
-source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#a79ed0cd2267f5cf1d2983fb2881ca1a21ee70e0"
+source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#5a88ca4514ee128e308c377a14f1b2469b929caa"
 dependencies = [
  "bytes",
  "futures",
@@ -2302,7 +2302,7 @@ dependencies = [
 [[package]]
 name = "libp2p-swarm"
 version = "0.41.1"
-source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#a79ed0cd2267f5cf1d2983fb2881ca1a21ee70e0"
+source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#5a88ca4514ee128e308c377a14f1b2469b929caa"
 dependencies = [
  "either",
  "fnv",
@@ -2322,7 +2322,7 @@ dependencies = [
 [[package]]
 name = "libp2p-tcp"
 version = "0.38.0"
-source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#a79ed0cd2267f5cf1d2983fb2881ca1a21ee70e0"
+source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#5a88ca4514ee128e308c377a14f1b2469b929caa"
 dependencies = [
  "futures",
  "futures-timer",
@@ -2337,7 +2337,7 @@ dependencies = [
 [[package]]
 name = "libp2p-tls"
 version = "0.1.0-alpha"
-source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#a79ed0cd2267f5cf1d2983fb2881ca1a21ee70e0"
+source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#5a88ca4514ee128e308c377a14f1b2469b929caa"
 dependencies = [
  "futures",
  "futures-rustls",
@@ -2354,7 +2354,7 @@ dependencies = [
 [[package]]
 name = "libp2p-webrtc"
 version = "0.4.0-alpha"
-source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#a79ed0cd2267f5cf1d2983fb2881ca1a21ee70e0"
+source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#5a88ca4514ee128e308c377a14f1b2469b929caa"
 dependencies = [
  "async-trait",
  "asynchronous-codec",
@@ -2384,7 +2384,7 @@ dependencies = [
 [[package]]
 name = "libp2p-yamux"
 version = "0.42.0"
-source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#a79ed0cd2267f5cf1d2983fb2881ca1a21ee70e0"
+source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#5a88ca4514ee128e308c377a14f1b2469b929caa"
 dependencies = [
  "futures",
  "libp2p-core",
@@ -2614,7 +2614,7 @@ checksum = "e5ce46fe64a9d73be07dcbe690a38ce1b293be448fd8ce1e6c1b8062c9f72c6a"
 [[package]]
 name = "multistream-select"
 version = "0.12.1"
-source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#a79ed0cd2267f5cf1d2983fb2881ca1a21ee70e0"
+source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#5a88ca4514ee128e308c377a14f1b2469b929caa"
 dependencies = [
  "bytes",
  "futures",
@@ -3276,7 +3276,7 @@ dependencies = [
 [[package]]
 name = "prost-codec"
 version = "0.3.0"
-source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#a79ed0cd2267f5cf1d2983fb2881ca1a21ee70e0"
+source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#5a88ca4514ee128e308c377a14f1b2469b929caa"
 dependencies = [
  "asynchronous-codec",
  "bytes",
@@ -3760,7 +3760,7 @@ checksum = "5583e89e108996506031660fe09baa5011b9dd0341b89029313006d1fb508d70"
 [[package]]
 name = "rw-stream-sink"
 version = "0.3.0"
-source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#a79ed0cd2267f5cf1d2983fb2881ca1a21ee70e0"
+source = "git+https://github.com/sigp/rust-libp2p.git?branch=episub-prometheus-hack#5a88ca4514ee128e308c377a14f1b2469b929caa"
 dependencies = [
  "futures",
  "pin-project",
