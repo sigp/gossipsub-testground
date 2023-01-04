@@ -18,12 +18,12 @@ use libp2p::identity::Keypair;
 use libp2p::mplex::MplexConfig;
 use libp2p::noise::NoiseConfig;
 use libp2p::swarm::{DialError, SwarmBuilder, SwarmEvent};
-use libp2p::tcp::{GenTcpConfig, TokioTcpTransport};
+use libp2p::tcp::tokio::Transport as TcpTransport;
+use libp2p::tcp::Config as TcpConfig;
 use libp2p::yamux::YamuxConfig;
 use libp2p::PeerId;
 use libp2p::Transport;
 use libp2p::{Multiaddr, Swarm};
-use prometheus_client::encoding::proto::EncodeMetric;
 use prometheus_client::registry::Registry;
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
@@ -93,7 +93,7 @@ pub(crate) async fn run(
     // ////////////////////////////////////////////////////////////////////////
     // Start libp2p
     // ////////////////////////////////////////////////////////////////////////
-    let mut registry: Registry<Box<dyn EncodeMetric>> = Registry::default();
+    let mut registry = Registry::default();
     registry.sub_registry_with_prefix("gossipsub");
 
     let network_send = spawn_honest_network(
@@ -154,7 +154,7 @@ pub(crate) async fn run(
 
     // Encode the metrics to an instance of the OpenMetrics protobuf format.
     // https://github.com/OpenObservability/OpenMetrics/blob/main/proto/openmetrics_data_model.proto
-    let metric_set = prometheus_client::encoding::proto::encode(&registry);
+    let metric_set = prometheus_client::encoding::protobuf::encode(&registry)?;
 
     let mut queries = vec![];
 
@@ -249,10 +249,8 @@ pub(crate) async fn run(
 
 /// Set up an encrypted TCP transport over the Mplex and Yamux protocols.
 fn build_transport(keypair: &Keypair) -> libp2p::core::transport::Boxed<(PeerId, StreamMuxerBox)> {
-    let transport = TokioDnsConfig::system(TokioTcpTransport::new(
-        GenTcpConfig::default().nodelay(true),
-    ))
-    .expect("DNS config");
+    let transport = TokioDnsConfig::system(TcpTransport::new(TcpConfig::default().nodelay(true)))
+        .expect("DNS config");
 
     let noise_keys = libp2p::noise::Keypair::<libp2p::noise::X25519Spec>::new()
         .into_authentic(keypair)
@@ -297,7 +295,7 @@ pub(crate) struct HonestNetwork {
 impl HonestNetwork {
     #[allow(clippy::too_many_arguments)]
     fn new(
-        registry: &mut Registry<Box<dyn EncodeMetric>>,
+        registry: &mut Registry,
         keypair: Keypair,
         instance_info: InstanceInfo,
         participants: &Vec<InstanceInfo>,
@@ -333,14 +331,11 @@ impl HonestNetwork {
             gs
         };
 
-        let swarm = SwarmBuilder::new(
+        let swarm = SwarmBuilder::with_tokio_executor(
             build_transport(&keypair),
             gossipsub,
             PeerId::from(keypair.public()),
         )
-        .executor(Box::new(|future| {
-            tokio::spawn(future);
-        }))
         .build();
 
         let mut peer_to_instance_name = HashMap::new();
@@ -443,7 +438,7 @@ impl HonestNetwork {
 }
 
 async fn spawn_honest_network(
-    registry: &mut Registry<Box<dyn EncodeMetric>>,
+    registry: &mut Registry,
     keypair: Keypair,
     instance_info: InstanceInfo,
     participants: &Vec<InstanceInfo>,
