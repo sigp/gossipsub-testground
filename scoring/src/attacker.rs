@@ -29,7 +29,8 @@ use libp2p_testground::swarm::{
     ConnectionHandler, IntoConnectionHandler, NetworkBehaviour, NetworkBehaviourAction,
     NotifyHandler, PollParameters, SwarmBuilder, SwarmEvent,
 };
-use libp2p_testground::tcp::{GenTcpConfig, TokioTcpTransport};
+use libp2p_testground::tcp::tokio::Transport as TcpTransport;
+use libp2p_testground::tcp::Config as TcpConfig;
 use libp2p_testground::yamux::YamuxConfig;
 use libp2p_testground::{Multiaddr, Transport};
 use libp2p_testground::{PeerId, Swarm};
@@ -37,7 +38,6 @@ use prost::Message;
 use std::borrow::Cow;
 use std::collections::{HashMap, VecDeque};
 use std::fmt::Debug;
-use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::Duration;
 use testground::client::Client;
@@ -108,22 +108,19 @@ pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>
 }
 
 fn build_swarm(keypair: Keypair) -> Swarm<MaliciousBehaviour> {
-    SwarmBuilder::new(
+    SwarmBuilder::with_tokio_executor(
         build_transport(&keypair),
         MaliciousBehaviour::new(),
         PeerId::from(keypair.public()),
     )
-    .executor(Box::new(|future| {
-        tokio::spawn(future);
-    }))
     .build()
 }
 
 fn build_transport(
     keypair: &Keypair,
 ) -> libp2p_testground::core::transport::Boxed<(PeerId, StreamMuxerBox)> {
-    let transport = TokioDnsConfig::system(TokioTcpTransport::new(
-        GenTcpConfig::default().nodelay(true),
+    let transport = TokioDnsConfig::system(TcpTransport::new(
+        TcpConfig::default().nodelay(true),
     ))
     .expect("DNS config");
 
@@ -205,7 +202,7 @@ where
 }
 
 type GossipsubNetworkBehaviourAction =
-    NetworkBehaviourAction<GossipsubEvent, GossipsubHandler, Arc<GossipsubHandlerIn>>;
+    NetworkBehaviourAction<GossipsubEvent, GossipsubHandler, GossipsubHandlerIn>;
 
 pub struct MaliciousBehaviour {
     /// Configuration providing gossipsub performance parameters.
@@ -316,7 +313,7 @@ impl MaliciousBehaviour {
             self.events
                 .push_back(NetworkBehaviourAction::NotifyHandler {
                     peer_id,
-                    event: Arc::new(GossipsubHandlerIn::Message(message)),
+                    event: GossipsubHandlerIn::Message(message),
                     handler: NotifyHandler::Any,
                 })
         }
@@ -519,10 +516,7 @@ impl NetworkBehaviour for MaliciousBehaviour {
         _params: &mut impl PollParameters,
     ) -> Poll<NetworkBehaviourAction<Self::OutEvent, Self::ConnectionHandler>> {
         if let Some(event) = self.events.pop_front() {
-            return Poll::Ready(event.map_in(|e: Arc<GossipsubHandlerIn>| {
-                // clone send event reference if others references are present
-                Arc::try_unwrap(e).unwrap_or_else(|e| (*e).clone())
-            }));
+            return Poll::Ready(event);
         }
 
         loop {
