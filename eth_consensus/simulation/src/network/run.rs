@@ -17,14 +17,14 @@ use libp2p::identity::Keypair;
 use libp2p::mplex::MplexConfig;
 use libp2p::noise::NoiseConfig;
 use libp2p::swarm::{SwarmBuilder, SwarmEvent};
-use libp2p::tcp::{GenTcpConfig, TokioTcpTransport};
+use libp2p::tcp::tokio::Transport as TcpTransport;
+use libp2p::tcp::Config as TcpConfig;
 use libp2p::yamux::YamuxConfig;
 use libp2p::PeerId;
 use libp2p::Transport;
 use npg::slot_generator::{Subnet, ValId};
 use npg::Generator;
 use npg::Message;
-use prometheus_client::encoding::proto::EncodeMetric;
 use prometheus_client::registry::Registry;
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
@@ -90,7 +90,7 @@ pub(crate) fn parse_params(
 }
 
 // Sets up the gossipsub configuration to be used in the simulation.
-pub fn setup_gossipsub(registry: &mut Registry<Box<dyn EncodeMetric>>) -> Gossipsub {
+pub fn setup_gossipsub(registry: &mut Registry) -> Gossipsub {
     let gossip_message_id = move |message: &GossipsubMessage| {
         MessageId::from(
             &Sha256::digest([message.topic.as_str().as_bytes(), &message.data].concat())[..20],
@@ -171,7 +171,7 @@ pub(crate) async fn run(
     )
     .await?;
 
-    let registry: Registry<Box<dyn EncodeMetric>> = Registry::default();
+    let registry = Registry::default();
     let mut network = Network::new(
         registry,
         keypair,
@@ -216,10 +216,8 @@ pub(crate) async fn run(
 pub fn build_transport(
     keypair: &Keypair,
 ) -> libp2p::core::transport::Boxed<(PeerId, StreamMuxerBox)> {
-    let transport = TokioDnsConfig::system(TokioTcpTransport::new(
-        GenTcpConfig::default().nodelay(true),
-    ))
-    .expect("DNS config");
+    let transport = TokioDnsConfig::system(TcpTransport::new(TcpConfig::default().nodelay(true)))
+        .expect("DNS config");
 
     let noise_keys = libp2p::noise::Keypair::<libp2p::noise::X25519Spec>::new()
         .into_authentic(keypair)
@@ -240,7 +238,7 @@ impl Network {
     // Sets up initial conditions and configuration
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
-        mut registry: Registry<Box<dyn EncodeMetric>>,
+        mut registry: Registry,
         keypair: Keypair,
         node_id: usize,
         instance_info: InstanceInfo,
@@ -251,14 +249,11 @@ impl Network {
     ) -> Self {
         let gossipsub = setup_gossipsub(&mut registry);
 
-        let swarm = SwarmBuilder::new(
+        let swarm = SwarmBuilder::with_tokio_executor(
             build_transport(&keypair),
             gossipsub,
             PeerId::from(keypair.public()),
         )
-        .executor(Box::new(|future| {
-            tokio::spawn(future);
-        }))
         .build();
 
         info!(

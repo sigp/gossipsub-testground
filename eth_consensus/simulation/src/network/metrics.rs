@@ -5,7 +5,7 @@ use crate::utils::{
 use crate::InstanceInfo;
 use chrono::{DateTime, Utc};
 use libp2p::gossipsub::IdentTopic;
-use prometheus_client::encoding::proto::openmetrics_data_model::MetricSet;
+use prometheus_client::encoding::protobuf::openmetrics_data_model::MetricSet;
 use std::sync::Arc;
 use testground::client::Client;
 use tracing::error;
@@ -29,7 +29,7 @@ impl Network {
     pub(super) fn record_metrics_info(&self) -> RecordMetricsInfo {
         // Encode the metrics to an instance of the OpenMetrics protobuf format.
         // https://github.com/OpenObservability/OpenMetrics/blob/main/proto/openmetrics_data_model.proto
-        let metrics = prometheus_client::encoding::proto::encode(&self.registry);
+        let metrics = prometheus_client::encoding::protobuf::encode(&self.registry).unwrap();
 
         let elapsed = chrono::Duration::from_std(self.local_start_time.elapsed())
             .expect("Durations are small");

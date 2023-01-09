@@ -9,7 +9,6 @@ use libp2p::swarm::SwarmEvent;
 use libp2p::PeerId;
 use libp2p::Swarm;
 use npg::Generator;
-use prometheus_client::encoding::proto::EncodeMetric;
 use prometheus_client::registry::Registry;
 use rand::Rng;
 use std::collections::HashMap;
@@ -36,7 +35,7 @@ pub struct Network {
     /// This nodes contact info.
     instance_info: InstanceInfo,
     /// Metrics registry.
-    registry: Registry<Box<dyn EncodeMetric>>,
+    registry: Registry,
     /// Information of every other participant in the network, indexed by their (local to the test
     /// run) node_id.
     participants: HashMap<usize, InstanceInfo>,
