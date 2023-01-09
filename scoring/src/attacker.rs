@@ -119,10 +119,8 @@ fn build_swarm(keypair: Keypair) -> Swarm<MaliciousBehaviour> {
 fn build_transport(
     keypair: &Keypair,
 ) -> libp2p_testground::core::transport::Boxed<(PeerId, StreamMuxerBox)> {
-    let transport = TokioDnsConfig::system(TcpTransport::new(
-        TcpConfig::default().nodelay(true),
-    ))
-    .expect("DNS config");
+    let transport = TokioDnsConfig::system(TcpTransport::new(TcpConfig::default().nodelay(true)))
+        .expect("DNS config");
 
     let noise_keys = libp2p_testground::noise::Keypair::<X25519Spec>::new()
         .into_authentic(keypair)

@@ -214,10 +214,8 @@ pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>
 
 /// Set up an encrypted TCP transport over the Mplex and Yamux protocols.
 fn build_transport(keypair: &Keypair) -> libp2p::core::transport::Boxed<(PeerId, StreamMuxerBox)> {
-    let transport = TokioDnsConfig::system(TcpTransport::new(
-        TcpConfig::default().nodelay(true),
-    ))
-    .expect("DNS config");
+    let transport = TokioDnsConfig::system(TcpTransport::new(TcpConfig::default().nodelay(true)))
+        .expect("DNS config");
 
     let noise_keys = libp2p::noise::Keypair::<libp2p::noise::X25519Spec>::new()
         .into_authentic(keypair)
@@ -501,11 +499,7 @@ impl Network {
         Ok(())
     }
 
-    async fn run_sim(
-        &mut self,
-        run_duration: Duration,
-        registry: &Registry,
-    ) {
+    async fn run_sim(&mut self, run_duration: Duration, registry: &Registry) {
         let deadline = tokio::time::sleep(run_duration);
 
         futures::pin_mut!(deadline);
