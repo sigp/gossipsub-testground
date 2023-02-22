@@ -10,10 +10,17 @@ chrono = { version = "0.4.19", default-features = false, features = ["clock"] }
 delay_map = "0.1.1"
 futures = "0.3.24"
 gen_topology = { git = "https://github.com/sigp/gossipsub-testground", rev = "4084d26b9210bc932f4aaa45f9506ecfe5f2bb04" }
-# TODO: update libp2p once the next version has been released.
-libp2p = { git = "https://github.com/libp2p/rust-libp2p.git", rev = "26215286391cc277270d6bbc88d3b2fc0de54c7d", default-features = false, features = ["gossipsub", "dns", "tcp", "tokio", "noise", "mplex", "yamux", "serde"] }
+
+# TODO: Update libp2p once the next version, which includes prometheus-client v0.20, has been released.
+# See https://github.com/ackintosh/rust-libp2p/commit/df09870c8c2294cbaeb881f58d4f9752125562bc
+libp2p = { git = "https://github.com/ackintosh/rust-libp2p.git", branch = "prometheus-client-0.20.0", default-features = false, features = ["gossipsub", "dns", "tcp", "tokio", "noise", "mplex", "yamux", "serde"] }
+
 npg = { git = "https://github.com/sigp/eth-npg", rev = "6118cdd63eb34ffa4b230d17e88c8adf7057e138" }
-prometheus-client = { version = "0.19.0", features = ["protobuf"] }
+
+# TODO: Update prometheus-client once the next version, which includes the fix, has been released.
+# See https://github.com/prometheus/client_rust/pull/123
+prometheus-client = { git = "https://github.com/ackintosh/client_rust.git", branch = "fix/protobuf-labels", features = ["protobuf"] }
+
 prost = "0.11"
 rand = "0.8.5"
 serde_json = "1.0"

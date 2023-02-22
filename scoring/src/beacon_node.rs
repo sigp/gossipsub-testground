@@ -13,12 +13,12 @@ use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::upgrade::{SelectUpgrade, Version};
 use libp2p::dns::TokioDnsConfig;
 use libp2p::futures::StreamExt;
-use libp2p::gossipsub::error::PublishError;
 use libp2p::gossipsub::metrics::Config;
 use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
 use libp2p::gossipsub::{
-    FastMessageId, Gossipsub, GossipsubConfigBuilder, GossipsubEvent, GossipsubMessage, IdentTopic,
-    IdentityTransform, MessageAuthenticity, MessageId, RawGossipsubMessage, ValidationMode,
+    Behaviour, ConfigBuilder, Event, FastMessageId, IdentTopic, IdentityTransform,
+    Message as GossipsubMessage, MessageAuthenticity, MessageId, PublishError, RawMessage,
+    ValidationMode,
 };
 use libp2p::identity::Keypair;
 use libp2p::mplex::MplexConfig;
@@ -274,7 +274,7 @@ struct RecordMetricsInfo {
 }
 
 pub(crate) struct Network {
-    swarm: Swarm<Gossipsub>,
+    swarm: Swarm<Behaviour>,
     node_id: usize,
     beacon_node_info: BeaconNodeInfo,
     participants: HashMap<usize, BeaconNodeInfo>,
@@ -310,11 +310,10 @@ impl Network {
                         [..20],
                 )
             };
-            let fast_gossip_message_id = |message: &RawGossipsubMessage| {
-                FastMessageId::from(&Sha256::digest(&message.data)[..8])
-            };
+            let fast_gossip_message_id =
+                |message: &RawMessage| FastMessageId::from(&Sha256::digest(&message.data)[..8]);
 
-            let gossipsub_config = GossipsubConfigBuilder::default()
+            let gossipsub_config = ConfigBuilder::default()
                 // Following params are set based on lighthouse.
                 .max_transmit_size(10 * 1_048_576) // 10M
                 .prune_backoff(Duration::from_secs(PRUNE_BACKOFF))
@@ -338,7 +337,7 @@ impl Network {
                 .build()
                 .expect("Valid gossipsub configuration");
 
-            let mut gs = Gossipsub::new_with_subscription_filter_and_transform(
+            let mut gs = Behaviour::new_with_subscription_filter_and_transform(
                 MessageAuthenticity::Anonymous,
                 gossipsub_config,
                 Some((registry, Config::default())),
@@ -583,9 +582,9 @@ impl Network {
         self.swarm.behaviour_mut().publish(ident_topic, msg)
     }
 
-    fn handle_gossipsub_event(&mut self, event: GossipsubEvent) {
+    fn handle_gossipsub_event(&mut self, event: Event) {
         match event {
-            GossipsubEvent::Message {
+            Event::Message {
                 propagation_source: _,
                 message_id: _,
                 message,
