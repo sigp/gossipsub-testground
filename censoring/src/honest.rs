@@ -11,7 +11,7 @@ use libp2p::futures::StreamExt;
 use libp2p::gossipsub::metrics::Config;
 use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
 use libp2p::gossipsub::{
-    Gossipsub, GossipsubConfigBuilder, IdentTopic, IdentityTransform, MessageAuthenticity,
+    Behaviour, ConfigBuilder, IdentTopic, IdentityTransform, MessageAuthenticity,
     PeerScoreParams, PeerScoreThresholds, Topic, TopicScoreParams,
 };
 use libp2p::identity::Keypair;
@@ -281,7 +281,7 @@ enum PublishState {
 }
 
 pub(crate) struct HonestNetwork {
-    swarm: Swarm<Gossipsub>,
+    swarm: Swarm<Behaviour>,
     instance_info: InstanceInfo,
     participants: HashMap<PeerId, String>,
     client: Client,
@@ -305,13 +305,13 @@ impl HonestNetwork {
         recv: UnboundedReceiver<HonestMessage>,
     ) -> Self {
         let gossipsub = {
-            let gossipsub_config = GossipsubConfigBuilder::default()
+            let gossipsub_config = ConfigBuilder::default()
                 .prune_backoff(Duration::from_secs(PRUNE_BACKOFF))
                 .history_length(12)
                 .build()
                 .expect("Valid configuration");
 
-            let mut gs = Gossipsub::new_with_subscription_filter_and_transform(
+            let mut gs = Behaviour::new_with_subscription_filter_and_transform(
                 MessageAuthenticity::Signed(keypair.clone()),
                 gossipsub_config,
                 Some((registry, Config::default())),
