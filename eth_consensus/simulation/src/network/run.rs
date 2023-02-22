@@ -1,6 +1,5 @@
 use crate::utils::{record_instance_info, BARRIER_LIBP2P_READY, BARRIER_TOPOLOGY_READY};
 use crate::InstanceInfo;
-use chrono::{DateTime, Utc};
 use futures::stream::FuturesUnordered;
 use gen_topology::Params;
 use libp2p::core::muxing::StreamMuxerBox;
@@ -282,10 +281,10 @@ impl Network {
             .build(validator_set)
             .expect("need to adjust these params");
 
-        let start_time: DateTime<Utc> =
-            DateTime::parse_from_rfc3339(&client.run_parameters().test_start_time)
-                .expect("Correct time date format from testground")
-                .into();
+        let start_time = client.run_parameters().test_start_time;
+        // DateTime::parse_from_rfc3339(&client.run_parameters().test_start_time)
+        //     .expect("Correct time date format from testground")
+        //     .into();
         let local_start_time = Instant::now();
 
         Network {

@@ -27,7 +27,8 @@ serde_json = "1.0"
 serde = "1.0"
 sha2 = "0.10"
 slot_clock = { git = "https://github.com/divagant-martian/lighthouse", branch = "sizes" }
-testground = "0.4.0"
+# TODO: Update testground once the next version(v0.5.0).
+testground = { git = "https://github.com/testground/sdk-rust.git", rev = "1fd032ec29361a00b25c0c8a6bac5f19a43019eb" }
 tokio = { version = "1.21.2", features = ["macros"] }
 tracing = "0.1.35"
 tracing-subscriber = { version = "0.3.14", features = ["env-filter"] }

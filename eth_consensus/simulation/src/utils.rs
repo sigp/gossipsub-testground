@@ -1,5 +1,5 @@
 use crate::InstanceInfo;
-use chrono::{DateTime, Local, Utc};
+use chrono::{DateTime, FixedOffset, Local};
 use libp2p::futures::StreamExt;
 use libp2p::PeerId;
 use prometheus_client::encoding::protobuf::openmetrics_data_model::counter_value;
@@ -54,7 +54,7 @@ pub(crate) async fn publish_and_collect<T: Serialize + DeserializeOwned>(
 
 /// Create InfluxDB queries for Counter metrics.
 pub(crate) fn queries_for_counter(
-    datetime: &DateTime<Utc>,
+    datetime: &DateTime<FixedOffset>,
     family: &MetricFamily,
     node_id: usize,
     instance_info: &InstanceInfo,
@@ -84,7 +84,7 @@ pub(crate) fn queries_for_counter(
 
 /// Create InfluxDB queries for Counter metrics.
 pub(crate) fn initialise_counter(
-    datetime: &DateTime<Utc>,
+    datetime: &DateTime<FixedOffset>,
     name: String,
     hash: String,
     node_id: usize,
@@ -102,7 +102,7 @@ pub(crate) fn initialise_counter(
 /// Create InfluxDB queries joining counter metrics
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn queries_for_counter_join(
-    datetime: &DateTime<Utc>,
+    datetime: &DateTime<FixedOffset>,
     family1: &MetricFamily,
     family2: &MetricFamily,
     name: &str,
@@ -159,7 +159,7 @@ pub(crate) fn queries_for_counter_join(
 
 /// Create InfluxDB queries for Gauge metrics.
 pub(crate) fn queries_for_gauge(
-    datetime: &DateTime<Utc>,
+    datetime: &DateTime<FixedOffset>,
     family: &MetricFamily,
     node_id: usize,
     instance_info: &InstanceInfo,
@@ -190,7 +190,7 @@ pub(crate) fn queries_for_gauge(
 
 /// Create InfluxDB queries for Histogram metrics.
 pub(crate) fn queries_for_histogram(
-    datetime: &DateTime<Utc>,
+    datetime: &DateTime<FixedOffset>,
     family: &MetricFamily,
     node_id: usize,
     instance_info: &InstanceInfo,

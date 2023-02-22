@@ -3,7 +3,7 @@ use crate::utils::{
     queries_for_histogram,
 };
 use crate::InstanceInfo;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, FixedOffset};
 use libp2p::gossipsub::IdentTopic;
 use prometheus_client::encoding::protobuf::openmetrics_data_model::MetricSet;
 use std::sync::Arc;
@@ -21,7 +21,7 @@ pub(crate) struct RecordMetricsInfo {
     metrics: MetricSet,
     node_id: usize,
     instance_info: InstanceInfo,
-    current: DateTime<Utc>,
+    current: DateTime<FixedOffset>,
 }
 
 impl Network {

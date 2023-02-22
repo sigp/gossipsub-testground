@@ -1,5 +1,5 @@
 use crate::InstanceInfo;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, FixedOffset};
 use futures::stream::FuturesUnordered;
 use libp2p::gossipsub::{
     Behaviour, Event, HandlerError, IdentTopic, MessageId, Topic as GossipTopic,
@@ -41,7 +41,7 @@ pub struct Network {
     /// Testground client.
     client: Arc<Client>,
     /// Chronos time reported by testground as the start of the test run.
-    start_time: DateTime<Utc>,
+    start_time: DateTime<FixedOffset>,
     /// Instant in which the simmulation starts running, according to the local time.
     local_start_time: Instant,
     /// How often metrics are recorded.

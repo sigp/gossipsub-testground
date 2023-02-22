@@ -3,7 +3,7 @@ use crate::utils::{
     BARRIER_DONE, BARRIER_STARTED_LIBP2P, BARRIER_WARMUP,
 };
 use crate::{InstanceInfo, Role};
-use chrono::{DateTime, Local, Utc};
+use chrono::Local;
 use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::upgrade::{SelectUpgrade, Version};
 use libp2p::dns::TokioDnsConfig;
@@ -11,8 +11,8 @@ use libp2p::futures::StreamExt;
 use libp2p::gossipsub::metrics::Config;
 use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
 use libp2p::gossipsub::{
-    Behaviour, ConfigBuilder, IdentTopic, IdentityTransform, MessageAuthenticity,
-    PeerScoreParams, PeerScoreThresholds, Topic, TopicScoreParams,
+    Behaviour, ConfigBuilder, IdentTopic, IdentityTransform, MessageAuthenticity, PeerScoreParams,
+    PeerScoreThresholds, Topic, TopicScoreParams,
 };
 use libp2p::identity::Keypair;
 use libp2p::mplex::MplexConfig;
@@ -161,38 +161,56 @@ pub(crate) async fn run(
     // The `test_start_time` is used as the timestamp of metrics instead of local time of each
     // instance so the timestamps between metrics of each instance are aligned.
     // This is helpful when we want to sort metrics by something not timestamp(e.g. instance_name).
-    let test_start_time: DateTime<Utc> =
-        DateTime::parse_from_rfc3339(&client.run_parameters().test_start_time)?.into();
-
     for family in metric_set.metric_families.iter() {
         let q = match family.name.as_str() {
             // ///////////////////////////////////
             // Metrics per known topic
             // ///////////////////////////////////
-            "topic_subscription_status" => {
-                queries_for_gauge(&test_start_time, family, &instance_info, run_id, "status")
-            }
-            "topic_peers_counts" => {
-                queries_for_gauge(&test_start_time, family, &instance_info, run_id, "count")
-            }
+            "topic_subscription_status" => queries_for_gauge(
+                &client.run_parameters().test_start_time,
+                family,
+                &instance_info,
+                run_id,
+                "status",
+            ),
+            "topic_peers_counts" => queries_for_gauge(
+                &client.run_parameters().test_start_time,
+                family,
+                &instance_info,
+                run_id,
+                "count",
+            ),
             "invalid_messages_per_topic"
             | "accepted_messages_per_topic"
             | "ignored_messages_per_topic"
-            | "rejected_messages_per_topic" => {
-                queries_for_counter(&test_start_time, family, &instance_info, run_id)
-            }
+            | "rejected_messages_per_topic" => queries_for_counter(
+                &client.run_parameters().test_start_time,
+                family,
+                &instance_info,
+                run_id,
+            ),
             // ///////////////////////////////////
             // Metrics regarding mesh state
             // ///////////////////////////////////
-            "mesh_peer_counts" => {
-                queries_for_gauge(&test_start_time, family, &instance_info, run_id, "count")
-            }
-            "mesh_peer_inclusion_events" => {
-                queries_for_counter(&test_start_time, family, &instance_info, run_id)
-            }
-            "mesh_peer_churn_events" => {
-                queries_for_counter(&test_start_time, family, &instance_info, run_id)
-            }
+            "mesh_peer_counts" => queries_for_gauge(
+                &client.run_parameters().test_start_time,
+                family,
+                &instance_info,
+                run_id,
+                "count",
+            ),
+            "mesh_peer_inclusion_events" => queries_for_counter(
+                &client.run_parameters().test_start_time,
+                family,
+                &instance_info,
+                run_id,
+            ),
+            "mesh_peer_churn_events" => queries_for_counter(
+                &client.run_parameters().test_start_time,
+                family,
+                &instance_info,
+                run_id,
+            ),
             // ///////////////////////////////////
             // Metrics regarding messages sent/received
             // ///////////////////////////////////
@@ -201,36 +219,58 @@ pub(crate) async fn run(
             | "topic_msg_sent_bytes"
             | "topic_msg_recv_counts_unfiltered"
             | "topic_msg_recv_counts"
-            | "topic_msg_recv_bytes" => {
-                queries_for_counter(&test_start_time, family, &instance_info, run_id)
-            }
+            | "topic_msg_recv_bytes" => queries_for_counter(
+                &client.run_parameters().test_start_time,
+                family,
+                &instance_info,
+                run_id,
+            ),
             // ///////////////////////////////////
             // Metrics related to scoring
             // ///////////////////////////////////
-            "score_per_mesh" => {
-                queries_for_histogram(&test_start_time, family, &instance_info, run_id)
-            }
-            "scoring_penalties" => {
-                queries_for_counter(&test_start_time, family, &instance_info, run_id)
-            }
+            "score_per_mesh" => queries_for_histogram(
+                &client.run_parameters().test_start_time,
+                family,
+                &instance_info,
+                run_id,
+            ),
+            "scoring_penalties" => queries_for_counter(
+                &client.run_parameters().test_start_time,
+                family,
+                &instance_info,
+                run_id,
+            ),
             // ///////////////////////////////////
             // General Metrics
             // ///////////////////////////////////
-            "peers_per_protocol" => {
-                queries_for_gauge(&test_start_time, family, &instance_info, run_id, "peers")
-            }
-            "heartbeat_duration" => {
-                queries_for_histogram(&test_start_time, family, &instance_info, run_id)
-            }
+            "peers_per_protocol" => queries_for_gauge(
+                &client.run_parameters().test_start_time,
+                family,
+                &instance_info,
+                run_id,
+                "peers",
+            ),
+            "heartbeat_duration" => queries_for_histogram(
+                &client.run_parameters().test_start_time,
+                family,
+                &instance_info,
+                run_id,
+            ),
             // ///////////////////////////////////
             // Performance metrics
             // ///////////////////////////////////
-            "topic_iwant_msgs" => {
-                queries_for_counter(&test_start_time, family, &instance_info, run_id)
-            }
-            "memcache_misses" => {
-                queries_for_counter(&test_start_time, family, &instance_info, run_id)
-            }
+            "topic_iwant_msgs" => queries_for_counter(
+                &client.run_parameters().test_start_time,
+                family,
+                &instance_info,
+                run_id,
+            ),
+            "memcache_misses" => queries_for_counter(
+                &client.run_parameters().test_start_time,
+                family,
+                &instance_info,
+                run_id,
+            ),
             _ => unreachable!(),
         };
 

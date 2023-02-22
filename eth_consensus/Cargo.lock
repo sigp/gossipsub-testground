@@ -4268,10 +4268,10 @@ dependencies = [
 
 [[package]]
 name = "testground"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a83adf43990b4ebb757e826cba56b0bc6a09132f960dc981978cd5a011b7697f"
+version = "0.5.0"
+source = "git+https://github.com/testground/sdk-rust.git?rev=1fd032ec29361a00b25c0c8a6bac5f19a43019eb#1fd032ec29361a00b25c0c8a6bac5f19a43019eb"
 dependencies = [
+ "chrono",
  "clap 3.2.23",
  "futures",
  "if-addrs",
