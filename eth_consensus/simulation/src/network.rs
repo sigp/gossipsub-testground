@@ -2,8 +2,7 @@ use crate::InstanceInfo;
 use chrono::{DateTime, Utc};
 use futures::stream::FuturesUnordered;
 use libp2p::gossipsub::{
-    error::GossipsubHandlerError, Gossipsub, GossipsubEvent, IdentTopic, MessageId,
-    Topic as GossipTopic,
+    Behaviour, Event, HandlerError, IdentTopic, MessageId, Topic as GossipTopic,
 };
 use libp2p::swarm::SwarmEvent;
 use libp2p::PeerId;
@@ -29,7 +28,7 @@ use run::{ATTESTATION_SUBNETS, SYNC_SUBNETS};
 /// Main struct to run the simulation.
 pub struct Network {
     /// Libp2p2 swarm.
-    swarm: Swarm<Gossipsub>,
+    swarm: Swarm<Behaviour>,
     /// Node id for this node, local to the test run.
     node_id: usize,
     /// This nodes contact info.
@@ -119,7 +118,7 @@ impl Network {
         topic: Topic,
         validator: u64,
         mut payload: Vec<u8>,
-    ) -> Result<libp2p::gossipsub::MessageId, libp2p::gossipsub::error::PublishError> {
+    ) -> Result<libp2p::gossipsub::MessageId, libp2p::gossipsub::PublishError> {
         // Plain binary as messages, coupled with the validator
         payload.append(&mut validator.to_be_bytes().to_vec());
 
@@ -136,9 +135,9 @@ impl Network {
     }
 
     // An inbound event or swarm event gets sent here
-    fn handle_swarm_event(&mut self, event: SwarmEvent<GossipsubEvent, GossipsubHandlerError>) {
+    fn handle_swarm_event(&mut self, event: SwarmEvent<Event, HandlerError>) {
         match event {
-            SwarmEvent::Behaviour(GossipsubEvent::Message {
+            SwarmEvent::Behaviour(Event::Message {
                 propagation_source,
                 message_id,
                 message,
