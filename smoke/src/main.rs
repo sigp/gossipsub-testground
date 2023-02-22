@@ -8,15 +8,15 @@ use libp2p::futures::FutureExt;
 use libp2p::futures::StreamExt;
 use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
 use libp2p::gossipsub::{
-    Gossipsub, GossipsubConfigBuilder, GossipsubEvent, IdentTopic as Topic, IdentityTransform,
-    MessageAuthenticity,
+    Behaviour, ConfigBuilder, Event, IdentTopic as Topic, IdentityTransform, MessageAuthenticity,
 };
 use libp2p::identity::Keypair;
 use libp2p::mplex::MplexConfig;
 use libp2p::multiaddr::Protocol;
 use libp2p::noise::NoiseConfig;
 use libp2p::swarm::{SwarmBuilder, SwarmEvent};
-use libp2p::tcp::{GenTcpConfig, TokioTcpTransport};
+use libp2p::tcp::tokio::Transport as TcpTransport;
+use libp2p::tcp::Config as TcpConfig;
 use libp2p::yamux::YamuxConfig;
 use libp2p::{Multiaddr, PeerId, Swarm, Transport};
 use rand::seq::SliceRandom;
@@ -50,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ////////////////////////////////////////////////////////////////////////
     let mut swarm = {
         // Build a Gossipsub network behaviour.
-        let gossipsub_config = GossipsubConfigBuilder::default()
+        let gossipsub_config = ConfigBuilder::default()
             .history_length(
                 client
                     .run_parameters()
@@ -61,7 +61,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             )
             .build()
             .expect("Valid configuration");
-        let gossipsub = Gossipsub::new_with_subscription_filter_and_transform(
+        let gossipsub = Behaviour::new_with_subscription_filter_and_transform(
             MessageAuthenticity::Signed(local_key.clone()),
             gossipsub_config,
             None,
@@ -70,10 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .expect("Valid configuration");
 
-        SwarmBuilder::new(build_transport(&local_key), gossipsub, local_peer_id)
-            .executor(Box::new(|future| {
-                tokio::spawn(future);
-            }))
+        SwarmBuilder::with_tokio_executor(build_transport(&local_key), gossipsub, local_peer_id)
             .build()
     };
 
@@ -164,7 +161,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         loop {
             match swarm.select_next_some().await {
                 SwarmEvent::Behaviour(gossipsub_event) => match gossipsub_event {
-                    GossipsubEvent::Subscribed { peer_id, topic } => {
+                    Event::Subscribed { peer_id, topic } => {
                         client.record_message(format!(
                             "Peer {} subscribed to a topic: {}",
                             peer_id, topic
@@ -210,7 +207,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         loop {
             match swarm.select_next_some().await {
                 SwarmEvent::Behaviour(gossipsub_event) => match gossipsub_event {
-                    GossipsubEvent::Message {
+                    Event::Message {
                         propagation_source,
                         message_id: _,
                         message,
@@ -261,10 +258,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 // Set up an encrypted TCP transport over the Mplex and Yamux protocols.
 fn build_transport(keypair: &Keypair) -> libp2p::core::transport::Boxed<(PeerId, StreamMuxerBox)> {
-    let transport = TokioDnsConfig::system(TokioTcpTransport::new(
-        GenTcpConfig::default().nodelay(true),
-    ))
-    .expect("DNS config");
+    let transport = TokioDnsConfig::system(TcpTransport::new(TcpConfig::default().nodelay(true)))
+        .expect("DNS config");
 
     let noise_keys = libp2p::noise::Keypair::<libp2p::noise::X25519Spec>::new()
         .into_authentic(keypair)
@@ -320,7 +315,7 @@ async fn publish_and_collect<T: Serialize + DeserializeOwned>(
 /// Sets a barrier on the supplied state that fires when it reaches all participants.
 async fn barrier_and_drive_swarm(
     client: &Client,
-    swarm: &mut Swarm<Gossipsub>,
+    swarm: &mut Swarm<Behaviour>,
     state: impl Into<Cow<'static, str>> + Copy,
     event_subscribed: &mut usize,
     event_message: &mut HashSet<PeerId>,
@@ -342,14 +337,14 @@ async fn barrier_and_drive_swarm(
     for event in &events {
         match event {
             SwarmEvent::Behaviour(gossipsub_event) => match gossipsub_event {
-                GossipsubEvent::Subscribed { peer_id, topic } => {
+                Event::Subscribed { peer_id, topic } => {
                     client.record_message(format!(
                         "Peer {} subscribed to a topic: {}",
                         peer_id, topic
                     ));
                     *event_subscribed += 1;
                 }
-                GossipsubEvent::Message {
+                Event::Message {
                     propagation_source,
                     message_id: _,
                     message,

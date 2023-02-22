@@ -6,7 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-libp2p = { version = "0.48.0", default-features = false, features = ["gossipsub", "dns-tokio", "tcp-tokio", "noise", "mplex", "yamux"] }
+# TODO: Update libp2p once the next version, which includes prometheus-client v0.20, has been released.
+# See https://github.com/ackintosh/rust-libp2p/commit/df09870c8c2294cbaeb881f58d4f9752125562bc
+libp2p = { git = "https://github.com/ackintosh/rust-libp2p.git", branch = "prometheus-client-0.20.0", default-features = false, features = ["gossipsub", "dns", "tcp", "tokio", "noise", "mplex", "yamux", "serde"] }
 rand = "0.8.5"
 serde = "1.0.137"
 serde_json = "1.0.81"
