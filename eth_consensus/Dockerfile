@@ -1,5 +1,5 @@
 # Get chef
-FROM rust:1.65-bullseye as chef
+FROM rust:1.67-bullseye as chef
 WORKDIR test-plan
 RUN cargo install cargo-chef
 

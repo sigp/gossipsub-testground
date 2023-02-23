@@ -1,6 +1,6 @@
 # This Dockerfile is for the `docker:generic` builder.
 # See https://docs.testground.ai/builder-library/docker-generic for details about the builder.
-FROM rust:1.65-bullseye as builder
+FROM rust:1.67-bullseye as builder
 WORKDIR /usr/src/test-plan
 
 # * `prost-build`, a dependency of `libp2p-gossipsub`, requires cmake.
