@@ -17,4 +17,7 @@ grafana.ini:
 sidecar:
   dashboards:
     enabled: true
+    folderAnnotation: grafana_dashboard_folder
+    provider:
+      foldersFromFilesStructure: true
 
