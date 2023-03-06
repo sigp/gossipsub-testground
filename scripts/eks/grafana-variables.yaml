@@ -1,0 +1,23 @@
+# https://github.com/grafana/helm-charts/blob/main/charts/grafana/README.md#configuration
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+    - name: InfluxDB
+      type: influxdb
+      access: proxy
+      url: http://influxdb.default.svc.cluster.local:8086
+      database: testground
+      uid: ds_influxdb
+      isDefault: true
+grafana.ini:
+  auth.anonymous:
+    enabled: true
+    org_role: Admin
+sidecar:
+  dashboards:
+    enabled: true
+    folderAnnotation: grafana_dashboard_folder
+    provider:
+      foldersFromFilesStructure: true
+
