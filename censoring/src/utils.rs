@@ -1,13 +1,13 @@
 use crate::InstanceInfo;
-use chrono::{DateTime, Local, Utc};
+use chrono::{DateTime, FixedOffset, Local};
 use libp2p::futures::FutureExt;
 use libp2p::futures::{Stream, StreamExt};
-use prometheus_client::encoding::proto::openmetrics_data_model::counter_value;
-use prometheus_client::encoding::proto::openmetrics_data_model::gauge_value;
-use prometheus_client::encoding::proto::openmetrics_data_model::metric_point;
-use prometheus_client::encoding::proto::openmetrics_data_model::Metric;
-use prometheus_client::encoding::proto::openmetrics_data_model::MetricFamily;
-use prometheus_client::encoding::proto::HistogramValue;
+use prometheus_client::encoding::protobuf::openmetrics_data_model::counter_value;
+use prometheus_client::encoding::protobuf::openmetrics_data_model::gauge_value;
+use prometheus_client::encoding::protobuf::openmetrics_data_model::metric_point;
+use prometheus_client::encoding::protobuf::openmetrics_data_model::HistogramValue;
+use prometheus_client::encoding::protobuf::openmetrics_data_model::Metric;
+use prometheus_client::encoding::protobuf::openmetrics_data_model::MetricFamily;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::Value;
@@ -93,7 +93,7 @@ where
 
 /// Create InfluxDB queries for Counter metrics.
 pub(crate) fn queries_for_counter(
-    datetime: &DateTime<Utc>,
+    datetime: &DateTime<FixedOffset>,
     family: &MetricFamily,
     instance_info: &InstanceInfo,
     run_id: &str,
@@ -122,7 +122,7 @@ pub(crate) fn queries_for_counter(
 
 /// Create InfluxDB queries for Gauge metrics.
 pub(crate) fn queries_for_gauge(
-    datetime: &DateTime<Utc>,
+    datetime: &DateTime<FixedOffset>,
     family: &MetricFamily,
     instance_info: &InstanceInfo,
     run_id: &str,
@@ -152,7 +152,7 @@ pub(crate) fn queries_for_gauge(
 
 /// Create InfluxDB queries for Histogram metrics.
 pub(crate) fn queries_for_histogram(
-    datetime: &DateTime<Utc>,
+    datetime: &DateTime<FixedOffset>,
     family: &MetricFamily,
     instance_info: &InstanceInfo,
     run_id: &str,

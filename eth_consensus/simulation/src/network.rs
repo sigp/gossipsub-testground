@@ -1,15 +1,13 @@
 use crate::InstanceInfo;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, FixedOffset};
 use futures::stream::FuturesUnordered;
 use libp2p::gossipsub::{
-    error::GossipsubHandlerError, Gossipsub, GossipsubEvent, IdentTopic, MessageId,
-    Topic as GossipTopic,
+    Behaviour, Event, HandlerError, IdentTopic, MessageId, Topic as GossipTopic,
 };
 use libp2p::swarm::SwarmEvent;
 use libp2p::PeerId;
 use libp2p::Swarm;
 use npg::Generator;
-use prometheus_client::encoding::proto::EncodeMetric;
 use prometheus_client::registry::Registry;
 use rand::Rng;
 use std::collections::HashMap;
@@ -30,20 +28,20 @@ use run::{ATTESTATION_SUBNETS, SYNC_SUBNETS};
 /// Main struct to run the simulation.
 pub struct Network {
     /// Libp2p2 swarm.
-    swarm: Swarm<Gossipsub>,
+    swarm: Swarm<Behaviour>,
     /// Node id for this node, local to the test run.
     node_id: usize,
     /// This nodes contact info.
     instance_info: InstanceInfo,
     /// Metrics registry.
-    registry: Registry<Box<dyn EncodeMetric>>,
+    registry: Registry,
     /// Information of every other participant in the network, indexed by their (local to the test
     /// run) node_id.
     participants: HashMap<usize, InstanceInfo>,
     /// Testground client.
     client: Arc<Client>,
     /// Chronos time reported by testground as the start of the test run.
-    start_time: DateTime<Utc>,
+    start_time: DateTime<FixedOffset>,
     /// Instant in which the simmulation starts running, according to the local time.
     local_start_time: Instant,
     /// How often metrics are recorded.
@@ -120,7 +118,7 @@ impl Network {
         topic: Topic,
         validator: u64,
         mut payload: Vec<u8>,
-    ) -> Result<libp2p::gossipsub::MessageId, libp2p::gossipsub::error::PublishError> {
+    ) -> Result<libp2p::gossipsub::MessageId, libp2p::gossipsub::PublishError> {
         // Plain binary as messages, coupled with the validator
         payload.append(&mut validator.to_be_bytes().to_vec());
 
@@ -137,9 +135,9 @@ impl Network {
     }
 
     // An inbound event or swarm event gets sent here
-    fn handle_swarm_event(&mut self, event: SwarmEvent<GossipsubEvent, GossipsubHandlerError>) {
+    fn handle_swarm_event(&mut self, event: SwarmEvent<Event, HandlerError>) {
         match event {
-            SwarmEvent::Behaviour(GossipsubEvent::Message {
+            SwarmEvent::Behaviour(Event::Message {
                 propagation_source,
                 message_id,
                 message,

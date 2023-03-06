@@ -1,6 +1,5 @@
 use crate::utils::{record_instance_info, BARRIER_LIBP2P_READY, BARRIER_TOPOLOGY_READY};
 use crate::InstanceInfo;
-use chrono::{DateTime, Utc};
 use futures::stream::FuturesUnordered;
 use gen_topology::Params;
 use libp2p::core::muxing::StreamMuxerBox;
@@ -10,22 +9,24 @@ use libp2p::futures::StreamExt;
 use libp2p::gossipsub::metrics::Config;
 use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
 use libp2p::gossipsub::{
-    Gossipsub, GossipsubConfigBuilder, GossipsubMessage, IdentityTransform, MessageAuthenticity,
+    Behaviour, ConfigBuilder, IdentityTransform, Message as GossipsubMessage, MessageAuthenticity,
     MessageId, PeerScoreParams, PeerScoreThresholds, ValidationMode,
 };
 use libp2p::identity::Keypair;
 use libp2p::mplex::MplexConfig;
 use libp2p::noise::NoiseConfig;
 use libp2p::swarm::{SwarmBuilder, SwarmEvent};
-use libp2p::tcp::{GenTcpConfig, TokioTcpTransport};
+use libp2p::tcp::tokio::Transport as TcpTransport;
+use libp2p::tcp::Config as TcpConfig;
 use libp2p::yamux::YamuxConfig;
 use libp2p::PeerId;
 use libp2p::Transport;
 use npg::slot_generator::{Subnet, ValId};
 use npg::Generator;
 use npg::Message;
-use prometheus_client::encoding::proto::EncodeMetric;
 use prometheus_client::registry::Registry;
+use rand::rngs::SmallRng;
+use rand::SeedableRng;
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -90,14 +91,14 @@ pub(crate) fn parse_params(
 }
 
 // Sets up the gossipsub configuration to be used in the simulation.
-pub fn setup_gossipsub(registry: &mut Registry<Box<dyn EncodeMetric>>) -> Gossipsub {
+pub fn setup_gossipsub(registry: &mut Registry) -> Behaviour {
     let gossip_message_id = move |message: &GossipsubMessage| {
         MessageId::from(
             &Sha256::digest([message.topic.as_str().as_bytes(), &message.data].concat())[..20],
         )
     };
 
-    let gossipsub_config = GossipsubConfigBuilder::default()
+    let gossipsub_config = ConfigBuilder::default()
         .max_transmit_size(10 * 1_048_576) // gossip_max_size(true)
         // .heartbeat_interval(Duration::from_secs(1))
         .prune_backoff(Duration::from_secs(60))
@@ -117,7 +118,7 @@ pub fn setup_gossipsub(registry: &mut Registry<Box<dyn EncodeMetric>>) -> Gossip
         .build()
         .expect("valid gossipsub configuration");
 
-    let mut gs = Gossipsub::new_with_subscription_filter_and_transform(
+    let mut gs = Behaviour::new_with_subscription_filter_and_transform(
         MessageAuthenticity::Anonymous,
         gossipsub_config,
         Some((registry, Config::default())),
@@ -171,7 +172,7 @@ pub(crate) async fn run(
     )
     .await?;
 
-    let registry: Registry<Box<dyn EncodeMetric>> = Registry::default();
+    let registry = Registry::default();
     let mut network = Network::new(
         registry,
         keypair,
@@ -216,10 +217,8 @@ pub(crate) async fn run(
 pub fn build_transport(
     keypair: &Keypair,
 ) -> libp2p::core::transport::Boxed<(PeerId, StreamMuxerBox)> {
-    let transport = TokioDnsConfig::system(TokioTcpTransport::new(
-        GenTcpConfig::default().nodelay(true),
-    ))
-    .expect("DNS config");
+    let transport = TokioDnsConfig::system(TcpTransport::new(TcpConfig::default().nodelay(true)))
+        .expect("DNS config");
 
     let noise_keys = libp2p::noise::Keypair::<libp2p::noise::X25519Spec>::new()
         .into_authentic(keypair)
@@ -240,7 +239,7 @@ impl Network {
     // Sets up initial conditions and configuration
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
-        mut registry: Registry<Box<dyn EncodeMetric>>,
+        mut registry: Registry,
         keypair: Keypair,
         node_id: usize,
         instance_info: InstanceInfo,
@@ -251,14 +250,11 @@ impl Network {
     ) -> Self {
         let gossipsub = setup_gossipsub(&mut registry);
 
-        let swarm = SwarmBuilder::new(
+        let swarm = SwarmBuilder::with_tokio_executor(
             build_transport(&keypair),
             gossipsub,
             PeerId::from(keypair.public()),
         )
-        .executor(Box::new(|future| {
-            tokio::spawn(future);
-        }))
         .build();
 
         info!(
@@ -285,10 +281,10 @@ impl Network {
             .build(validator_set)
             .expect("need to adjust these params");
 
-        let start_time: DateTime<Utc> =
-            DateTime::parse_from_rfc3339(&client.run_parameters().test_start_time)
-                .expect("Correct time date format from testground")
-                .into();
+        let start_time = client.run_parameters().test_start_time;
+        // DateTime::parse_from_rfc3339(&client.run_parameters().test_start_time)
+        //     .expect("Correct time date format from testground")
+        //     .into();
         let local_start_time = Instant::now();
 
         Network {
@@ -334,6 +330,8 @@ impl Network {
                 self.record_metrics_info(),
             )));
 
+        let mut small_rng = SmallRng::from_entropy();
+
         loop {
             tokio::select! {
                 _ = deadline.as_mut() => {
@@ -341,7 +339,7 @@ impl Network {
                     break;
                 }
                 Some(m) = self.messages_gen.next() => {
-                    let payload = m.payload();
+                    let payload = m.payload(&mut small_rng);
                     let (topic, val) = match m {
                         Message::BeaconBlock { proposer: ValId(v), slot: _ } => {
                             (Topic::Blocks, v)

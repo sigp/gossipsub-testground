@@ -13,27 +13,27 @@ use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::upgrade::{SelectUpgrade, Version};
 use libp2p::dns::TokioDnsConfig;
 use libp2p::futures::StreamExt;
-use libp2p::gossipsub::error::PublishError;
 use libp2p::gossipsub::metrics::Config;
 use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
 use libp2p::gossipsub::{
-    FastMessageId, Gossipsub, GossipsubConfigBuilder, GossipsubEvent, GossipsubMessage, IdentTopic,
-    IdentityTransform, MessageAuthenticity, MessageId, RawGossipsubMessage, ValidationMode,
+    Behaviour, ConfigBuilder, Event, FastMessageId, IdentTopic, IdentityTransform,
+    Message as GossipsubMessage, MessageAuthenticity, MessageId, PublishError, RawMessage,
+    ValidationMode,
 };
 use libp2p::identity::Keypair;
 use libp2p::mplex::MplexConfig;
 use libp2p::multiaddr::Protocol;
 use libp2p::noise::NoiseConfig;
 use libp2p::swarm::{SwarmBuilder, SwarmEvent};
-use libp2p::tcp::{GenTcpConfig, TokioTcpTransport};
+use libp2p::tcp::tokio::Transport as TcpTransport;
+use libp2p::tcp::Config as TcpConfig;
 use libp2p::yamux::YamuxConfig;
 use libp2p::{Multiaddr, Transport};
 use libp2p::{PeerId, Swarm};
 use npg::slot_generator::Subnet;
 use npg::slot_generator::ValId;
 use npg::{Generator, Message};
-use prometheus_client::encoding::proto::openmetrics_data_model::MetricSet;
-use prometheus_client::encoding::proto::EncodeMetric;
+use prometheus_client::encoding::protobuf::openmetrics_data_model::MetricSet;
 use prometheus_client::registry::Registry;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -157,7 +157,7 @@ pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>
     // /////////////////////////////////////////////////////////////////////////////////////////////
     // Start libp2p and dial the designated outbound peers
     // /////////////////////////////////////////////////////////////////////////////////////////////
-    let mut registry: Registry<Box<dyn EncodeMetric>> = Registry::default();
+    let mut registry = Registry::default();
     registry.sub_registry_with_prefix("gossipsub");
     let mut network = Network::new(
         &mut registry,
@@ -214,10 +214,8 @@ pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>
 
 /// Set up an encrypted TCP transport over the Mplex and Yamux protocols.
 fn build_transport(keypair: &Keypair) -> libp2p::core::transport::Boxed<(PeerId, StreamMuxerBox)> {
-    let transport = TokioDnsConfig::system(TokioTcpTransport::new(
-        GenTcpConfig::default().nodelay(true),
-    ))
-    .expect("DNS config");
+    let transport = TokioDnsConfig::system(TcpTransport::new(TcpConfig::default().nodelay(true)))
+        .expect("DNS config");
 
     let noise_keys = libp2p::noise::Keypair::<libp2p::noise::X25519Spec>::new()
         .into_authentic(keypair)
@@ -276,7 +274,7 @@ struct RecordMetricsInfo {
 }
 
 pub(crate) struct Network {
-    swarm: Swarm<Gossipsub>,
+    swarm: Swarm<Behaviour>,
     node_id: usize,
     beacon_node_info: BeaconNodeInfo,
     participants: HashMap<usize, BeaconNodeInfo>,
@@ -295,7 +293,7 @@ pub(crate) struct Network {
 impl Network {
     #[allow(clippy::too_many_arguments)]
     fn new(
-        registry: &mut Registry<Box<dyn EncodeMetric>>,
+        registry: &mut Registry,
         keypair: Keypair,
         node_id: usize,
         beacon_node_info: BeaconNodeInfo,
@@ -312,11 +310,10 @@ impl Network {
                         [..20],
                 )
             };
-            let fast_gossip_message_id = |message: &RawGossipsubMessage| {
-                FastMessageId::from(&Sha256::digest(&message.data)[..8])
-            };
+            let fast_gossip_message_id =
+                |message: &RawMessage| FastMessageId::from(&Sha256::digest(&message.data)[..8]);
 
-            let gossipsub_config = GossipsubConfigBuilder::default()
+            let gossipsub_config = ConfigBuilder::default()
                 // Following params are set based on lighthouse.
                 .max_transmit_size(10 * 1_048_576) // 10M
                 .prune_backoff(Duration::from_secs(PRUNE_BACKOFF))
@@ -340,7 +337,7 @@ impl Network {
                 .build()
                 .expect("Valid gossipsub configuration");
 
-            let mut gs = Gossipsub::new_with_subscription_filter_and_transform(
+            let mut gs = Behaviour::new_with_subscription_filter_and_transform(
                 MessageAuthenticity::Anonymous,
                 gossipsub_config,
                 Some((registry, Config::default())),
@@ -360,14 +357,11 @@ impl Network {
             gs
         };
 
-        let swarm = SwarmBuilder::new(
+        let swarm = SwarmBuilder::with_tokio_executor(
             build_transport(&keypair),
             gossipsub,
             PeerId::from(keypair.public()),
         )
-        .executor(Box::new(|future| {
-            tokio::spawn(future);
-        }))
         .build();
 
         info!(
@@ -504,11 +498,7 @@ impl Network {
         Ok(())
     }
 
-    async fn run_sim(
-        &mut self,
-        run_duration: Duration,
-        registry: &Registry<Box<dyn EncodeMetric>>,
-    ) {
+    async fn run_sim(&mut self, run_duration: Duration, registry: &Registry) {
         let deadline = tokio::time::sleep(run_duration);
 
         futures::pin_mut!(deadline);
@@ -592,9 +582,9 @@ impl Network {
         self.swarm.behaviour_mut().publish(ident_topic, msg)
     }
 
-    fn handle_gossipsub_event(&mut self, event: GossipsubEvent) {
+    fn handle_gossipsub_event(&mut self, event: Event) {
         match event {
-            GossipsubEvent::Message {
+            Event::Message {
                 propagation_source: _,
                 message_id: _,
                 message,
@@ -811,10 +801,10 @@ impl Network {
         }
     }
 
-    fn metrics_info(&self, registry: &Registry<Box<dyn EncodeMetric>>) -> RecordMetricsInfo {
+    fn metrics_info(&self, registry: &Registry) -> RecordMetricsInfo {
         RecordMetricsInfo {
             client: self.client.clone(),
-            metrics: prometheus_client::encoding::proto::encode(registry),
+            metrics: prometheus_client::encoding::protobuf::encode(registry).unwrap(),
             peer_id: self.beacon_node_info.peer_id,
             current: Local::now(),
         }
