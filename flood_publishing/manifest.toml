@@ -1,0 +1,21 @@
+name = "flood_publishing"
+
+[defaults]
+builder = "docker:generic"
+runner = "local:docker"
+disable_metrics = false
+
+[builders."docker:generic"]
+enabled = true
+
+[runners."local:docker"]
+enabled = true
+
+[[testcases]]
+name = "flood_publishing"
+instances = { min = 3, max = 100, default = 3 }
+  [testcases.params]
+  # ###########################################################################
+  # Network config
+  # ###########################################################################
+  bandwidth = { type = "int", desc = "Bandwidth in MiB", unit = "MiB", default = 1 }
