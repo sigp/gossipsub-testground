@@ -64,7 +64,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .await?;
 
-    let node_seq = client.group_seq() as usize - 1;
     let keypair = Keypair::generate_ed25519();
     let peer_id = PeerId::from(keypair.public());
     let multiaddr = {
@@ -88,9 +87,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("participants: {:?}", participants);
 
+    let is_publisher = client.group_seq() == 1;
+
+    println!(r#"[flood_publishing_test]{{"event":"peer_id","peer_id":"{peer_id}","is_publisher":{}}}"#, is_publisher);
+
     let mut network = Network::new(
         keypair,
-        node_seq,
+        is_publisher,
         (peer_id, multiaddr),
         client.clone(),
         participants,

@@ -4,7 +4,7 @@ use libp2p::dns::TokioDnsConfig;
 use libp2p::futures::StreamExt;
 use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
 use libp2p::gossipsub::{
-    Behaviour, ConfigBuilder, GossipsubMessage, IdentTopic, IdentityTransform, MessageAuthenticity,
+    Behaviour, ConfigBuilder, Message as GossipsubMessage, IdentTopic, IdentityTransform, MessageAuthenticity,
     MessageId, PublishError, ValidationMode,
 };
 use libp2p::identity::Keypair;
@@ -33,7 +33,7 @@ const TOPIC: &str = "t";
 
 pub(crate) struct Network {
     swarm: Swarm<Behaviour>,
-    node_seq: usize,
+    is_publisher: bool,
     node_info: (PeerId, Multiaddr),
     client: Arc<Client>,
     participants: Vec<(PeerId, Multiaddr)>,
@@ -44,7 +44,7 @@ pub(crate) struct Network {
 impl Network {
     pub(crate) fn new(
         keypair: Keypair,
-        node_seq: usize,
+        is_publisher: bool,
         node_info: (PeerId, Multiaddr),
         client: Client,
         participants: Vec<(PeerId, Multiaddr)>,
@@ -96,7 +96,7 @@ impl Network {
 
         Network {
             swarm,
-            node_seq,
+            is_publisher,
             node_info,
             client: Arc::new(client),
             participants,
@@ -140,8 +140,8 @@ impl Network {
     }
 
     pub(crate) fn publish(&mut self) -> Result<MessageId, PublishError> {
-        let mut message = vec![0; 500_0000];
-        // Ranomize the first 8 bits to make sure the message is unique.
+        let mut message = vec![0; 50_000];
+        // Randomize the first 8 bits to make sure the message is unique.
         let first_bytes = &mut message[0..8];
         self.rng.fill(first_bytes);
         self.swarm
@@ -182,7 +182,7 @@ impl Network {
                     if !done_warm_up {
                         continue;
                     }
-                    if self.node_seq != 0 {
+                    if !self.is_publisher {
                         continue;
                     }
 

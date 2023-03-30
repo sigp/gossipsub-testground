@@ -41,6 +41,6 @@ FROM debian:bullseye-slim
 COPY --from=builder /usr/src/test-plan/plan/target/release/flood_publishing /usr/local/bin/flood_publishing
 
 # Configure Logging
-ENV RUST_LOG=libp2p_gossipsub=debug,flood_publishing=info
+ENV RUST_LOG=libp2p_gossipsub=info,flood_publishing=info
 
 ENTRYPOINT ["flood_publishing"]
