@@ -18,4 +18,4 @@ instances = { min = 3, max = 100, default = 3 }
   # ###########################################################################
   # Network config
   # ###########################################################################
-  bandwidth = { type = "int", desc = "Bandwidth in MiB", unit = "MiB", default = 1 }
+  bandwidth = { type = "int", desc = "Bandwidth in MiB", unit = "MiB", default = 10 }

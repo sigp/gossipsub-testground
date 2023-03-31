@@ -108,8 +108,11 @@ def run():
     latencies = []
 
     for send in send_logs:
-        receive = receive_logs[send['to'] + '_' + send['message_id']]
-        latencies.append(receive['time'] - send['time'])
+        receive = receive_logs.get(send['to'] + '_' + send['message_id'])
+        # It's possible that a log may not be found even in normal cases, due to factors such as latency.
+        if receive is not None:
+            latencies.append(receive['time'] - send['time'])
+    print('[receive_logs]', len(latencies))
 
     print('\n* Results (in milliseconds) *')
     print('[mean]', mean(latencies))
