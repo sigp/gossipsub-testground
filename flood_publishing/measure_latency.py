@@ -93,7 +93,7 @@ def run():
             if log['node_id'] == publisher['node_id']:
                 send_logs.append(log)
         elif log['event'] == 'receive':
-            if log['node_id'] != publisher['node_id']:
+            if log['node_id'] != publisher['node_id'] and log['propagation_source'] == publisher['peer_id']:
                 key = node_id_to_peer_id(nodes, log['node_id']) + '_' + log['message_id']
                 receive_logs[key] = log
         else:

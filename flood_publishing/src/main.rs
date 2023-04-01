@@ -89,7 +89,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let is_publisher = client.group_seq() == 1;
 
-    println!(r#"[flood_publishing_test]{{"event":"peer_id","peer_id":"{peer_id}","is_publisher":{}}}"#, is_publisher);
+    println!(
+        r#"[flood_publishing_test]{{"event":"peer_id","peer_id":"{peer_id}","is_publisher":{}}}"#,
+        is_publisher
+    );
 
     let mut network = Network::new(
         keypair,

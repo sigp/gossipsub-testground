@@ -1,11 +1,12 @@
+use crate::get_param;
 use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::upgrade::{SelectUpgrade, Version};
 use libp2p::dns::TokioDnsConfig;
 use libp2p::futures::StreamExt;
 use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
 use libp2p::gossipsub::{
-    Behaviour, ConfigBuilder, Message as GossipsubMessage, IdentTopic, IdentityTransform, MessageAuthenticity,
-    MessageId, PublishError, ValidationMode,
+    Behaviour, ConfigBuilder, FloodPublish, IdentTopic, IdentityTransform,
+    Message as GossipsubMessage, MessageAuthenticity, MessageId, PublishError, ValidationMode,
 };
 use libp2p::identity::Keypair;
 use libp2p::mplex::MplexConfig;
@@ -49,6 +50,18 @@ impl Network {
         client: Client,
         participants: Vec<(PeerId, Multiaddr)>,
     ) -> Self {
+        let flood_publish = match get_param::<String>(
+            "flood_publish",
+            &client.run_parameters().test_instance_params,
+        )
+        .unwrap()
+        .as_str()
+        {
+            "rapid" => FloodPublish::Rapid,
+            "heartbeat" => FloodPublish::Heartbeat(0),
+            _ => panic!("Unknown flood publish type"),
+        };
+
         let gossip_message_id = move |message: &GossipsubMessage| {
             MessageId::from(
                 &Sha256::digest([message.topic.as_str().as_bytes(), &message.data].concat())[..20],
@@ -75,6 +88,7 @@ impl Network {
             .mesh_n_high(12)
             .gossip_lazy(3)
             .history_gossip(3)
+            .flood_publish(flood_publish)
             .build()
             .expect("Valid gossipsub configuration");
 

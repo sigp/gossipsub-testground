@@ -15,7 +15,8 @@ enabled = true
 name = "flood_publishing"
 instances = { min = 3, max = 100, default = 3 }
   [testcases.params]
-  # ###########################################################################
   # Network config
-  # ###########################################################################
   bandwidth = { type = "int", desc = "Bandwidth in MiB", unit = "MiB", default = 10 }
+  # Gossipsub config
+  flood_publish = { type = "string", desc = "The type of flood publishing: rapid / heartbeat" }
+

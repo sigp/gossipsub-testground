@@ -6,9 +6,13 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+# Staggered message sending.
+# https://github.com/libp2p/rust-libp2p/pull/3666
+# The revision specified here adds some log output needed to measure latency.
+# See: https://github.com/ackintosh/rust-libp2p/commit/92225acb661f47f996abdf7a4ea20e4846f7319c
+libp2p = { git = "https://github.com/ackintosh/rust-libp2p.git", rev = "e49b2b27a21b26e1c90a08ff8fa2d38bc265539d", default-features = false, features = ["gossipsub", "dns", "tcp", "tokio", "noise", "mplex", "yamux", "serde"] }
+
 futures = "0.3"
-#libp2p = { version = "0.51.1", default-features = false, features = ["gossipsub", "dns", "tcp", "tokio", "noise", "mplex", "yamux", "serde"] }
-libp2p = { git = "https://github.com/ackintosh/rust-libp2p.git", rev = "5a163900370b1720f5980b7a327d9ff272d12f37", default-features = false, features = ["gossipsub", "dns", "tcp", "tokio", "noise", "mplex", "yamux", "serde"] }
 rand = { version = "0.8", features = ["small_rng"] }
 serde = "1.0"
 serde_json = "1.0"
