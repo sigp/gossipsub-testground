@@ -1,4 +1,3 @@
-use crate::get_param;
 use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::upgrade::{SelectUpgrade, Version};
 use libp2p::dns::TokioDnsConfig;
@@ -19,9 +18,7 @@ use libp2p::{Multiaddr, PeerId, Swarm, Transport};
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use sha2::{Digest, Sha256};
-use std::sync::Arc;
 use std::time::Duration;
-use testground::client::Client;
 use tokio::time::{interval, Interval};
 use tracing::{error, info};
 
@@ -36,7 +33,6 @@ pub(crate) struct Network {
     swarm: Swarm<Behaviour>,
     is_publisher: bool,
     node_info: (PeerId, Multiaddr),
-    client: Arc<Client>,
     participants: Vec<(PeerId, Multiaddr)>,
     publish_interval: Interval,
     rng: SmallRng,
@@ -47,21 +43,9 @@ impl Network {
         keypair: Keypair,
         is_publisher: bool,
         node_info: (PeerId, Multiaddr),
-        client: Client,
         participants: Vec<(PeerId, Multiaddr)>,
+        flood_publish: FloodPublish,
     ) -> Self {
-        let flood_publish = match get_param::<String>(
-            "flood_publish",
-            &client.run_parameters().test_instance_params,
-        )
-        .unwrap()
-        .as_str()
-        {
-            "rapid" => FloodPublish::Rapid,
-            "heartbeat" => FloodPublish::Heartbeat(0),
-            _ => panic!("Unknown flood publish type"),
-        };
-
         let gossip_message_id = move |message: &GossipsubMessage| {
             MessageId::from(
                 &Sha256::digest([message.topic.as_str().as_bytes(), &message.data].concat())[..20],
@@ -69,6 +53,7 @@ impl Network {
         };
 
         let gossipsub_config = ConfigBuilder::default()
+            .flood_publish(flood_publish)
             // Following params are set based on lighthouse.
             .max_transmit_size(10 * 1_048_576) // 10M
             .prune_backoff(Duration::from_secs(PRUNE_BACKOFF))
@@ -88,7 +73,6 @@ impl Network {
             .mesh_n_high(12)
             .gossip_lazy(3)
             .history_gossip(3)
-            .flood_publish(flood_publish)
             .build()
             .expect("Valid gossipsub configuration");
 
@@ -112,7 +96,6 @@ impl Network {
             swarm,
             is_publisher,
             node_info,
-            client: Arc::new(client),
             participants,
             publish_interval: interval(Duration::from_secs(3)),
             rng: SmallRng::from_entropy(),

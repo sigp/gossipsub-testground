@@ -2,6 +2,7 @@ mod network;
 
 use crate::network::Network;
 use libp2p::futures::StreamExt;
+use libp2p::gossipsub::FloodPublish;
 use libp2p::identity::Keypair;
 use libp2p::multiaddr::Protocol;
 use libp2p::{Multiaddr, PeerId};
@@ -29,8 +30,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let client = Client::new_and_init().await?;
-    let bandwidth = get_param::<u64>("bandwidth", &client.run_parameters().test_instance_params)?;
 
+    // /////////////////////////////////////////////////////////////////////////////////////////////
+    // Parse test parameters
+    // /////////////////////////////////////////////////////////////////////////////////////////////
+    let bandwidth = get_param::<u64>("bandwidth", &client.run_parameters().test_instance_params)?;
+    let flood_publish = match get_param::<String>(
+        "flood_publish",
+        &client.run_parameters().test_instance_params,
+    )
+    .unwrap()
+    .as_str()
+    {
+        "rapid" => FloodPublish::Rapid,
+        "heartbeat" => FloodPublish::Heartbeat(0),
+        _ => panic!("Unknown flood publish type"),
+    };
+
+    // /////////////////////////////////////////////////////////////////////////////////////////////
+    // Configure network
+    // /////////////////////////////////////////////////////////////////////////////////////////////
     client
         .configure_network(NetworkConfiguration {
             network: DEFAULT_DATA_NETWORK.to_owned(),
@@ -64,6 +83,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .await?;
 
+    // /////////////////////////////////////////////////////////////////////////////////////////////
+    // Start libp2p and dial peers
+    // /////////////////////////////////////////////////////////////////////////////////////////////
     let keypair = Keypair::generate_ed25519();
     let peer_id = PeerId::from(keypair.public());
     let multiaddr = {
@@ -98,8 +120,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         keypair,
         is_publisher,
         (peer_id, multiaddr),
-        client.clone(),
         participants,
+        flood_publish,
     );
 
     network.start_libp2p().await;
@@ -129,6 +151,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .await?;
 
+    // /////////////////////////////////////////////////////////////////////////////////////////////
+    // Run simulation
+    // /////////////////////////////////////////////////////////////////////////////////////////////
     network
         .run_sim(Duration::from_secs(5), Duration::from_secs(20))
         .await;
