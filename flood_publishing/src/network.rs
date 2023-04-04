@@ -18,9 +18,10 @@ use libp2p::{Multiaddr, PeerId, Swarm, Transport};
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use sha2::{Digest, Sha256};
+use std::ops::Add;
 use std::time::Duration;
-use tokio::time::{interval, Interval};
-use tracing::{error, info};
+use tokio::time::interval;
+use tracing::{debug, error};
 
 pub(crate) const SLOT: u64 = 12;
 
@@ -34,7 +35,6 @@ pub(crate) struct Network {
     is_publisher: bool,
     node_info: (PeerId, Multiaddr),
     participants: Vec<(PeerId, Multiaddr)>,
-    publish_interval: Interval,
     rng: SmallRng,
 }
 
@@ -97,7 +97,6 @@ impl Network {
             is_publisher,
             node_info,
             participants,
-            publish_interval: interval(Duration::from_secs(3)),
             rng: SmallRng::from_entropy(),
         }
     }
@@ -117,7 +116,7 @@ impl Network {
 
     pub(crate) fn dial_peers(&mut self) {
         for (peer_id, multiaddr) in self.participants.iter() {
-            info!("dialing {} on {}", peer_id, multiaddr);
+            debug!("dialing {} on {}", peer_id, multiaddr);
 
             if let Err(e) = self.swarm.dial(
                 libp2p::swarm::dial_opts::DialOpts::peer_id(peer_id.clone())
@@ -146,21 +145,15 @@ impl Network {
             .publish(IdentTopic::new(TOPIC), message)
     }
 
-    pub(crate) fn debug(&self) {
-        info!("all mesh peers");
-        for p in self.swarm.behaviour().all_mesh_peers() {
-            info!("{p}");
-        }
-
-        info!("all peers");
-        for (p, topic) in self.swarm.behaviour().all_peers() {
-            info!("{:?} {p}", topic);
-        }
-    }
-
-    pub(crate) async fn run_sim(&mut self, warm_up: Duration, run_duration: Duration) {
+    pub(crate) async fn run_sim(
+        &mut self,
+        warm_up: Duration,
+        run: Duration,
+        publish_interval: Duration,
+    ) {
+        let deadline = tokio::time::sleep(run.add(warm_up));
         let warm_up = tokio::time::sleep(warm_up);
-        let deadline = tokio::time::sleep(run_duration);
+        let mut publish_interval = interval(publish_interval);
 
         let mut done_warm_up = false;
         futures::pin_mut!(warm_up);
@@ -173,9 +166,14 @@ impl Network {
                     break;
                 }
                 _ = warm_up.as_mut() => {
+                    debug!(
+                        "all mesh peers: {}, all peers: {}",
+                        self.swarm.behaviour().all_mesh_peers().count(),
+                        self.swarm.behaviour().all_peers().count()
+                    );
                     done_warm_up = true
                 }
-                _ = self.publish_interval.tick() => {
+                _ = publish_interval.tick() => {
                     if !done_warm_up {
                         continue;
                     }
@@ -188,7 +186,7 @@ impl Network {
                     }
                 }
                 event = self.swarm.select_next_some() => {
-                    info!("Event: {event:?}");
+                    debug!("Event: {event:?}");
                 }
             }
         }

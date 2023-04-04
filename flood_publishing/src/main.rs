@@ -34,13 +34,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // /////////////////////////////////////////////////////////////////////////////////////////////
     // Parse test parameters
     // /////////////////////////////////////////////////////////////////////////////////////////////
-    let bandwidth = get_param::<u64>("bandwidth", &client.run_parameters().test_instance_params)?;
-    let flood_publish = match get_param::<String>(
-        "flood_publish",
-        &client.run_parameters().test_instance_params,
-    )
-    .unwrap()
-    .as_str()
+    let test_instance_params = client.run_parameters().test_instance_params;
+    let warm_up = Duration::from_secs(get_param::<u64>("warm_up", &test_instance_params)?);
+    let run = Duration::from_secs(get_param::<u64>("run", &test_instance_params)?);
+    let publish_interval =
+        Duration::from_secs(get_param::<u64>("publish_interval", &test_instance_params)?);
+    let bandwidth = get_param::<u64>("bandwidth", &test_instance_params)?;
+    let flood_publish = match get_param::<String>("flood_publish", &test_instance_params)
+        .unwrap()
+        .as_str()
     {
         "rapid" => FloodPublish::Rapid,
         "heartbeat" => FloodPublish::Heartbeat(0),
@@ -107,8 +109,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .await?;
 
-    println!("participants: {:?}", participants);
-
     let is_publisher = client.group_seq() == 1;
 
     println!(
@@ -154,11 +154,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // /////////////////////////////////////////////////////////////////////////////////////////////
     // Run simulation
     // /////////////////////////////////////////////////////////////////////////////////////////////
-    network
-        .run_sim(Duration::from_secs(5), Duration::from_secs(20))
-        .await;
-
-    network.debug();
+    network.run_sim(warm_up, run, publish_interval).await;
 
     client.record_success().await?;
     Ok(())

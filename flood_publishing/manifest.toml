@@ -15,8 +15,11 @@ enabled = true
 name = "flood_publishing"
 instances = { min = 3, max = 100, default = 3 }
   [testcases.params]
+  warm_up = { type = "int", desc = "Time to wait for nodes to form overlay mesh before beginning publishing", unit = "sec", default = 10 }
+  run = { type = "int", desc = "Time to run the simulation", unit = "sec", default = 20 }
+  publish_interval = { type = "int", desc = "Interval to publish a message", unit = "sec", default = 3 }
   # Network config
-  bandwidth = { type = "int", desc = "Bandwidth in MiB", unit = "MiB", default = 10 }
+  bandwidth = { type = "int", desc = "Bandwidth in MiB", unit = "MiB", default = 20 }
   # Gossipsub config
   flood_publish = { type = "string", desc = "The type of flood publishing: rapid / heartbeat" }
 
