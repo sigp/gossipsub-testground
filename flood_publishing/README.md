@@ -31,6 +31,9 @@ and `handle_received_message()` on the receiver side.
 This simulation can be run with the following command (from within the repos
 root directory):
 
+The type of flood publishing can be switched via `--test-param flood_publish=heartbeat`. Please read
+the `flood_publishing/manifest.toml` to understand test parameters.
+
 ```sh
 testground run single \
   --plan gossipsub-testground/flood_publishing \
