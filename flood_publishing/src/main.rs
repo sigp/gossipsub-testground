@@ -143,6 +143,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     network.subscribe()?;
+    network.warm_up(warm_up).await;
 
     client
         .signal_and_wait(
@@ -154,7 +155,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // /////////////////////////////////////////////////////////////////////////////////////////////
     // Run simulation
     // /////////////////////////////////////////////////////////////////////////////////////////////
-    network.run_sim(warm_up, run, publish_interval).await;
+    network.run_sim(run, publish_interval).await;
 
     client.record_success().await?;
     Ok(())

@@ -18,7 +18,6 @@ use libp2p::{Multiaddr, PeerId, Swarm, Transport};
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use sha2::{Digest, Sha256};
-use std::ops::Add;
 use std::time::Duration;
 use tokio::time::interval;
 use tracing::{debug, error};
@@ -145,18 +144,31 @@ impl Network {
             .publish(IdentTopic::new(TOPIC), message)
     }
 
-    pub(crate) async fn run_sim(
-        &mut self,
-        warm_up: Duration,
-        run: Duration,
-        publish_interval: Duration,
-    ) {
-        let deadline = tokio::time::sleep(run.add(warm_up));
+    pub(crate) async fn warm_up(&mut self, warm_up: Duration) {
         let warm_up = tokio::time::sleep(warm_up);
+        futures::pin_mut!(warm_up);
+
+        loop {
+            tokio::select! {
+                _ = warm_up.as_mut() => {
+                    debug!(
+                        "all mesh peers: {}, all peers: {}",
+                        self.swarm.behaviour().all_mesh_peers().count(),
+                        self.swarm.behaviour().all_peers().count()
+                    );
+                    break;
+                }
+                event = self.swarm.select_next_some() => {
+                    debug!("Event: {event:?}");
+                }
+            }
+        }
+    }
+
+    pub(crate) async fn run_sim(&mut self, run: Duration, publish_interval: Duration) {
+        let deadline = tokio::time::sleep(run);
         let mut publish_interval = interval(publish_interval);
 
-        let mut done_warm_up = false;
-        futures::pin_mut!(warm_up);
         futures::pin_mut!(deadline);
 
         loop {
@@ -165,18 +177,7 @@ impl Network {
                     // Sim complete
                     break;
                 }
-                _ = warm_up.as_mut() => {
-                    debug!(
-                        "all mesh peers: {}, all peers: {}",
-                        self.swarm.behaviour().all_mesh_peers().count(),
-                        self.swarm.behaviour().all_peers().count()
-                    );
-                    done_warm_up = true
-                }
                 _ = publish_interval.tick() => {
-                    if !done_warm_up {
-                        continue;
-                    }
                     if !self.is_publisher {
                         continue;
                     }
