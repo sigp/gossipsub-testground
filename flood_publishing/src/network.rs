@@ -135,7 +135,7 @@ impl Network {
     }
 
     pub(crate) fn publish(&mut self) -> Result<MessageId, PublishError> {
-        let mut message = vec![0; 50_000];
+        let mut message = vec![0; 10_000];
         // Randomize the first 8 bits to make sure the message is unique.
         let first_bytes = &mut message[0..8];
         self.rng.fill(first_bytes);
@@ -144,15 +144,20 @@ impl Network {
             .publish(IdentTopic::new(TOPIC), message)
     }
 
-    pub(crate) async fn warm_up(&mut self, warm_up: Duration) {
+    pub(crate) async fn run_sim(
+        &mut self,
+        warm_up: Duration,
+        run: Duration,
+        cool_down: Duration,
+        publish_interval: Duration,
+    ) {
         let warm_up = tokio::time::sleep(warm_up);
         futures::pin_mut!(warm_up);
-
         loop {
             tokio::select! {
                 _ = warm_up.as_mut() => {
                     debug!(
-                        "all mesh peers: {}, all peers: {}",
+                        "Warm-up complete. all mesh peers: {}, all peers: {}",
                         self.swarm.behaviour().all_mesh_peers().count(),
                         self.swarm.behaviour().all_peers().count()
                     );
@@ -163,28 +168,34 @@ impl Network {
                 }
             }
         }
-    }
 
-    pub(crate) async fn run_sim(&mut self, run: Duration, publish_interval: Duration) {
         let deadline = tokio::time::sleep(run);
-        let mut publish_interval = interval(publish_interval);
-
         futures::pin_mut!(deadline);
-
+        let mut publish_interval = interval(publish_interval);
         loop {
             tokio::select! {
-                _ = deadline.as_mut() => {
-                    // Sim complete
-                    break;
-                }
-                _ = publish_interval.tick() => {
-                    if !self.is_publisher {
-                        continue;
-                    }
-
+                _ = publish_interval.tick(), if self.is_publisher => {
                     if let Err(e) = self.publish() {
                         error!("Failed to publish message: {e}");
                     }
+                }
+                _ = deadline.as_mut() => {
+                    debug!("Simulation complete");
+                    break;
+                }
+                event = self.swarm.select_next_some() => {
+                    debug!("Event: {event:?}");
+                }
+            }
+        }
+
+        let cool_down = tokio::time::sleep(cool_down);
+        futures::pin_mut!(cool_down);
+        loop {
+            tokio::select! {
+                _ = cool_down.as_mut() => {
+                    debug!("Cool-down complete.",);
+                    break;
                 }
                 event = self.swarm.select_next_some() => {
                     debug!("Event: {event:?}");

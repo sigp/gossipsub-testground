@@ -37,6 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let test_instance_params = client.run_parameters().test_instance_params;
     let warm_up = Duration::from_secs(get_param::<u64>("warm_up", &test_instance_params)?);
     let run = Duration::from_secs(get_param::<u64>("run", &test_instance_params)?);
+    let cool_down = Duration::from_secs(get_param::<u64>("cool_down", &test_instance_params)?);
     let publish_interval =
         Duration::from_secs(get_param::<u64>("publish_interval", &test_instance_params)?);
     let bandwidth = get_param::<u64>("bandwidth", &test_instance_params)?;
@@ -143,7 +144,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     network.subscribe()?;
-    network.warm_up(warm_up).await;
 
     client
         .signal_and_wait(
@@ -155,7 +155,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // /////////////////////////////////////////////////////////////////////////////////////////////
     // Run simulation
     // /////////////////////////////////////////////////////////////////////////////////////////////
-    network.run_sim(run, publish_interval).await;
+    network
+        .run_sim(warm_up, run, cool_down, publish_interval)
+        .await;
 
     client.record_success().await?;
     Ok(())
