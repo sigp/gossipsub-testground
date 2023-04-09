@@ -134,9 +134,9 @@ impl Network {
         Ok(())
     }
 
-    pub(crate) fn publish(&mut self) -> Result<MessageId, PublishError> {
-        let mut message = vec![0; 10_000];
-        // Randomize the first 8 bits to make sure the message is unique.
+    pub(crate) fn publish(&mut self, message_size: usize) -> Result<MessageId, PublishError> {
+        let mut message = vec![0; message_size];
+        // Randomize the first 8 bytes to make sure the message is unique.
         let first_bytes = &mut message[0..8];
         self.rng.fill(first_bytes);
         self.swarm
@@ -150,7 +150,9 @@ impl Network {
         run: Duration,
         cool_down: Duration,
         publish_interval: Duration,
+        message_size: usize,
     ) {
+        // Warm-up
         let warm_up = tokio::time::sleep(warm_up);
         futures::pin_mut!(warm_up);
         loop {
@@ -169,13 +171,14 @@ impl Network {
             }
         }
 
+        // Run simulation
         let deadline = tokio::time::sleep(run);
         futures::pin_mut!(deadline);
         let mut publish_interval = interval(publish_interval);
         loop {
             tokio::select! {
                 _ = publish_interval.tick(), if self.is_publisher => {
-                    if let Err(e) = self.publish() {
+                    if let Err(e) = self.publish(message_size) {
                         error!("Failed to publish message: {e}");
                     }
                 }
@@ -189,6 +192,7 @@ impl Network {
             }
         }
 
+        // Cool-down
         let cool_down = tokio::time::sleep(cool_down);
         futures::pin_mut!(cool_down);
         loop {

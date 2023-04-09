@@ -10,7 +10,7 @@ edition = "2021"
 # https://github.com/libp2p/rust-libp2p/pull/3666
 # The revision specified here adds some log output needed to measure latency.
 # See: https://github.com/ackintosh/rust-libp2p/commit/e49b2b27a21b26e1c90a08ff8fa2d38bc265539d
-libp2p = { git = "https://github.com/ackintosh/rust-libp2p.git", rev = "e49b2b27a21b26e1c90a08ff8fa2d38bc265539d", default-features = false, features = ["gossipsub", "dns", "tcp", "tokio", "noise", "mplex", "yamux", "serde"] }
+libp2p = { git = "https://github.com/ackintosh/rust-libp2p.git", rev = "6c303a5b19bae7949f435958087f443ac60d41e3", default-features = false, features = ["gossipsub", "dns", "tcp", "tokio", "noise", "mplex", "yamux", "serde"] }
 
 futures = "0.3"
 rand = { version = "0.8", features = ["small_rng"] }

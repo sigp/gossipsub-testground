@@ -19,6 +19,7 @@ instances = { min = 3, max = 100, default = 3 }
   run = { type = "int", desc = "Time to run simulation", unit = "sec", default = 20 }
   cool_down = { type = "int", desc = "Time to wait after simulation", unit = "sec", default = 10 }
   publish_interval = { type = "int", desc = "Interval to publish a message", unit = "sec", default = 5 }
+  message_size = { type = "int", desc = "Size of messages to be published", unit = "bytes", default = 50000 }
   # Network config
   bandwidth = { type = "int", desc = "Bandwidth in MiB", unit = "MiB", default = 30 }
   # Gossipsub config

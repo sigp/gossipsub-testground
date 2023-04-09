@@ -40,7 +40,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cool_down = Duration::from_secs(get_param::<u64>("cool_down", &test_instance_params)?);
     let publish_interval =
         Duration::from_secs(get_param::<u64>("publish_interval", &test_instance_params)?);
+    let message_size = get_param::<usize>("message_size", &test_instance_params)?;
+    // Network config
     let bandwidth = get_param::<u64>("bandwidth", &test_instance_params)?;
+    // Gossipsub config
     let flood_publish = match get_param::<String>("flood_publish", &test_instance_params)
         .unwrap()
         .as_str()
@@ -156,7 +159,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Run simulation
     // /////////////////////////////////////////////////////////////////////////////////////////////
     network
-        .run_sim(warm_up, run, cool_down, publish_interval)
+        .run_sim(warm_up, run, cool_down, publish_interval, message_size)
         .await;
 
     client.record_success().await?;
