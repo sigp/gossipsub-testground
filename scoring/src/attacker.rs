@@ -98,7 +98,9 @@ pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>
     record_victim_id(&client, target).await;
     record_topology_edge(&client, peer_id.to_string(), target.peer_id().to_string()).await;
 
-    swarm.dial(target.multiaddr().clone())?;
+    // We are recreating the target multiaddr because we use two different versions of libp2p.
+    let target_addr = Multiaddr::try_from(target.multiaddr().to_vec()).unwrap();
+    swarm.dial(target_addr)?;
     barrier_and_drive_swarm(&client, &mut swarm, BARRIER_TOPOLOGY_READY).await?;
 
     barrier_and_drive_swarm(&client, &mut swarm, BARRIER_SIMULATION_COMPLETED).await?;

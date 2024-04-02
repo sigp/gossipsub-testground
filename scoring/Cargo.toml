@@ -11,16 +11,12 @@ delay_map = "0.1.1"
 futures = "0.3.24"
 gen_topology = { git = "https://github.com/sigp/gossipsub-testground", rev = "4084d26b9210bc932f4aaa45f9506ecfe5f2bb04" }
 
-# TODO: Update libp2p once the next version, which includes prometheus-client v0.20, has been released.
-# See https://github.com/ackintosh/rust-libp2p/commit/df09870c8c2294cbaeb881f58d4f9752125562bc
-libp2p = { git = "https://github.com/ackintosh/rust-libp2p.git", branch = "prometheus-client-0.20.0", default-features = false, features = ["gossipsub", "dns", "tcp", "tokio", "noise", "mplex", "yamux", "serde"] }
+# unstable branch
+gossipsub = { git = "https://github.com/sigp/lighthouse.git", rev = "f8fdb71f50851bf7792e68a4ee31125bd645e19a" }
 
+libp2p = { version = "0.53.2", default-features = false, features = ["dns", "tcp", "tokio", "noise", "yamux", "serde"] }
 npg = { git = "https://github.com/sigp/eth-npg", rev = "6118cdd63eb34ffa4b230d17e88c8adf7057e138" }
-
-# TODO: Update prometheus-client once the next version, which includes the fix, has been released.
-# See https://github.com/prometheus/client_rust/pull/123
-prometheus-client = { git = "https://github.com/ackintosh/client_rust.git", branch = "fix/protobuf-labels", features = ["protobuf"] }
-
+prometheus-client = { version = "0.22.2", features = ["protobuf"] }
 prost = "0.11"
 rand = "0.8.5"
 serde_json = "1.0"

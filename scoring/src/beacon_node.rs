@@ -9,26 +9,17 @@ use crate::utils::{
 use chrono::TimeZone;
 use chrono::{DateTime, Local};
 use gen_topology::Params;
-use libp2p::core::muxing::StreamMuxerBox;
-use libp2p::core::upgrade::{SelectUpgrade, Version};
-use libp2p::dns::TokioDnsConfig;
-use libp2p::futures::StreamExt;
-use libp2p::gossipsub::metrics::Config;
-use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
-use libp2p::gossipsub::{
-    Behaviour, ConfigBuilder, Event, FastMessageId, IdentTopic, IdentityTransform,
-    Message as GossipsubMessage, MessageAuthenticity, MessageId, PublishError, RawMessage,
+use gossipsub::{
+    AllowAllSubscriptionFilter, Behaviour, ConfigBuilder, Event, IdentTopic, IdentityTransform,
+    Message as GossipsubMessage, MessageAuthenticity, MessageId, MetricsConfig, PublishError,
     ValidationMode,
 };
+use libp2p::core::muxing::StreamMuxerBox;
+use libp2p::futures::StreamExt;
 use libp2p::identity::Keypair;
-use libp2p::mplex::MplexConfig;
 use libp2p::multiaddr::Protocol;
-use libp2p::noise::NoiseConfig;
-use libp2p::swarm::{SwarmBuilder, SwarmEvent};
-use libp2p::tcp::tokio::Transport as TcpTransport;
-use libp2p::tcp::Config as TcpConfig;
-use libp2p::yamux::YamuxConfig;
-use libp2p::{Multiaddr, Transport};
+use libp2p::swarm::SwarmEvent;
+use libp2p::{noise, yamux, Multiaddr, SwarmBuilder, Transport};
 use libp2p::{PeerId, Swarm};
 use npg::slot_generator::Subnet;
 use npg::slot_generator::ValId;
@@ -212,22 +203,20 @@ pub(crate) async fn run(client: Client) -> Result<(), Box<dyn std::error::Error>
     Ok(())
 }
 
-/// Set up an encrypted TCP transport over the Mplex and Yamux protocols.
+// Set up an encrypted TCP transport.
 fn build_transport(keypair: &Keypair) -> libp2p::core::transport::Boxed<(PeerId, StreamMuxerBox)> {
-    let transport = TokioDnsConfig::system(TcpTransport::new(TcpConfig::default().nodelay(true)))
-        .expect("DNS config");
-
-    let noise_keys = libp2p::noise::Keypair::<libp2p::noise::X25519Spec>::new()
-        .into_authentic(keypair)
-        .expect("Signing libp2p-noise static DH keypair failed.");
+    let tcp = libp2p::tcp::tokio::Transport::new(libp2p::tcp::Config::default().nodelay(true));
+    let transport = libp2p::dns::tokio::Transport::system(tcp)
+        .expect("DNS")
+        .boxed();
 
     transport
-        .upgrade(Version::V1)
-        .authenticate(NoiseConfig::xx(noise_keys).into_authenticated())
-        .multiplex(SelectUpgrade::new(
-            YamuxConfig::default(),
-            MplexConfig::default(),
-        ))
+        .upgrade(libp2p::core::upgrade::Version::V1)
+        .authenticate(
+            noise::Config::new(&keypair)
+                .expect("signing can fail only once during starting a node"),
+        )
+        .multiplex(yamux::Config::default())
         .timeout(Duration::from_secs(20))
         .boxed()
 }
@@ -310,8 +299,6 @@ impl Network {
                         [..20],
                 )
             };
-            let fast_gossip_message_id =
-                |message: &RawMessage| FastMessageId::from(&Sha256::digest(&message.data)[..8]);
 
             let gossipsub_config = ConfigBuilder::default()
                 // Following params are set based on lighthouse.
@@ -324,7 +311,6 @@ impl Network {
                 .validation_mode(ValidationMode::Anonymous)
                 .duplicate_cache_time(Duration::from_secs(33 * SLOT + 1))
                 .message_id_fn(gossip_message_id)
-                .fast_message_id_fn(fast_gossip_message_id)
                 .allow_self_origin(true)
                 // Following params are set based on `NetworkLoad: 4 Average` which defined at lighthouse.
                 .heartbeat_interval(Duration::from_millis(700))
@@ -340,7 +326,7 @@ impl Network {
             let mut gs = Behaviour::new_with_subscription_filter_and_transform(
                 MessageAuthenticity::Anonymous,
                 gossipsub_config,
-                Some((registry, Config::default())),
+                Some((registry, MetricsConfig::default())),
                 AllowAllSubscriptionFilter {},
                 IdentityTransform {},
             )
@@ -357,12 +343,14 @@ impl Network {
             gs
         };
 
-        let swarm = SwarmBuilder::with_tokio_executor(
-            build_transport(&keypair),
-            gossipsub,
-            PeerId::from(keypair.public()),
-        )
-        .build();
+        let transport = build_transport(&keypair);
+        let swarm = SwarmBuilder::with_existing_identity(keypair)
+            .with_tokio()
+            .with_other_transport(|_| transport)
+            .expect("infallible")
+            .with_behaviour(|_| gossipsub)
+            .expect("infallible")
+            .build();
 
         info!(
             "[{}] running with {} validators",
@@ -865,6 +853,9 @@ async fn record_metrics(metrics_info: RecordMetricsInfo) {
                 &metrics_info.peer_id,
                 &run_id,
             ),
+            "publish_messages_dropped_per_topic" | "forward_messages_dropped_per_topic" => {
+                continue;
+            }
             // ///////////////////////////////////
             // Metrics regarding mesh state
             // ///////////////////////////////////
@@ -933,6 +924,12 @@ async fn record_metrics(metrics_info: RecordMetricsInfo) {
                 &metrics_info.peer_id,
                 &run_id,
             ),
+            // ///////////////////////////////////
+            // The size of the priority queue.
+            // ///////////////////////////////////
+            "priority_queue_size" | "non_priority_queue_size" => {
+                continue;
+            }
             _ => unreachable!(),
         };
         queries.extend(q);
