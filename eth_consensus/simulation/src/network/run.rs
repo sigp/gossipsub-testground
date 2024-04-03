@@ -217,7 +217,7 @@ pub fn build_transport(
     transport
         .upgrade(libp2p::core::upgrade::Version::V1)
         .authenticate(
-            noise::Config::new(&keypair)
+            noise::Config::new(keypair)
                 .expect("signing can fail only once during starting a node"),
         )
         .multiplex(yamux::Config::default())
