@@ -59,9 +59,10 @@ pub(crate) async fn run(
     // Start libp2p
     // ////////////////////////////////////////////////////////////////////////
     let mut swarm = build_swarm(keypair);
-    swarm.listen_on(instance_info.multiaddr.clone())?;
+    swarm.listen_on(recreate_multiaddr(&instance_info.multiaddr))?;
     match swarm.next().await.unwrap() {
-        SwarmEvent::NewListenAddr { address, .. } if address == instance_info.multiaddr => {}
+        SwarmEvent::NewListenAddr { address, .. }
+            if address == recreate_multiaddr(&instance_info.multiaddr) => {}
         e => panic!("Unexpected event {:?}", e),
     }
 
@@ -79,7 +80,7 @@ pub(crate) async fn run(
     };
     client.record_message(format!("Victim: {:?}", victim));
 
-    swarm.dial(victim.multiaddr)?;
+    swarm.dial(recreate_multiaddr(&victim.multiaddr))?;
 
     barrier_and_drive_swarm(&client, &mut swarm, BARRIER_WARMUP).await?;
 
@@ -117,6 +118,12 @@ fn build_transport(
         ))
         .timeout(Duration::from_secs(20))
         .boxed()
+}
+
+// We are recreating from `libp2p::Multiaddr` to `libp2p_testground::Multiaddr` because we use two
+// different versions of libp2p.
+fn recreate_multiaddr(addr: &libp2p::Multiaddr) -> libp2p_testground::Multiaddr {
+    libp2p_testground::Multiaddr::try_from(addr.to_vec()).unwrap()
 }
 
 type GossipsubNetworkBehaviourAction =

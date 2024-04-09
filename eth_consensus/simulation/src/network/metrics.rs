@@ -4,7 +4,7 @@ use crate::utils::{
 };
 use crate::InstanceInfo;
 use chrono::{DateTime, FixedOffset};
-use libp2p::gossipsub::IdentTopic;
+use gossipsub::IdentTopic;
 use prometheus_client::encoding::protobuf::openmetrics_data_model::MetricSet;
 use std::sync::Arc;
 use testground::client::Client;
@@ -133,6 +133,9 @@ pub(crate) async fn record_metrics(info: RecordMetricsInfo) {
             | "rejected_messages_per_topic" => {
                 queries_for_counter(&current, family, node_id, &info.instance_info, run_id)
             }
+            "publish_messages_dropped_per_topic" | "forward_messages_dropped_per_topic" => {
+                continue;
+            }
             // ///////////////////////////////////
             // Metrics regarding mesh state
             // ///////////////////////////////////
@@ -192,6 +195,12 @@ pub(crate) async fn record_metrics(info: RecordMetricsInfo) {
             }
             "memcache_misses" => {
                 queries_for_counter(&current, family, info.node_id, &info.instance_info, run_id)
+            }
+            // ///////////////////////////////////
+            // The size of the priority queue.
+            // ///////////////////////////////////
+            "priority_queue_size" | "non_priority_queue_size" => {
+                continue;
             }
             _ => unreachable!(),
         };

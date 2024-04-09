@@ -1,24 +1,17 @@
 extern crate core;
 
-use libp2p::core::muxing::StreamMuxerBox;
-use libp2p::core::upgrade::{SelectUpgrade, Version};
-use libp2p::core::ConnectedPoint;
-use libp2p::dns::TokioDnsConfig;
-use libp2p::futures::FutureExt;
-use libp2p::futures::StreamExt;
-use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
-use libp2p::gossipsub::{
+use gossipsub::AllowAllSubscriptionFilter;
+use gossipsub::{
     Behaviour, ConfigBuilder, Event, IdentTopic as Topic, IdentityTransform, MessageAuthenticity,
 };
+use libp2p::core::muxing::StreamMuxerBox;
+use libp2p::core::ConnectedPoint;
+use libp2p::futures::FutureExt;
+use libp2p::futures::StreamExt;
 use libp2p::identity::Keypair;
-use libp2p::mplex::MplexConfig;
 use libp2p::multiaddr::Protocol;
-use libp2p::noise::NoiseConfig;
-use libp2p::swarm::{SwarmBuilder, SwarmEvent};
-use libp2p::tcp::tokio::Transport as TcpTransport;
-use libp2p::tcp::Config as TcpConfig;
-use libp2p::yamux::YamuxConfig;
-use libp2p::{Multiaddr, PeerId, Swarm, Transport};
+use libp2p::swarm::SwarmEvent;
+use libp2p::{noise, yamux, Multiaddr, PeerId, Swarm, SwarmBuilder, Transport};
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
 use serde::de::DeserializeOwned;
@@ -26,6 +19,7 @@ use serde::Serialize;
 use serde_json::Value;
 use std::borrow::Cow;
 use std::collections::HashSet;
+use std::time::Duration;
 use testground::client::Client;
 use tracing::{debug, info, warn};
 
@@ -69,8 +63,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             IdentityTransform {},
         )
         .expect("Valid configuration");
-
-        SwarmBuilder::with_tokio_executor(build_transport(&local_key), gossipsub, local_peer_id)
+        let transport = build_transport(&local_key);
+        SwarmBuilder::with_existing_identity(local_key)
+            .with_tokio()
+            .with_other_transport(|_| transport)
+            .expect("infallible")
+            .with_behaviour(|_| gossipsub)
+            .expect("infallible")
             .build()
     };
 
@@ -256,23 +255,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-// Set up an encrypted TCP transport over the Mplex and Yamux protocols.
+// Set up an encrypted TCP transport.
 fn build_transport(keypair: &Keypair) -> libp2p::core::transport::Boxed<(PeerId, StreamMuxerBox)> {
-    let transport = TokioDnsConfig::system(TcpTransport::new(TcpConfig::default().nodelay(true)))
-        .expect("DNS config");
-
-    let noise_keys = libp2p::noise::Keypair::<libp2p::noise::X25519Spec>::new()
-        .into_authentic(keypair)
-        .expect("Signing libp2p-noise static DH keypair failed.");
+    let tcp = libp2p::tcp::tokio::Transport::new(libp2p::tcp::Config::default().nodelay(true));
+    let transport = libp2p::dns::tokio::Transport::system(tcp)
+        .expect("DNS")
+        .boxed();
 
     transport
-        .upgrade(Version::V1)
-        .authenticate(NoiseConfig::xx(noise_keys).into_authenticated())
-        .multiplex(SelectUpgrade::new(
-            YamuxConfig::default(),
-            MplexConfig::default(),
-        ))
-        .timeout(std::time::Duration::from_secs(20))
+        .upgrade(libp2p::core::upgrade::Version::V1)
+        .authenticate(
+            noise::Config::new(keypair).expect("signing can fail only once during starting a node"),
+        )
+        .multiplex(yamux::Config::default())
+        .timeout(Duration::from_secs(20))
         .boxed()
 }
 

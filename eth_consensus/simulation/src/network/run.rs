@@ -2,25 +2,17 @@ use crate::utils::{record_instance_info, BARRIER_LIBP2P_READY, BARRIER_TOPOLOGY_
 use crate::InstanceInfo;
 use futures::stream::FuturesUnordered;
 use gen_topology::Params;
-use libp2p::core::muxing::StreamMuxerBox;
-use libp2p::core::upgrade::{SelectUpgrade, Version};
-use libp2p::dns::TokioDnsConfig;
-use libp2p::futures::StreamExt;
-use libp2p::gossipsub::metrics::Config;
-use libp2p::gossipsub::subscription_filter::AllowAllSubscriptionFilter;
-use libp2p::gossipsub::{
-    Behaviour, ConfigBuilder, IdentityTransform, Message as GossipsubMessage, MessageAuthenticity,
-    MessageId, PeerScoreParams, PeerScoreThresholds, ValidationMode,
+use gossipsub::{
+    AllowAllSubscriptionFilter, Behaviour, ConfigBuilder, IdentityTransform,
+    Message as GossipsubMessage, MessageAuthenticity, MessageId, MetricsConfig, PeerScoreParams,
+    PeerScoreThresholds, ValidationMode,
 };
+use libp2p::core::muxing::StreamMuxerBox;
+use libp2p::futures::StreamExt;
 use libp2p::identity::Keypair;
-use libp2p::mplex::MplexConfig;
-use libp2p::noise::NoiseConfig;
-use libp2p::swarm::{SwarmBuilder, SwarmEvent};
-use libp2p::tcp::tokio::Transport as TcpTransport;
-use libp2p::tcp::Config as TcpConfig;
-use libp2p::yamux::YamuxConfig;
-use libp2p::PeerId;
+use libp2p::swarm::SwarmEvent;
 use libp2p::Transport;
+use libp2p::{noise, yamux, PeerId, SwarmBuilder};
 use npg::slot_generator::{Subnet, ValId};
 use npg::Generator;
 use npg::Message;
@@ -121,7 +113,7 @@ pub fn setup_gossipsub(registry: &mut Registry) -> Behaviour {
     let mut gs = Behaviour::new_with_subscription_filter_and_transform(
         MessageAuthenticity::Anonymous,
         gossipsub_config,
-        Some((registry, Config::default())),
+        Some((registry, MetricsConfig::default())),
         AllowAllSubscriptionFilter {},
         IdentityTransform {},
     )
@@ -217,20 +209,17 @@ pub(crate) async fn run(
 pub fn build_transport(
     keypair: &Keypair,
 ) -> libp2p::core::transport::Boxed<(PeerId, StreamMuxerBox)> {
-    let transport = TokioDnsConfig::system(TcpTransport::new(TcpConfig::default().nodelay(true)))
-        .expect("DNS config");
-
-    let noise_keys = libp2p::noise::Keypair::<libp2p::noise::X25519Spec>::new()
-        .into_authentic(keypair)
-        .expect("Signing libp2p-noise static DH keypair failed.");
+    let tcp = libp2p::tcp::tokio::Transport::new(libp2p::tcp::Config::default().nodelay(true));
+    let transport = libp2p::dns::tokio::Transport::system(tcp)
+        .expect("DNS")
+        .boxed();
 
     transport
-        .upgrade(Version::V1)
-        .authenticate(NoiseConfig::xx(noise_keys).into_authenticated())
-        .multiplex(SelectUpgrade::new(
-            YamuxConfig::default(),
-            MplexConfig::default(),
-        ))
+        .upgrade(libp2p::core::upgrade::Version::V1)
+        .authenticate(
+            noise::Config::new(keypair).expect("signing can fail only once during starting a node"),
+        )
+        .multiplex(yamux::Config::default())
         .timeout(Duration::from_secs(20))
         .boxed()
 }
@@ -250,12 +239,14 @@ impl Network {
     ) -> Self {
         let gossipsub = setup_gossipsub(&mut registry);
 
-        let swarm = SwarmBuilder::with_tokio_executor(
-            build_transport(&keypair),
-            gossipsub,
-            PeerId::from(keypair.public()),
-        )
-        .build();
+        let transport = build_transport(&keypair);
+        let swarm = SwarmBuilder::with_existing_identity(keypair)
+            .with_tokio()
+            .with_other_transport(|_| transport)
+            .expect("infallible")
+            .with_behaviour(|_| gossipsub)
+            .expect("infallible")
+            .build();
 
         info!(
             "[{}] running with {} validators",
@@ -373,7 +364,7 @@ impl Network {
                 event = self.swarm.select_next_some() => self.handle_swarm_event(event),
                 Some(x) = self.messages_to_validate.next(), if !self.messages_to_validate.is_empty() => { // Message needs validation
                     let (message_id, peer_id) = x.into_inner();
-                    if let Err(e)  = self.swarm.behaviour_mut().report_message_validation_result(&message_id, &peer_id, libp2p::gossipsub::MessageAcceptance::Accept) {
+                    if let Err(e)  = self.swarm.behaviour_mut().report_message_validation_result(&message_id, &peer_id, gossipsub::MessageAcceptance::Accept) {
                         warn!("Could not publish message: {} {}", message_id, e);
                     }
                 }

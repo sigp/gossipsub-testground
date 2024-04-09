@@ -1,9 +1,7 @@
 use crate::beacon_node::{ATTESTATION_SUBNETS, SLOT, SLOTS_PER_EPOCH, SYNC_SUBNETS};
 use crate::topic::Topic;
 use gen_topology::Params;
-use libp2p::gossipsub::{
-    IdentTopic, PeerScoreParams, PeerScoreThresholds, TopicHash, TopicScoreParams,
-};
+use gossipsub::{IdentTopic, PeerScoreParams, PeerScoreThresholds, TopicHash, TopicScoreParams};
 use rand::Rng;
 use std::collections::HashMap;
 use std::str::FromStr;

@@ -1,12 +1,9 @@
 use crate::InstanceInfo;
 use chrono::{DateTime, FixedOffset};
 use futures::stream::FuturesUnordered;
-use libp2p::gossipsub::{
-    Behaviour, Event, HandlerError, IdentTopic, MessageId, Topic as GossipTopic,
-};
+use gossipsub::{Behaviour, Event, IdentTopic, MessageId, Topic as GossipTopic};
 use libp2p::swarm::SwarmEvent;
-use libp2p::PeerId;
-use libp2p::Swarm;
+use libp2p::{PeerId, Swarm};
 use npg::Generator;
 use prometheus_client::registry::Registry;
 use rand::Rng;
@@ -118,7 +115,7 @@ impl Network {
         topic: Topic,
         validator: u64,
         mut payload: Vec<u8>,
-    ) -> Result<libp2p::gossipsub::MessageId, libp2p::gossipsub::PublishError> {
+    ) -> Result<MessageId, gossipsub::PublishError> {
         // Plain binary as messages, coupled with the validator
         payload.append(&mut validator.to_be_bytes().to_vec());
 
@@ -135,7 +132,7 @@ impl Network {
     }
 
     // An inbound event or swarm event gets sent here
-    fn handle_swarm_event(&mut self, event: SwarmEvent<Event, HandlerError>) {
+    fn handle_swarm_event(&mut self, event: SwarmEvent<Event>) {
         match event {
             SwarmEvent::Behaviour(Event::Message {
                 propagation_source,

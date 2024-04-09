@@ -1,4 +1,4 @@
-use libp2p::gossipsub::{IdentTopic, Topic as GossipTopic};
+use gossipsub::{IdentTopic, Topic as GossipTopic};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
