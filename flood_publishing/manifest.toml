@@ -1,0 +1,27 @@
+name = "flood_publishing"
+
+[defaults]
+builder = "docker:generic"
+runner = "local:docker"
+disable_metrics = false
+
+[builders."docker:generic"]
+enabled = true
+
+[runners."local:docker"]
+enabled = true
+
+[[testcases]]
+name = "flood_publishing"
+instances = { min = 3, max = 100, default = 3 }
+  [testcases.params]
+  warm_up = { type = "int", desc = "Time to wait for nodes to form overlay mesh before beginning publishing", unit = "sec", default = 10 }
+  run = { type = "int", desc = "Time to run simulation", unit = "sec", default = 20 }
+  cool_down = { type = "int", desc = "Time to wait after simulation", unit = "sec", default = 10 }
+  publish_interval = { type = "int", desc = "Interval to publish a message", unit = "sec", default = 5 }
+  message_size = { type = "int", desc = "Size of messages to be published", unit = "bytes", default = 50000 }
+  # Network config
+  bandwidth = { type = "int", desc = "Bandwidth in MiB", unit = "MiB", default = 30 }
+  # Gossipsub config
+  flood_publish = { type = "string", desc = "The type of flood publishing: rapid / heartbeat" }
+
